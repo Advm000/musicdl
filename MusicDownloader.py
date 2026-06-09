@@ -31,7 +31,7 @@ os.makedirs(OUT_DIR, exist_ok=True)
 FAV_FILE    = os.path.join(OUT_DIR, ".favorites.json")
 PL_FILE     = os.path.join(OUT_DIR, ".playlists.json")
 DEVICE_FILE = os.path.join(OUT_DIR, "device.json")
-APP_VERSION = "2.5.0"
+APP_VERSION = "2.5.1"
 
 app  = Flask(__name__)
 jobs = {}   # job_id -> {"progress":0,"status":"...","done":False,"error":"","cancelled":False}
@@ -1687,7 +1687,7 @@ fetch('/api/favorites').then(function(r){return r.json()}).then(function(f){f.fo
 document.getElementById('q').focus();
 
 /* ─── ITUNES SEARCH ─── */
-var _itsTimer=null,_itsFetching=false;
+var _itsTimer=null,_itsSeq=0;
 function isYtUrl(v){return /^https?:\/\/|youtu\.?be|youtube\.|soundcloud\.|deezer\./.test(v);}
 function itsInput(){
   var v=document.getElementById('q').value.trim();
@@ -1696,11 +1696,11 @@ function itsInput(){
   _itsTimer=setTimeout(function(){itsSearch(v);},420);
 }
 function itsSearch(q){
-  _itsFetching=true;
+  var seq=++_itsSeq;
   fetch('/api/itunes/search?q='+encodeURIComponent(q))
     .then(function(r){return r.json();})
     .then(function(data){
-      _itsFetching=false;
+      if(seq!==_itsSeq)return; /* annulé par un search ou hideIts ultérieur */
       if(!data||data.error||!data.length)return;
       var box=document.getElementById('its-box');
       box.innerHTML='<div class="its-hd">&#9835; iTunes — Suggestions</div>'
@@ -1719,9 +1719,9 @@ function itsSearch(q){
         }).join('');
       box.classList.add('show');
     })
-    .catch(function(){_itsFetching=false;});
+    .catch(function(){});
 }
-function hideIts(){document.getElementById('its-box').classList.remove('show');}
+function hideIts(){_itsSeq++;document.getElementById('its-box').classList.remove('show');}
 function itsDownload(title,artist){
   hideIts();hideSugBox();
   var query=title+(artist?' '+artist:'');
@@ -1764,10 +1764,12 @@ function itsDownload(title,artist){
     })
     .catch(function(){var btn=document.getElementById('db-'+fid);if(btn){btn.disabled=false;btn.innerHTML='&#8659; MP3';}});
 }
-/* Fermer iTunes box en cliquant dehors */
+/* Fermer iTunes box en cliquant dehors ou en scrollant les résultats */
 document.addEventListener('click',function(e){
   if(!e.target.closest('#its-box')&&!e.target.closest('.si-wrap'))hideIts();
 });
+document.getElementById('rl').addEventListener('scroll',function(){hideIts();},{passive:true});
+document.getElementById('rl').addEventListener('wheel',function(){hideIts();},{passive:true});
 
 /* RECHERCHE */
 function doSearch(){
@@ -1990,7 +1992,8 @@ function loadPlaylists(){
 }
 function mkPlCov(files){
   if(!files.length)return '<div class="pl-item-ico">'+ico('note',15)+'</div>';
-  if(files.length<4)return '<div class="pl-item-cov c1"><img src="/api/cover/'+encodeURIComponent(files[0])+'" onerror="this.style.display=\'none\'"></div>';
+  if(files.length===1)return '<div class="pl-item-cov c1"><img src="/api/cover/'+encodeURIComponent(files[0])+'" onerror="this.style.display=\'none\'"></div>';
+  /* 2+ tracks : grille 2×2 avec toutes les covers disponibles (max 4) */
   return '<div class="pl-item-cov">'+files.slice(0,4).map(function(fn){return '<img src="/api/cover/'+encodeURIComponent(fn)+'" onerror="this.style.display=\'none\'">';}).join('')+'</div>';
 }
 function renderPlSide(){
@@ -2036,13 +2039,19 @@ function renderPlDetail(name){
   if(totalSec>0){var h=Math.floor(totalSec/3600),mn=Math.floor((totalSec%3600)/60);durStr=h>0?h+' hr '+mn+' min':mn+' min';}
   /* cover collage */
   var covHtml='';
-  if(!files.length){
+  var n=files.length;
+  if(!n){
     covHtml='<div class="pl-hero-cov" style="display:flex;align-items:center;justify-content:center">'+ico('note',40)+'</div>';
-  }else if(files.length<4){
+  }else if(n===1){
     covHtml='<div class="pl-hero-cov single"><img src="/api/cover/'+encodeURIComponent(files[0])+'" onerror="this.parentNode.style.background=\'#1e1e50\'"></div>';
   }else{
+    var show=files.slice(0,4);
     covHtml='<div class="pl-hero-cov">'
-      +files.slice(0,4).map(function(fn){return '<img src="/api/cover/'+encodeURIComponent(fn)+'" onerror="this.style.display=\'none\'">';}).join('')
+      +show.map(function(fn,i){
+        /* 3 tracks : le 3e span 2 colonnes pour remplir la rangée du bas */
+        var extra=(n===3&&i===2)?' style="grid-column:span 2"':'';
+        return '<img src="/api/cover/'+encodeURIComponent(fn)+'"'+extra+' onerror="this.style.display=\'none\'">';
+      }).join('')
       +'</div>';
   }
   /* back button */
