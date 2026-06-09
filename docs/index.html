@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Music DL — Téléchargeur de musique gratuit</title>
+  <meta name="description" content="Téléchargez vos musiques, créez des playlists et écoutez hors-ligne. Application Windows gratuite.">
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#0b0b1a;--bg2:#111128;
+      --purple:#7c3aed;--pl:#a855f7;--cyan:#22d3ee;
+      --grad:linear-gradient(135deg,#7c3aed 0%,#a855f7 50%,#22d3ee 100%);
+      --text:#e2e8f0;--muted:#94a3b8;
+    }
+    html{scroll-behavior:smooth}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.6}
+
+    /* HERO */
+    .hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;overflow:hidden;padding:80px 24px 60px;text-align:center}
+    .hero-bg{position:absolute;inset:0;background:radial-gradient(ellipse 70% 60% at 50% 30%,rgba(124,58,237,.25) 0%,transparent 70%),radial-gradient(ellipse 40% 40% at 80% 70%,rgba(34,211,238,.1) 0%,transparent 60%);pointer-events:none}
+    .hero-orb{position:absolute;width:560px;height:560px;border-radius:50%;background:radial-gradient(circle,rgba(124,58,237,.12) 0%,transparent 70%);top:-120px;left:50%;transform:translateX(-50%);pointer-events:none}
+    .hero-content{position:relative;z-index:1;max-width:680px}
+
+    .logo-wrap{width:96px;height:96px;border-radius:26px;background:var(--grad);display:flex;align-items:center;justify-content:center;margin:0 auto 32px;box-shadow:0 0 60px rgba(124,58,237,.5),0 20px 40px rgba(0,0,0,.4)}
+
+    h1{font-size:clamp(3rem,8vw,5.5rem);font-weight:800;letter-spacing:-.03em;line-height:1;margin-bottom:20px}
+    h1 span{background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+
+    .hero p{font-size:1.2rem;color:var(--muted);margin-bottom:40px;line-height:1.7}
+
+    .btn-dl{display:inline-flex;flex-direction:column;align-items:center;gap:6px;padding:18px 44px;background:var(--grad);color:#fff;text-decoration:none;border-radius:16px;font-weight:700;font-size:1.1rem;box-shadow:0 8px 32px rgba(124,58,237,.45);transition:transform .2s,box-shadow .2s;cursor:pointer;border:none}
+    .btn-dl:hover{transform:translateY(-3px) scale(1.02);box-shadow:0 16px 48px rgba(124,58,237,.65)}
+    .btn-dl svg{margin-bottom:2px}
+    .btn-dl small{font-size:.75rem;font-weight:400;opacity:.8}
+
+    .badges{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:28px}
+    .badge{padding:6px 14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:20px;font-size:.82rem;color:var(--muted)}
+
+    /* FEATURES */
+    .features{padding:100px 24px;background:var(--bg2)}
+    .container{max-width:1100px;margin:0 auto}
+    .s-label{text-align:center;font-size:.85rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--pl);margin-bottom:16px}
+    .s-title{text-align:center;font-size:clamp(1.8rem,4vw,2.8rem);font-weight:700;margin-bottom:60px;letter-spacing:-.02em}
+
+    .feat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:24px}
+    .feat{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:20px;padding:32px 28px;transition:border-color .2s,transform .2s}
+    .feat:hover{border-color:rgba(124,58,237,.4);transform:translateY(-4px)}
+    .feat-icon{width:52px;height:52px;border-radius:14px;background:rgba(124,58,237,.15);display:flex;align-items:center;justify-content:center;margin-bottom:20px;color:var(--pl)}
+    .feat h3{font-size:1.05rem;font-weight:600;margin-bottom:10px}
+    .feat p{font-size:.9rem;color:var(--muted);line-height:1.6}
+
+    /* STEPS */
+    .steps{padding:100px 24px}
+    .steps-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:32px;margin-top:60px}
+    .step{text-align:center}
+    .step-num{width:56px;height:56px;border-radius:50%;background:var(--grad);display:flex;align-items:center;justify-content:center;font-size:1.3rem;font-weight:800;margin:0 auto 20px;box-shadow:0 4px 20px rgba(124,58,237,.4)}
+    .step h3{font-size:1rem;font-weight:600;margin-bottom:8px}
+    .step p{font-size:.88rem;color:var(--muted)}
+    code{background:rgba(255,255,255,.08);padding:2px 7px;border-radius:5px;font-size:.84em}
+
+    /* CTA */
+    .cta{padding:100px 24px;text-align:center;background:var(--bg2)}
+    .cta h2{font-size:clamp(1.8rem,4vw,2.6rem);font-weight:700;margin-bottom:16px;letter-spacing:-.02em}
+    .cta p{color:var(--muted);margin-bottom:40px;font-size:1.05rem}
+
+    /* FOOTER */
+    footer{padding:40px 24px;border-top:1px solid rgba(255,255,255,.06);text-align:center}
+    footer p{color:var(--muted);font-size:.85rem}
+    footer a{color:var(--pl);text-decoration:none}
+    footer a:hover{text-decoration:underline}
+
+    @media(max-width:600px){.btn-dl{padding:16px 28px;font-size:1rem}}
+  </style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-orb"></div>
+  <div class="hero-content">
+    <div class="logo-wrap">
+      <svg width="52" height="52" viewBox="0 0 24 24" fill="none">
+        <path d="M9 18V5l12-2v13" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="6" cy="18" r="3" fill="white"/>
+        <circle cx="18" cy="16" r="3" fill="white"/>
+      </svg>
+    </div>
+    <h1>Music <span>DL</span></h1>
+    <p>Téléchargez vos musiques préférées depuis YouTube.<br>Créez des playlists. Écoutez hors-ligne. Gratuit.</p>
+    <a id="dl-btn" href="#" class="btn-dl">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="7 10 12 15 17 10"/>
+        <line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+      Télécharger pour Windows
+      <small>Gratuit · Version 1.0.0 · Windows 10 / 11</small>
+    </a>
+    <div class="badges">
+      <span class="badge">Gratuit</span>
+      <span class="badge">Windows 10 / 11</span>
+      <span class="badge">Mode hors-ligne</span>
+      <span class="badge">Playlists illimitées</span>
+    </div>
+  </div>
+</header>
+
+<section class="features">
+  <div class="container">
+    <p class="s-label">Fonctionnalités</p>
+    <h2 class="s-title">Tout ce dont vous avez besoin</h2>
+    <div class="feat-grid">
+
+      <div class="feat">
+        <div class="feat-icon">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+        </div>
+        <h3>Recherche instantanée</h3>
+        <p>Trouvez n'importe quelle musique, chanson ou artiste en quelques secondes.</p>
+      </div>
+
+      <div class="feat">
+        <div class="feat-icon">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+        </div>
+        <h3>Téléchargement MP3</h3>
+        <p>Qualité optimale avec métadonnées (titre, artiste, pochette) ajoutées automatiquement.</p>
+      </div>
+
+      <div class="feat">
+        <div class="feat-icon">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 18V5l12-2v13"/>
+            <circle cx="6" cy="18" r="3"/>
+            <circle cx="18" cy="16" r="3"/>
+          </svg>
+        </div>
+        <h3>Playlists style Spotify</h3>
+        <p>Créez et gérez vos playlists avec une interface moderne et intuitive.</p>
+      </div>
+
+      <div class="feat">
+        <div class="feat-icon">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M1 6v16l7-4 8 4 7-4V2l-7 4-8-4-7 4z"/>
+            <path d="M8 2v16"/><path d="M16 6v16"/>
+          </svg>
+        </div>
+        <h3>Mode hors-ligne</h3>
+        <p>Votre bibliothèque disponible sans connexion. Idéal en voyage ou sans Wi-Fi.</p>
+      </div>
+
+      <div class="feat">
+        <div class="feat-icon">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+          </svg>
+        </div>
+        <h3>Favoris & Bibliothèque</h3>
+        <p>Marquez vos morceaux préférés et retrouvez-les en un clic.</p>
+      </div>
+
+      <div class="feat">
+        <div class="feat-icon">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="3" width="20" height="14" rx="2"/>
+            <line x1="8" y1="21" x2="16" y2="21"/>
+            <line x1="12" y1="17" x2="12" y2="21"/>
+          </svg>
+        </div>
+        <h3>Application native Windows</h3>
+        <p>S'installe comme n'importe quel logiciel. Aucune configuration technique requise.</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<section class="steps">
+  <div class="container">
+    <p class="s-label">Installation</p>
+    <h2 class="s-title">Prêt en 3 étapes</h2>
+    <div class="steps-grid">
+      <div class="step">
+        <div class="step-num">1</div>
+        <h3>Télécharger</h3>
+        <p>Cliquez sur le bouton de téléchargement et sauvegardez l'installeur sur votre PC.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <h3>Installer</h3>
+        <p>Double-cliquez sur <code>MusicDL_Setup.exe</code> et suivez l'assistant d'installation.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <h3>Profiter</h3>
+        <p>L'app se lance automatiquement dans votre navigateur. Aucune configuration requise.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="cta">
+  <div class="container">
+    <h2>Commencez gratuitement</h2>
+    <p>Téléchargez Music DL et commencez à construire votre bibliothèque musicale.</p>
+    <a id="dl-btn2" href="#" class="btn-dl">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="7 10 12 15 17 10"/>
+        <line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+      Télécharger Music DL
+      <small>Gratuit · Windows 10 / 11</small>
+    </a>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <p>Music DL — Application Windows gratuite &nbsp;·&nbsp; <a id="gh-link" href="#">Releases GitHub</a></p>
+  </div>
+</footer>
+
+<script>
+(function(){
+  // Auto-detect repo depuis l'URL GitHub Pages
+  var host = window.location.hostname;          // ex: username.github.io
+  var path = window.location.pathname;          // ex: /musicdl/
+  var repo = path.split('/').filter(Boolean)[0] || 'musicdl';
+  var user = host.replace('.github.io', '');
+  var ghBase = (user && user !== host)
+    ? 'https://github.com/' + user + '/' + repo
+    : 'https://github.com/YOUR_USERNAME/musicdl';
+
+  var dlUrl = ghBase + '/releases/latest/download/MusicDL_Setup_v1.0.0.exe';
+  document.getElementById('dl-btn').href  = dlUrl;
+  document.getElementById('dl-btn2').href = dlUrl;
+  document.getElementById('gh-link').href = ghBase + '/releases';
+})();
+</script>
+
+</body>
+</html>

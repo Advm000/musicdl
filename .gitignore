@@ -1,0 +1,35 @@
+# Build output
+dist/
+build/
+installer_output/
+__pycache__/
+*.pyc
+*.pyo
+
+# Python env
+.env
+*.egg-info/
+venv/
+.venv/
+
+# Musique (fichiers personnels, volumineux)
+*.mp3
+*.m4a
+*.webm
+*.opus
+*.flac
+
+# Donnees personnelles
+.favorites.json
+.playlists.json
+device.json
+Music/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Temp
+*.tmp
+*.bak

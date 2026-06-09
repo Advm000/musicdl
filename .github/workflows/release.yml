@@ -1,0 +1,63 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt pyinstaller
+
+      - name: Build executable
+        run: pyinstaller musicdl.spec --noconfirm --clean
+
+      - name: Install Inno Setup
+        run: choco install innosetup --yes --no-progress
+
+      - name: Build Windows installer
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force installer_output | Out-Null
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" setup.iss
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MusicDL-Installer
+          path: installer_output\MusicDL_Setup_v1.0.0.exe
+          retention-days: 30
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Music DL ${{ github.ref_name }}
+          files: installer_output\MusicDL_Setup_v1.0.0.exe
+          body: |
+            ## Music DL ${{ github.ref_name }}
+
+            ### Installation
+            1. Cliquez sur `MusicDL_Setup_v1.0.0.exe` ci-dessous
+            2. Double-cliquez pour lancer l'installeur
+            3. L'app s'ouvre automatiquement dans votre navigateur
+
+            ### Requis
+            - Windows 10 / 11
+            - Connexion internet pour rechercher et télécharger de la musique
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
