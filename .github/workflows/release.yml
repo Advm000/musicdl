@@ -43,34 +43,8 @@ jobs:
           npm install sharp
           node gen-icon.js
 
-      - name: Build Electron app
+      - name: Build & publish Electron app
         working-directory: electron
-        run: npm run build
+        run: npm run release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload Electron installer artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: MusicDL-Electron-Installer
-          path: electron/dist-electron/*.exe
-          retention-days: 30
-
-      - name: Create GitHub Release
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
-        with:
-          name: Music DL ${{ github.ref_name }}
-          files: electron/dist-electron/*.exe
-          body: |
-            ## Music DL ${{ github.ref_name }}
-
-            ### Télécharger et installer
-            1. Cliquez sur `MusicDL-Setup.exe` ci-dessous
-            2. Exécutez l'installeur
-            3. L'application s'ouvre — la version est affichée dans l'en-tête
-
-            ### Requis
-            - Windows 10 / 11 (64-bit)
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -31,7 +31,7 @@ os.makedirs(OUT_DIR, exist_ok=True)
 FAV_FILE    = os.path.join(OUT_DIR, ".favorites.json")
 PL_FILE     = os.path.join(OUT_DIR, ".playlists.json")
 DEVICE_FILE = os.path.join(OUT_DIR, "device.json")
-APP_VERSION = "2.5.2"
+APP_VERSION = "2.6.0"
 
 app  = Flask(__name__)
 jobs = {}   # job_id -> {"progress":0,"status":"...","done":False,"error":"","cancelled":False}
@@ -1162,10 +1162,14 @@ body.is-offline .dl-btn,body.is-offline #alldl{opacity:.3;pointer-events:none}
 .sp-line{position:absolute;bottom:0;left:0;height:2px;background:var(--grad);width:0%;animation:spLine 3.3s cubic-bezier(.05,.85,.2,1) .12s both}
 @keyframes spLine{from{width:0%}to{width:100%}}
 /* UPDATE BANNER */
-#upd-banner{display:none;align-items:center;gap:12px;padding:10px 20px;background:linear-gradient(90deg,rgba(124,58,237,.15),rgba(8,145,178,.15));border-bottom:1px solid rgba(124,58,237,.3);font-size:.88rem;flex-shrink:0}
-#upd-banner>span{flex:1;color:#e2e8f0}
+#upd-banner{display:none;align-items:center;gap:10px;padding:9px 20px;background:linear-gradient(90deg,rgba(124,58,237,.15),rgba(8,145,178,.15));border-bottom:1px solid rgba(124,58,237,.3);font-size:.88rem;flex-shrink:0}
+#upd-msg{flex:1;color:#e2e8f0}
 #upd-banner strong{color:#a855f7}
-.upd-btn{padding:6px 16px;background:var(--grad);color:#fff;border:none;border-radius:8px;font-size:.82rem;font-weight:600;cursor:pointer;text-decoration:none;white-space:nowrap}
+#upd-prog{display:none;align-items:center;gap:7px;flex:1;max-width:180px}
+#upd-ptrack{flex:1;height:3px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden}
+#upd-pfill{height:100%;background:linear-gradient(90deg,#7c3aed,#06b6d4);width:0%;transition:width .4s ease}
+#upd-plbl{font-size:.75rem;color:#94a3b8;min-width:28px;text-align:right}
+.upd-btn{padding:6px 16px;background:var(--grad);color:#fff;border:none;border-radius:8px;font-size:.82rem;font-weight:600;cursor:pointer;white-space:nowrap;font-family:inherit}
 .upd-close{background:none;border:none;color:#64748b;cursor:pointer;font-size:1rem;padding:0 4px;line-height:1;flex-shrink:0}
 .upd-close:hover{color:#e2e8f0}
 </style>
@@ -1220,8 +1224,9 @@ body.is-offline .dl-btn,body.is-offline #alldl{opacity:.3;pointer-events:none}
 <!-- UPDATE BANNER -->
 <div id="upd-banner">
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-  <span>Mise à jour disponible&nbsp;: <strong id="upd-ver"></strong> — Nouvelle version prête</span>
-  <a id="upd-dl" href="https://github.com/Advm000/musicdl/releases/latest" class="upd-btn" target="_blank">Télécharger</a>
+  <span id="upd-msg">Mise à jour disponible&nbsp;: <strong id="upd-ver"></strong></span>
+  <div id="upd-prog"><div id="upd-ptrack"><div id="upd-pfill"></div></div><span id="upd-plbl">0%</span></div>
+  <button id="upd-btn" class="upd-btn" onclick="updAction()">Installer</button>
   <button class="upd-close" onclick="document.getElementById('upd-banner').style.display='none'" title="Fermer">✕</button>
 </div>
 
@@ -2407,18 +2412,48 @@ document.addEventListener('keydown',function(e){
 /* CHECK FOR UPDATE */
 (function(){
   var CURRENT='__VER__';
+  var _ready=false;
   function parseVer(v){return v.replace(/^v/,'').split('.').map(Number);}
   function isNewer(a,b){for(var i=0;i<3;i++){if((a[i]||0)>(b[i]||0))return true;if((a[i]||0)<(b[i]||0))return false;}return false;}
+  function showBanner(ver){
+    document.getElementById('upd-ver').textContent=ver;
+    document.getElementById('upd-banner').style.display='flex';
+  }
+  function showProgress(pct){
+    document.getElementById('upd-prog').style.display='flex';
+    document.getElementById('upd-pfill').style.width=pct+'%';
+    document.getElementById('upd-plbl').textContent=pct+'%';
+    document.getElementById('upd-btn').style.display='none';
+    document.getElementById('upd-msg').innerHTML='Téléchargement en cours…';
+  }
+  function showReady(ver){
+    _ready=true;
+    document.getElementById('upd-prog').style.display='none';
+    document.getElementById('upd-msg').innerHTML='Prêt à installer : <strong>'+ver+'</strong>';
+    var btn=document.getElementById('upd-btn');
+    btn.style.display='';btn.textContent='Redémarrer et installer';
+    document.getElementById('upd-banner').style.display='flex';
+  }
+  window.updAction=function(){
+    if(_ready&&window.electronUpdater){window.electronUpdater.install();return;}
+    window.open('https://github.com/Advm000/musicdl/releases/latest','_blank');
+  };
+  /* Electron path — electron-updater envoie les événements via IPC */
+  if(window.electronUpdater){
+    window.electronUpdater.onUpdate(function(d){
+      if(d.type==='available'){showBanner(d.version);}
+      else if(d.type==='progress'){showProgress(d.percent);}
+      else if(d.type==='ready'){showReady(d.version);}
+    });
+    return; /* main.js lance checkForUpdates() au démarrage */
+  }
+  /* Fallback navigateur — GitHub API */
   setTimeout(function(){
     fetch('https://api.github.com/repos/Advm000/musicdl/releases/latest',{headers:{'Accept':'application/vnd.github.v3+json'}})
       .then(function(r){return r.json();})
       .then(function(d){
         if(!d||!d.tag_name)return;
-        if(isNewer(parseVer(d.tag_name),parseVer(CURRENT))){
-          document.getElementById('upd-ver').textContent=d.tag_name;
-          document.getElementById('upd-dl').href=d.html_url;
-          document.getElementById('upd-banner').style.display='flex';
-        }
+        if(isNewer(parseVer(d.tag_name),parseVer(CURRENT)))showBanner(d.tag_name);
       }).catch(function(){});
   },4000);
 })();

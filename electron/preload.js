@@ -1,2 +1,6 @@
-// Preload vide — le contexte web n'a pas besoin d'accès Node.js direct
-// L'app communique uniquement via HTTP avec le backend Flask local
+const { contextBridge, ipcRenderer } = require('electron')
+
+contextBridge.exposeInMainWorld('electronUpdater', {
+  install: () => ipcRenderer.invoke('upd-install'),
+  onUpdate: (cb) => ipcRenderer.on('upd', (_, data) => cb(data)),
+})

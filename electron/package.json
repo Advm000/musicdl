@@ -1,6 +1,6 @@
 {
   "name": "music-dl",
-  "version": "2.5.2",
+  "version": "2.6.0",
   "description": "Music DL — Téléchargeur de musique pour Windows",
   "main": "main.js",
   "repository": {
@@ -9,7 +9,8 @@
   },
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder --win"
+    "build": "electron-builder --win",
+    "release": "electron-builder --win --publish always"
   },
   "build": {
     "appId": "com.musicdl.app",
@@ -30,7 +31,11 @@
       }
     ],
     "artifactName": "MusicDL-Setup.exe",
-    "publish": null,
+    "publish": {
+      "provider": "github",
+      "owner": "Advm000",
+      "repo": "musicdl"
+    },
     "win": {
       "icon": "icon.png",
       "target": [{ "target": "nsis", "arch": ["x64"] }],
@@ -45,6 +50,9 @@
       "createStartMenuShortcut": true,
       "shortcutName": "Music DL"
     }
+  },
+  "dependencies": {
+    "electron-updater": "^6.3.4"
   },
   "devDependencies": {
     "electron": "^28.3.3",

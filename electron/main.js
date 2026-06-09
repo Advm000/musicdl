@@ -1,9 +1,12 @@
-const { app, BrowserWindow, Menu, shell, dialog } = require('electron')
+const { app, BrowserWindow, Menu, shell, dialog, ipcMain } = require('electron')
 const { spawn } = require('child_process')
 const path = require('path')
 const http = require('http')
 const fs   = require('fs')
 const os   = require('os')
+
+let autoUpdater = null
+try { autoUpdater = require('electron-updater').autoUpdater } catch(e) {}
 
 let mainWindow   = null
 let loadingWin   = null
@@ -134,6 +137,40 @@ function waitForFlask(retries = 90, delay = 666) {
   })
 }
 
+function setupUpdater() {
+  if (!app.isPackaged || !autoUpdater) return
+
+  autoUpdater.autoDownload = true
+  autoUpdater.autoInstallOnAppQuit = false
+  autoUpdater.logger = null
+
+  autoUpdater.on('update-available', (info) => {
+    log('Update available: ' + info.version)
+    mainWindow?.webContents.send('upd', { type: 'available', version: info.version })
+  })
+
+  autoUpdater.on('download-progress', (prog) => {
+    mainWindow?.webContents.send('upd', { type: 'progress', percent: Math.round(prog.percent) })
+  })
+
+  autoUpdater.on('update-downloaded', (info) => {
+    log('Update downloaded: ' + info.version)
+    mainWindow?.webContents.send('upd', { type: 'ready', version: info.version })
+  })
+
+  autoUpdater.on('error', (err) => {
+    log('Updater error: ' + err.message)
+  })
+
+  ipcMain.handle('upd-install', () => {
+    autoUpdater.quitAndInstall(true, true)
+  })
+
+  setTimeout(() => {
+    try { autoUpdater.checkForUpdates() } catch(e) { log('updater check: ' + e.message) }
+  }, 6000)
+}
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
@@ -179,6 +216,7 @@ app.whenReady().then(async () => {
   try {
     await waitForFlask()
     createWindow()
+    setupUpdater()
   } catch (err) {
     log('Fatal: ' + err.message)
 
