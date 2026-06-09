@@ -63,17 +63,12 @@ jobs:
           name: Music DL ${{ github.ref_name }}
           files: electron/dist-electron/*.exe
           body: |
-            ## Music DL ${{ github.ref_name }} — Application Windows Native
+            ## Music DL ${{ github.ref_name }}
 
             ### Télécharger et installer
-            1. Cliquez sur `Music DL Setup 1.0.0.exe` ci-dessous
+            1. Cliquez sur `MusicDL-Setup.exe` ci-dessous
             2. Exécutez l'installeur
-            3. L'app s'ouvre comme une vraie application Windows native
-
-            ### Nouveautés
-            - Vraie fenêtre native (plus de navigateur visible)
-            - Pas de barre d'adresse, pas de "localhost"
-            - Icône dans la barre des tâches
+            3. L'application s'ouvre — la version est affichée dans l'en-tête
 
             ### Requis
             - Windows 10 / 11 (64-bit)

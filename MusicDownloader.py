@@ -31,7 +31,7 @@ os.makedirs(OUT_DIR, exist_ok=True)
 FAV_FILE    = os.path.join(OUT_DIR, ".favorites.json")
 PL_FILE     = os.path.join(OUT_DIR, ".playlists.json")
 DEVICE_FILE = os.path.join(OUT_DIR, "device.json")
-APP_VERSION = "2.2.0"
+APP_VERSION = "2.2.1"
 
 app  = Flask(__name__)
 jobs = {}   # job_id -> {"progress":0,"status":"...","done":False,"error":"","cancelled":False}
@@ -1133,7 +1133,7 @@ body.is-offline .dl-btn,body.is-offline #alldl{opacity:.3;pointer-events:none}
     </div>
     <div>
       <div class="hd-name">Music DL</div>
-      <div class="hd-sub">YouTube &rarr; MP3 &middot; 320 kbps</div>
+      <div class="hd-sub">YouTube &rarr; MP3 &middot; 320 kbps &middot; <span id="hd-ver">v2.2.1</span></div>
     </div>
   </div>
   <div class="net-badge on" id="net-badge"><div class="net-dot"></div><span id="net-lbl">En ligne</span></div>
@@ -1711,7 +1711,7 @@ function updateSelUI(){
 function deleteSelected(){
   if(!selectedFiles.size)return;var n=selectedFiles.size;
   showConfirm(
-    n+' musique'+(n>1?'s':'')+' sélectionnée'+(n>1?'s':'')+' sera'+(n>1?'ont':'')+'supprimée'+(n>1?'s':'')+'.',
+    n+' musique'+(n>1?'s':'')+' '+(n>1?'seront':'sera')+' supprimée'+(n>1?'s':'')+'.',
     function(){
       var fns=Array.from(selectedFiles),done=0;
       fns.forEach(function(fn){
@@ -2205,7 +2205,7 @@ function dlgClose(e){if(e.target===document.getElementById('dlg-overlay'))dlgRej
 
 /* CHECK FOR UPDATE */
 (function(){
-  var CURRENT='2.2.0';
+  var CURRENT='2.2.1';
   function parseVer(v){return v.replace(/^v/,'').split('.').map(Number);}
   function isNewer(a,b){for(var i=0;i<3;i++){if((a[i]||0)>(b[i]||0))return true;if((a[i]||0)<(b[i]||0))return false;}return false;}
   setTimeout(function(){
