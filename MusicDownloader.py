@@ -4,6 +4,7 @@ Interface web professionnelle avec glassmorphism et animations CSS 3D
 """
 
 import os, io, json, uuid, shutil, tempfile, threading, time, webbrowser, socket, struct, zlib, platform
+import concurrent.futures
 from datetime import datetime
 from flask import Flask, Response, request, jsonify, send_file, stream_with_context
 import yt_dlp, imageio_ffmpeg
@@ -31,7 +32,26 @@ os.makedirs(OUT_DIR, exist_ok=True)
 FAV_FILE    = os.path.join(OUT_DIR, ".favorites.json")
 PL_FILE     = os.path.join(OUT_DIR, ".playlists.json")
 DEVICE_FILE = os.path.join(OUT_DIR, "device.json")
-APP_VERSION = "2.7.3"
+APP_VERSION = "2.8.0"
+
+# ── HOME / AUTO-PLAYLISTS ──────────────────────────────────────────────────────
+HOME_CACHE_FILE   = os.path.join(os.environ.get("LOCALAPPDATA") or os.path.join(os.path.expanduser("~"), "AppData", "Local"), "MusicDL", ".home_cache.json")
+LASTFM_KEY        = "ea1d7dc215630b0a24a419698442337d"
+REFRESH_INTERVALS = {"daily": 86400, "news": 43200, "artist": 172800, "genre": 172800}
+GENRE_KEYWORDS    = {
+    "Rap":       ["rap","hip-hop","hip hop","gangsta rap","trap rap"],
+    "Trap":      ["trap","drill","cloud rap","plugg"],
+    "Pop":       ["pop","dance pop","electropop","teen pop","synthpop"],
+    "R&B":       ["r&b","rnb","soul","neo soul","contemporary r&b"],
+    "K-Pop":     ["k-pop","kpop","korean pop","korean"],
+    "Chill":     ["chill","lo-fi","lofi","acoustic","ambient","study","chillout"],
+    "Rock":      ["rock","indie rock","alternative rock","punk","metal"],
+    "Afrobeats": ["afrobeat","afrobeats","afropop","afro"],
+    "Arabic":    ["arabic","rai","chaabi","arab","arabic pop"],
+    "Moroccan":  ["moroccan","maroc","maghreb","gnawa"],
+}
+_home_generating = False
+_home_lock       = threading.Lock()
 
 app  = Flask(__name__)
 jobs = {}   # job_id -> {"progress":0,"status":"...","done":False,"error":"","cancelled":False}
@@ -325,6 +345,81 @@ def api_pl_reorder(name):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# HOME PAGE
+# ══════════════════════════════════════════════════════════════════════════════
+
+def _get_listened_artists():
+    lib = _jload(LIB_FILE, []) if os.path.exists(LIB_FILE) else []
+    seen = {}
+    for t in lib:
+        a = (t.get("artist") or "").strip()
+        if a and a.lower() not in ("unknown artist",""):
+            seen[a] = seen.get(a,0)+1
+    return [a for a,_ in sorted(seen.items(),key=lambda x:-x[1])]
+
+@app.route("/api/home")
+def api_home():
+    global _home_generating
+    artists = _get_listened_artists()
+    if not artists:
+        return jsonify({"playlists":[],"artists":artists,"generating":False})
+    cache = _jload(HOME_CACHE_FILE, {})
+    now = time.time()
+    fresh = all(
+        now - v.get("generated_at",0) < REFRESH_INTERVALS.get(v.get("type","daily"),86400)
+        for v in cache.values()
+    ) if cache else False
+    if fresh:
+        return jsonify({"playlists":list(cache.values()),"artists":artists,"generating":False})
+    with _home_lock:
+        if _home_generating:
+            cached = list(cache.values())
+            return jsonify({"playlists":cached,"artists":artists,"generating":True})
+        _home_generating = True
+    def _bg():
+        global _home_generating
+        try:
+            _generate_home(artists)
+        finally:
+            with _home_lock:
+                _home_generating = False
+    threading.Thread(target=_bg, daemon=True).start()
+    cached = list(cache.values())
+    return jsonify({"playlists":cached,"artists":artists,"generating":len(cached)==0})
+
+@app.route("/api/home/refresh/<key>", methods=["POST"])
+def api_home_refresh(key):
+    artists = _get_listened_artists()
+    if not artists:
+        return jsonify({"ok":False,"error":"no library"})
+    cache = _jload(HOME_CACHE_FILE, {})
+    if key in cache:
+        cache[key]["generated_at"] = 0
+        _jsave(HOME_CACHE_FILE, cache)
+    return jsonify({"ok":True})
+
+@app.route("/api/home/status")
+def api_home_status():
+    return jsonify({"generating": _home_generating})
+
+@app.route("/api/yt/url/<vid>")
+def api_yt_url(vid):
+    try:
+        opts = {"quiet":True,"no_warnings":True,"format":"bestaudio/best","noplaylist":True}
+        with yt_dlp.YoutubeDL(opts) as ydl:
+            info = ydl.extract_info(f"https://www.youtube.com/watch?v={vid}", download=False)
+        url = info.get("url","")
+        if not url:
+            fmts = info.get("formats",[])
+            for f in reversed(fmts):
+                if f.get("acodec","none")!="none" and f.get("url"):
+                    url=f["url"]; break
+        return jsonify({"url": url, "title": info.get("title",""), "duration": info.get("duration",0)})
+    except Exception as e:
+        return jsonify({"url":"","error":str(e)}), 200
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # LOGIQUE TÉLÉCHARGEMENT
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -383,6 +478,141 @@ def _fmt_views(n):
     if n >= 1_000_000: return f"{n/1_000_000:.1f}M vues"
     if n >= 1_000:     return f"{n/1_000:.0f}K vues"
     return f"{n} vues"
+
+def _deezer_artist(name):
+    import urllib.request, urllib.parse
+    try:
+        url = "https://api.deezer.com/search/artist?q="+urllib.parse.quote(name)+"&limit=1"
+        req = urllib.request.Request(url, headers={"User-Agent":"Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=6) as r:
+            data = json.loads(r.read().decode())
+        items = data.get("data",[])
+        if not items: return {}
+        a = items[0]
+        return {"picture": a.get("picture_medium",""), "name": a.get("name","")}
+    except: return {}
+
+def _lastfm_artist(name):
+    import urllib.request, urllib.parse
+    try:
+        url = ("http://ws.audioscrobbler.com/2.0/?method=artist.getInfo"
+               "&artist="+urllib.parse.quote(name)
+               +"&api_key="+LASTFM_KEY+"&format=json")
+        req = urllib.request.Request(url, headers={"User-Agent":"Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=6) as r:
+            data = json.loads(r.read().decode())
+        artist = data.get("artist",{})
+        tags    = [t["name"].lower() for t in artist.get("tags",{}).get("tag",[])]
+        similar = [s["name"] for s in artist.get("similar",{}).get("artist",[])[:4]]
+        return {"tags": tags, "similar": similar}
+    except: return {"tags":[], "similar":[]}
+
+def _detect_genre(tags):
+    for genre, kws in GENRE_KEYWORDS.items():
+        for tag in tags:
+            for kw in kws:
+                if kw in tag: return genre
+    return None
+
+def _yt_quick(query, n=12):
+    try:
+        with yt_dlp.YoutubeDL({"quiet":True,"no_warnings":True,"extract_flat":True}) as ydl:
+            info = ydl.extract_info(f"ytsearch{n}:{query}", download=False)
+        entries = (info or {}).get("entries",[])
+        out = []
+        for e in entries:
+            thumb = e.get("thumbnail","")
+            if not thumb:
+                for t in e.get("thumbnails",[]):
+                    if t.get("url"): thumb = t["url"]; break
+            out.append({"id":e.get("id",""),"title":e.get("title",""),
+                        "channel":e.get("uploader") or e.get("channel",""),
+                        "duration":_fmt_dur(e.get("duration")),
+                        "views":_fmt_views(e.get("view_count")),
+                        "thumb":thumb,"url":e.get("url","")})
+        return out
+    except: return []
+
+def _generate_home(artists):
+    global _home_generating
+    import random as rnd
+
+    def _fetch(a):
+        dz = _deezer_artist(a)
+        lf = _lastfm_artist(a)
+        genre = _detect_genre(lf.get("tags",[]))
+        return a, {"picture":dz.get("picture",""),"genre":genre,
+                   "tags":lf.get("tags",[]),"similar":lf.get("similar",[])}
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as ex:
+        artist_info = dict(ex.map(_fetch, artists))
+
+    cache = _jload(HOME_CACHE_FILE, {})
+    now   = time.time()
+
+    def _needs(key, ptype):
+        return now - cache.get(key,{}).get("generated_at",0) > REFRESH_INTERVALS.get(ptype,86400)
+
+    result = {}
+    GRAD_COLORS = ["#7c3aed","#06b6d4","#f43f5e","#10b981","#f59e0b","#8b5cf6"]
+
+    # Daily Mix
+    shuffled = list(artists); rnd.shuffle(shuffled)
+    chunks = [shuffled[i:i+3] for i in range(0, min(9,len(shuffled)), 3)]
+    for idx, chunk in enumerate(chunks[:3], 1):
+        key = f"daily_mix_{idx}"
+        if not _needs(key,"daily"):
+            result[key] = cache[key]; continue
+        q = " ".join(chunk[:2])+" best mix playlist"
+        tracks = _yt_quick(q, 15)
+        result[key] = {"name":f"Daily Mix {idx}","type":"daily","artists":chunk,
+                       "picture":artist_info.get(chunk[0],{}).get("picture",""),
+                       "tracks":tracks,"generated_at":now,
+                       "color":GRAD_COLORS[idx-1]}
+
+    # Artist Mix (top 5)
+    for artist in list(artists)[:5]:
+        safe = artist.lower().replace(" ","_").replace("-","_")
+        key  = f"artist_{safe}"
+        if not _needs(key,"artist"):
+            result[key] = cache[key]; continue
+        tracks = _yt_quick(f"{artist} best hits top songs", 12)
+        result[key] = {"name":f"{artist} Mix","type":"artist","artists":[artist],
+                       "picture":artist_info.get(artist,{}).get("picture",""),
+                       "tracks":tracks,"generated_at":now,"color":"#10b981"}
+
+    # Genre Mix
+    genre_groups = {}
+    for a, info in artist_info.items():
+        if info["genre"]:
+            genre_groups.setdefault(info["genre"],[]).append(a)
+    for i,(genre,g_artists) in enumerate(list(genre_groups.items())[:4]):
+        key = f"genre_{genre.lower().replace(' ','_').replace('&','')}"
+        if not _needs(key,"genre"):
+            result[key] = cache[key]; continue
+        q = " ".join(g_artists[:2])+f" {genre} mix playlist"
+        tracks = _yt_quick(q, 15)
+        result[key] = {"name":f"{genre} Mix","type":"genre","artists":g_artists,
+                       "picture":artist_info.get(g_artists[0],{}).get("picture",""),
+                       "tracks":tracks,"generated_at":now,
+                       "color":GRAD_COLORS[3+i%3]}
+
+    # Nouveautés
+    key = "news"
+    if _needs(key,"news"):
+        all_tracks = []
+        for a in list(artists)[:4]:
+            all_tracks += _yt_quick(f"{a} 2025 nouveau son", 3)
+        rnd.shuffle(all_tracks)
+        result[key] = {"name":"Nouveautés 🔥","type":"news",
+                       "artists":list(artists)[:4],"picture":"",
+                       "tracks":all_tracks[:18],"generated_at":now,"color":"#f43f5e"}
+    else:
+        if key in cache: result[key] = cache[key]
+
+    _jsave(HOME_CACHE_FILE, result)
+    return result
+
 
 def _read_tags(path):
     title  = os.path.splitext(os.path.basename(path))[0]
@@ -660,6 +890,53 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 .cs-sub{font-size:15px;color:#64748b;max-width:400px;line-height:1.7;margin-bottom:36px}
 .cs-chips{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
 .cs-chip{padding:8px 18px;border-radius:20px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);font-size:13px;color:#94a3b8}
+/* ── Home Page ── */
+.home-wrap{flex:1;overflow-y:auto;padding:16px 16px 120px;display:flex;flex-direction:column}
+.home-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.home-title{font-size:22px;font-weight:800;letter-spacing:-.02em;color:#f1f5f9}
+.home-refresh-all{background:transparent;border:1px solid rgba(255,255,255,.1);border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#94a3b8;transition:all .2s}
+.home-refresh-all:hover{background:rgba(255,255,255,.06);color:#f1f5f9}
+.home-gen-bar{display:flex;align-items:center;gap:10px;font-size:13px;color:#94a3b8;margin-bottom:16px;padding:10px 14px;background:rgba(124,58,237,.08);border:1px solid rgba(124,58,237,.18);border-radius:10px}
+.home-gen-dot{width:8px;height:8px;border-radius:50%;background:#7c3aed;animation:homeDot 1.2s ease-in-out infinite}
+@keyframes homeDot{0%,100%{opacity:.3;transform:scale(.8)}50%{opacity:1;transform:scale(1.3)}}
+.home-section{margin-bottom:28px}
+.home-sec-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.home-sec-title{font-size:15px;font-weight:700;color:#e2e8f0}
+.home-sec-more{font-size:12px;color:#7c3aed;cursor:pointer;background:none;border:none;padding:0}
+.home-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px}
+.home-card{border-radius:14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);cursor:pointer;overflow:hidden;transition:transform .18s,box-shadow .18s}
+.home-card:hover{transform:translateY(-3px);box-shadow:0 8px 28px rgba(0,0,0,.35)}
+.home-card-img{width:100%;aspect-ratio:1;background:rgba(255,255,255,.06);position:relative;overflow:hidden}
+.home-card-img img{width:100%;height:100%;object-fit:cover;display:block}
+.home-card-grad{position:absolute;inset:0;opacity:.7}
+.home-card-body{padding:10px 10px 12px}
+.home-card-name{font-size:12px;font-weight:700;color:#f1f5f9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.home-card-sub{font-size:11px;color:#64748b;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.home-card-play{position:absolute;bottom:8px;right:8px;width:32px;height:32px;border-radius:50%;background:var(--grad);display:flex;align-items:center;justify-content:center;opacity:0;transform:translateY(4px);transition:all .2s;box-shadow:0 4px 14px rgba(0,0,0,.4)}
+.home-card:hover .home-card-play{opacity:1;transform:translateY(0)}
+.home-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:#475569;text-align:center;padding:40px}
+/* Home Detail Overlay */
+.home-detail{position:absolute;inset:0;background:#0f0f17;z-index:50;overflow-y:auto;display:flex;flex-direction:column}
+.home-detail-head{display:flex;align-items:flex-end;gap:16px;padding:20px 16px 18px;background:linear-gradient(180deg,rgba(30,10,60,.9),rgba(15,15,23,.0))}
+.home-detail-back{background:none;border:none;color:#94a3b8;cursor:pointer;padding:4px;margin-bottom:2px;display:flex;align-items:center}
+.home-detail-back:hover{color:#f1f5f9}
+.home-detail-cover{width:90px;height:90px;border-radius:12px;background:rgba(255,255,255,.08);overflow:hidden;flex-shrink:0}
+.home-detail-cover img{width:100%;height:100%;object-fit:cover}
+.home-detail-info{flex:1;min-width:0}
+.home-detail-name{font-size:18px;font-weight:800;color:#f1f5f9;margin-bottom:4px}
+.home-detail-sub{font-size:12px;color:#64748b;margin-bottom:12px}
+.home-play-all{background:var(--grad);border:none;border-radius:20px;color:#fff;font-size:13px;font-weight:700;padding:8px 20px;cursor:pointer;display:flex;align-items:center;gap:7px;box-shadow:0 4px 16px rgba(124,58,237,.4)}
+.home-detail-tracks{padding:8px 0 100px}
+.home-track-row{display:flex;align-items:center;gap:12px;padding:9px 16px;cursor:pointer;border-radius:8px;margin:0 4px;transition:background .15s}
+.home-track-row:hover{background:rgba(255,255,255,.05)}
+.home-track-row.active{background:rgba(124,58,237,.12)}
+.home-track-num{width:20px;text-align:right;font-size:12px;color:#475569;flex-shrink:0}
+.home-track-thumb{width:40px;height:40px;border-radius:6px;background:rgba(255,255,255,.06);overflow:hidden;flex-shrink:0}
+.home-track-thumb img{width:100%;height:100%;object-fit:cover}
+.home-track-info{flex:1;min-width:0}
+.home-track-title{font-size:13px;font-weight:600;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.home-track-ch{font-size:11px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.home-track-dur{font-size:11px;color:#475569;flex-shrink:0}
 /* Animations boutons lecteur */
 @keyframes btnBounce{0%{transform:scale(1)}28%{transform:scale(.78)}62%{transform:scale(1.16)}82%{transform:scale(.95)}100%{transform:scale(1)}}
 @keyframes btnRipple{0%{box-shadow:0 0 0 0 rgba(124,58,237,.7),0 0 0 0 rgba(6,182,212,.4)}100%{box-shadow:0 0 0 22px rgba(124,58,237,0),0 0 0 36px rgba(6,182,212,0)}}
@@ -1239,7 +1516,7 @@ body.is-offline .dl-btn,body.is-offline #alldl{opacity:.3;pointer-events:none}
   <div class="tb on" id="tab0" onclick="goTab(0)"><svg class="tb-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><div class="tbdot"></div>RECHERCHE</div>
   <div class="tb" id="tab1" onclick="goTab(1)"><svg class="tb-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg><div class="tbdot"></div>Bibliothèque</div>
   <div class="tb" id="tab2" onclick="goTab(2)"><svg class="tb-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg><div class="tbdot"></div>PLAYLISTS</div>
-  <div class="tb" id="tab3" onclick="goTab(3)"><svg class="tb-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg><div class="tbdot"></div>BIENTÔT</div>
+  <div class="tb" id="tab3" onclick="goTab(3)"><svg class="tb-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg><div class="tbdot"></div>ACCUEIL</div>
 </div>
 
 <div class="pages">
@@ -1343,23 +1620,42 @@ body.is-offline .dl-btn,body.is-offline #alldl{opacity:.3;pointer-events:none}
     </div>
   </div>
 </div>
-<!-- PAGE 3: COMING SOON -->
+<!-- PAGE 3: ACCUEIL -->
 <div class="page" id="page3">
-  <div class="cs-wrap">
-    <div class="cs-glow"></div>
-    <div class="cs-ico">
-      <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
-      </svg>
+  <div class="home-wrap" id="home-wrap">
+    <div class="home-header">
+      <div class="home-title">Bonne écoute <span id="home-time-greet"></span></div>
+      <button class="home-refresh-all" id="home-refresh-all" onclick="refreshHome()" title="Rafraîchir tout">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23,4 23,10 17,10"/><polyline points="1,20 1,14 7,14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+      </button>
     </div>
-    <div class="cs-title">Bientôt <span>disponible</span></div>
-    <p class="cs-sub">De nouvelles fonctionnalités arrivent prochainement. Restez connecté pour les découvrir en premier.</p>
-    <div class="cs-chips">
-      <span class="cs-chip">Paroles synchronisées</span>
-      <span class="cs-chip">Égaliseur</span>
-      <span class="cs-chip">Recherche dans la bibliothèque</span>
-      <span class="cs-chip">Sync cloud</span>
+    <div class="home-gen-bar" id="home-gen-bar" style="display:none">
+      <div class="home-gen-dot"></div>
+      Génération des playlists en cours…
     </div>
+    <div id="home-sections"></div>
+    <div class="home-empty" id="home-empty" style="display:none">
+      <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".22"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
+      <p>Télécharge de la musique pour activer l'Accueil personnalisé</p>
+    </div>
+  </div>
+  <!-- Home playlist detail overlay -->
+  <div class="home-detail" id="home-detail" style="display:none">
+    <div class="home-detail-head">
+      <button class="home-detail-back" onclick="closeHomeDetail()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15,18 9,12 15,6"/></svg>
+      </button>
+      <div class="home-detail-cover" id="home-detail-cover"></div>
+      <div class="home-detail-info">
+        <div class="home-detail-name" id="home-detail-name"></div>
+        <div class="home-detail-sub" id="home-detail-sub"></div>
+        <button class="home-play-all" id="home-play-all" onclick="playHomeAll()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+          Lecture
+        </button>
+      </div>
+    </div>
+    <div class="home-detail-tracks" id="home-detail-tracks"></div>
   </div>
 </div>
 </div><!-- /.pages -->
@@ -1640,6 +1936,160 @@ function goTab(i){
   _curTab=i;
   if(i===1){var ls=document.getElementById('lib-search');if(ls&&libQuery){libQuery='';ls.value='';} loadLib();}
   if(i===2) loadPlaylists();
+  if(i===3) loadHome();
+}
+
+/* ══════════════════════════════════════════════════════════════
+   HOME PAGE
+══════════════════════════════════════════════════════════════ */
+var _homeData=null;
+var _homePl=null;
+var _homePollTimer=null;
+
+function loadHome(){
+  var greet=document.getElementById('home-time-greet');
+  if(greet){var h=new Date().getHours();greet.textContent=h<12?'☀️':h<18?'🌤️':'🌙';}
+  fetch('/api/home').then(function(r){return r.json();}).then(function(d){
+    _homeData=d;
+    renderHome(d);
+    if(d.generating){
+      document.getElementById('home-gen-bar').style.display='flex';
+      _startHomePoll();
+    }else{
+      document.getElementById('home-gen-bar').style.display='none';
+      if(_homePollTimer){clearInterval(_homePollTimer);_homePollTimer=null;}
+    }
+  }).catch(function(){});
+}
+
+function _startHomePoll(){
+  if(_homePollTimer) return;
+  _homePollTimer=setInterval(function(){
+    fetch('/api/home/status').then(function(r){return r.json();}).then(function(s){
+      if(!s.generating){
+        clearInterval(_homePollTimer);_homePollTimer=null;
+        loadHome();
+      }
+    });
+  },3000);
+}
+
+function refreshHome(){
+  var btn=document.getElementById('home-refresh-all');
+  if(btn){btn.style.animation='spin .6s linear';setTimeout(function(){btn.style.animation='';},700);}
+  var cache=_homeData?(_homeData.playlists||[]):[];
+  var promises=cache.map(function(pl){
+    return fetch('/api/home/refresh/'+encodeURIComponent(pl.name.replace(/\s+/g,'_').toLowerCase()),{method:'POST'});
+  });
+  Promise.all(promises).then(function(){loadHome();}).catch(function(){loadHome();});
+}
+
+function renderHome(d){
+  var empty=document.getElementById('home-empty');
+  var secs=document.getElementById('home-sections');
+  if(!d||!d.artists||d.artists.length===0){
+    if(empty)empty.style.display='flex';secs.innerHTML='';return;
+  }
+  if(empty)empty.style.display='none';
+  var pls=d.playlists||[];
+  if(pls.length===0){secs.innerHTML='';return;}
+  var daily=pls.filter(function(p){return p.type==='daily';});
+  var artist=pls.filter(function(p){return p.type==='artist';});
+  var genre=pls.filter(function(p){return p.type==='genre';});
+  var news=pls.filter(function(p){return p.type==='news';});
+  var html='';
+  if(daily.length){html+=mkHomeSection('Daily Mix',daily);}
+  if(news.length){html+=mkHomeSection('Nouveautés 🔥',news);}
+  if(artist.length){html+=mkHomeSection('Par artiste',artist);}
+  if(genre.length){html+=mkHomeSection('Par genre',genre);}
+  secs.innerHTML=html;
+}
+
+function mkHomeSection(title, pls){
+  var cards=pls.map(function(pl,i){return mkHomeCard(pl,i);}).join('');
+  return '<div class="home-section"><div class="home-sec-hd"><div class="home-sec-title">'+escH(title)+'</div></div><div class="home-cards">'+cards+'</div></div>';
+}
+
+function mkHomeCard(pl, idx){
+  var img=pl.picture?('<img src="'+escH(pl.picture)+'" onerror="this.style.display=\'none\'">'):''
+  var grad='linear-gradient(135deg,'+(pl.color||'#7c3aed')+',#06b6d4)';
+  var artists=(pl.artists||[]).slice(0,3).join(' · ');
+  var key=encodeURIComponent((pl.name||'').replace(/\s+/g,'_').toLowerCase());
+  return '<div class="home-card" onclick="openHomeDetail(\''+key+'\')" data-key="'+key+'">'
+    +'<div class="home-card-img">'+(img||'<div class="home-card-grad" style="background:'+escH(grad)+';opacity:1;position:absolute;inset:0;border-radius:0"></div>')
+    +'<div class="home-card-grad" style="background:linear-gradient(180deg,transparent 40%,rgba(0,0,0,.7))"></div>'
+    +'<div class="home-card-play"><svg width="13" height="13" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21"/></svg></div>'
+    +'</div>'
+    +'<div class="home-card-body"><div class="home-card-name">'+escH(pl.name||'')+'</div><div class="home-card-sub">'+escH(artists)+'</div></div>'
+    +'</div>';
+}
+
+function openHomeDetail(key){
+  if(!_homeData) return;
+  var pl=(_homeData.playlists||[]).find(function(p){return encodeURIComponent((p.name||'').replace(/\s+/g,'_').toLowerCase())===key;});
+  if(!pl) return;
+  _homePl=pl;
+  var det=document.getElementById('home-detail');
+  var grad=pl.color||'#7c3aed';
+  document.getElementById('home-detail-cover').innerHTML=pl.picture
+    ?'<img src="'+escH(pl.picture)+'" style="width:100%;height:100%;object-fit:cover">'
+    :'<div style="width:100%;height:100%;background:linear-gradient(135deg,'+escH(grad)+',#06b6d4)"></div>';
+  document.getElementById('home-detail-name').textContent=pl.name||'';
+  var artists=(pl.artists||[]).slice(0,4).join(', ');
+  document.getElementById('home-detail-sub').textContent=artists;
+  var tracks=pl.tracks||[];
+  var rows=tracks.map(function(t,i){
+    return '<div class="home-track-row" onclick="playHomeTrack('+i+')" id="htr-'+i+'">'
+      +'<div class="home-track-num">'+(i+1)+'</div>'
+      +'<div class="home-track-thumb">'+(t.thumb?'<img src="'+escH(t.thumb)+'" onerror="this.style.display=\'none\'">':'')+'</div>'
+      +'<div class="home-track-info"><div class="home-track-title">'+escH(t.title||'')+'</div><div class="home-track-ch">'+escH(t.channel||'')+'</div></div>'
+      +'<div class="home-track-dur">'+escH(t.duration||'')+'</div>'
+      +'</div>';
+  }).join('');
+  document.getElementById('home-detail-tracks').innerHTML=rows||'<div style="padding:40px;text-align:center;color:#475569">Aucune piste</div>';
+  det.style.display='flex';det.style.flexDirection='column';
+}
+
+function closeHomeDetail(){
+  var det=document.getElementById('home-detail');
+  if(det)det.style.display='none';
+  _homePl=null;
+}
+
+function playHomeTrack(idx){
+  if(!_homePl) return;
+  var tracks=_homePl.tracks||[];
+  if(idx<0||idx>=tracks.length) return;
+  var t=tracks[idx];
+  var vid=t.id||(t.url||'').replace(/.*v=/,'').split('&')[0];
+  if(!vid) return;
+  document.querySelectorAll('.home-track-row').forEach(function(r){r.classList.remove('active');});
+  var row=document.getElementById('htr-'+idx);
+  if(row)row.classList.add('active');
+  /* prefill player UI immediately then load URL async */
+  var tmpFn='__yt__'+vid+'.m4a';
+  plyQueue=[{fn:tmpFn,title:t.title||'',artist:t.channel||'',_yt:vid,_idx:idx,_pl:_homePl}];
+  plyIdx=0;
+  /* Update player meta without changing aud.src yet */
+  var tEl=document.getElementById('ply-title'),aEl=document.getElementById('ply-artist');
+  if(tEl)tEl.textContent=t.title||'';if(aEl)aEl.textContent=t.channel||'';
+  var covHtml=t.thumb?('<img src="'+escH(t.thumb)+'" style="width:100%;height:100%;object-fit:cover;display:block" onerror="this.parentNode.innerHTML=\'<div class=ply-art-ph>&#9835;</div>\'">'):'<div class="ply-art-ph">&#9835;</div>';
+  var artEl=document.getElementById('ply-art');if(artEl)artEl.innerHTML=covHtml;
+  document.getElementById('ply-idle').style.display='none';
+  var pt=document.getElementById('ply-prog-top');if(pt)pt.style.display='block';
+  ['ply-left','ply-center','ply-right'].forEach(function(id){document.getElementById(id).style.visibility='visible';});
+  /* now fetch actual stream URL */
+  fetch('/api/yt/url/'+encodeURIComponent(vid)).then(function(r){return r.json();}).then(function(d){
+    if(!d.url) return;
+    aud.src=d.url;aud.play();
+    setStat('Lecture: '+(t.title||''));
+    updateMediaMeta(tmpFn,t.title||'',t.channel||'');
+  }).catch(function(){setStat('Erreur lecture YouTube');});
+}
+
+function playHomeAll(){
+  if(!_homePl||!_homePl.tracks||!_homePl.tracks.length) return;
+  playHomeTrack(0);
 }
 
 /* INIT */
