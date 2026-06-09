@@ -31,7 +31,7 @@ os.makedirs(OUT_DIR, exist_ok=True)
 FAV_FILE    = os.path.join(OUT_DIR, ".favorites.json")
 PL_FILE     = os.path.join(OUT_DIR, ".playlists.json")
 DEVICE_FILE = os.path.join(OUT_DIR, "device.json")
-APP_VERSION = "1.0.0"
+APP_VERSION = "2.0.8"
 
 app  = Flask(__name__)
 jobs = {}   # job_id -> {"progress":0,"status":"...","done":False,"error":"","cancelled":False}
@@ -69,6 +69,10 @@ DEVICE_INFO = _init_device()
 @app.route("/api/device")
 def api_device():
     return jsonify(DEVICE_INFO)
+
+@app.route("/api/version")
+def api_version():
+    return jsonify({"version": APP_VERSION})
 
 @app.route("/api/ping")
 def api_ping():
@@ -1044,6 +1048,13 @@ body.is-offline .dl-btn,body.is-offline #alldl{opacity:.3;pointer-events:none}
 /* Bottom loader line */
 .sp-line{position:absolute;bottom:0;left:0;height:2px;background:var(--grad);width:0%;animation:spLine 3.3s cubic-bezier(.05,.85,.2,1) .12s both}
 @keyframes spLine{from{width:0%}to{width:100%}}
+/* UPDATE BANNER */
+#upd-banner{display:none;align-items:center;gap:12px;padding:10px 20px;background:linear-gradient(90deg,rgba(124,58,237,.15),rgba(8,145,178,.15));border-bottom:1px solid rgba(124,58,237,.3);font-size:.88rem;flex-shrink:0}
+#upd-banner>span{flex:1;color:#e2e8f0}
+#upd-banner strong{color:#a855f7}
+.upd-btn{padding:6px 16px;background:var(--grad);color:#fff;border:none;border-radius:8px;font-size:.82rem;font-weight:600;cursor:pointer;text-decoration:none;white-space:nowrap}
+.upd-close{background:none;border:none;color:#64748b;cursor:pointer;font-size:1rem;padding:0 4px;line-height:1;flex-shrink:0}
+.upd-close:hover{color:#e2e8f0}
 </style>
 </head>
 <body>
@@ -1091,6 +1102,14 @@ body.is-offline .dl-btn,body.is-offline #alldl{opacity:.3;pointer-events:none}
     </div>
   </div>
   <div class="net-badge on" id="net-badge"><div class="net-dot"></div><span id="net-lbl">En ligne</span></div>
+</div>
+
+<!-- UPDATE BANNER -->
+<div id="upd-banner">
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+  <span>Mise à jour disponible&nbsp;: <strong id="upd-ver"></strong> — Nouvelle version prête</span>
+  <a id="upd-dl" href="https://github.com/Advm000/musicdl/releases/latest" class="upd-btn" target="_blank">Télécharger</a>
+  <button class="upd-close" onclick="document.getElementById('upd-banner').style.display='none'" title="Fermer">✕</button>
 </div>
 
 <!-- TABS -->
@@ -2062,6 +2081,25 @@ updateNetStatus();
     sp.classList.add('sp-exit');
     setTimeout(function(){if(sp.parentNode)sp.parentNode.removeChild(sp);},540);
   },3500);
+})();
+
+/* CHECK FOR UPDATE */
+(function(){
+  var CURRENT='2.0.8';
+  function parseVer(v){return v.replace(/^v/,'').split('.').map(Number);}
+  function isNewer(a,b){for(var i=0;i<3;i++){if((a[i]||0)>(b[i]||0))return true;if((a[i]||0)<(b[i]||0))return false;}return false;}
+  setTimeout(function(){
+    fetch('https://api.github.com/repos/Advm000/musicdl/releases/latest',{headers:{'Accept':'application/vnd.github.v3+json'}})
+      .then(function(r){return r.json();})
+      .then(function(d){
+        if(!d||!d.tag_name)return;
+        if(isNewer(parseVer(d.tag_name),parseVer(CURRENT))){
+          document.getElementById('upd-ver').textContent=d.tag_name;
+          document.getElementById('upd-dl').href=d.html_url;
+          document.getElementById('upd-banner').style.display='flex';
+        }
+      }).catch(function(){});
+  },4000);
 })();
 </script>
 </body>
