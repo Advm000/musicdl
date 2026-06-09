@@ -31,7 +31,7 @@ os.makedirs(OUT_DIR, exist_ok=True)
 FAV_FILE    = os.path.join(OUT_DIR, ".favorites.json")
 PL_FILE     = os.path.join(OUT_DIR, ".playlists.json")
 DEVICE_FILE = os.path.join(OUT_DIR, "device.json")
-APP_VERSION = "2.6.0"
+APP_VERSION = "2.6.1"
 
 app  = Flask(__name__)
 jobs = {}   # job_id -> {"progress":0,"status":"...","done":False,"error":"","cancelled":False}
@@ -2435,8 +2435,9 @@ document.addEventListener('keydown',function(e){
     document.getElementById('upd-banner').style.display='flex';
   }
   window.updAction=function(){
-    if(_ready&&window.electronUpdater){window.electronUpdater.install();return;}
-    window.open('https://github.com/Advm000/musicdl/releases/latest','_blank');
+    if(!window.electronUpdater){window.open('https://github.com/Advm000/musicdl/releases/latest','_blank');return;}
+    if(_ready)window.electronUpdater.install();
+    /* sinon téléchargement en cours — bouton caché, rien à faire */
   };
   /* Electron path — electron-updater envoie les événements via IPC */
   if(window.electronUpdater){
