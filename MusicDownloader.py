@@ -31,7 +31,7 @@ os.makedirs(OUT_DIR, exist_ok=True)
 FAV_FILE    = os.path.join(OUT_DIR, ".favorites.json")
 PL_FILE     = os.path.join(OUT_DIR, ".playlists.json")
 DEVICE_FILE = os.path.join(OUT_DIR, "device.json")
-APP_VERSION = "2.3.0"
+APP_VERSION = "2.4.0"
 
 app  = Flask(__name__)
 jobs = {}   # job_id -> {"progress":0,"status":"...","done":False,"error":"","cancelled":False}
@@ -292,6 +292,30 @@ def api_pl_remove(name):
 def api_pl_delete(name):
     pls = _jload(PL_FILE, {})
     pls.pop(name, None)
+    _jsave(PL_FILE, pls)
+    return jsonify({"ok": True})
+
+@app.route("/api/playlists/<path:name>/rename", methods=["POST"])
+def api_pl_rename(name):
+    new_name = (request.json or {}).get("new_name", "").strip()
+    if not new_name: return jsonify({"error": "name required"}), 400
+    pls = _jload(PL_FILE, {})
+    if name not in pls: return jsonify({"error": "not found"}), 404
+    if new_name in pls and new_name != name: return jsonify({"error": "exists"}), 409
+    pls[new_name] = pls.pop(name)
+    _jsave(PL_FILE, pls)
+    return jsonify({"ok": True})
+
+@app.route("/api/playlists/<path:name>/reorder", methods=["POST"])
+def api_pl_reorder(name):
+    order = (request.json or {}).get("order", [])
+    pls = _jload(PL_FILE, {})
+    if name in pls:
+        existing = set(pls[name])
+        reordered = [fn for fn in order if fn in existing]
+        for fn in pls[name]:
+            if fn not in reordered: reordered.append(fn)
+        pls[name] = reordered
     _jsave(PL_FILE, pls)
     return jsonify({"ok": True})
 
@@ -662,6 +686,38 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 .pl-del{width:22px;height:22px;border-radius:50%;border:none;cursor:pointer;background:rgba(244,63,94,.12);color:#fb7185;font-size:11px;display:none;align-items:center;justify-content:center;transition:background .18s,transform .2s cubic-bezier(.4,0,.2,1)}
 .pl-item:hover .pl-del{display:flex}
 .pl-del:hover{background:rgba(244,63,94,.3);transform:scale(1.18)}
+/* Sidebar cover collage */
+.pl-item-cov{width:38px;height:38px;border-radius:10px;overflow:hidden;flex-shrink:0;background:linear-gradient(135deg,#1e1e50,#0d0d28);display:grid;grid-template-columns:1fr 1fr;gap:2px;box-shadow:0 3px 12px rgba(124,58,237,.28);transition:transform .22s cubic-bezier(.4,0,.2,1),box-shadow .22s}
+.pl-item:hover .pl-item-cov{transform:scale(1.1) rotate(-4deg);box-shadow:0 5px 20px rgba(124,58,237,.52)}
+.pl-item.on .pl-item-cov{box-shadow:0 4px 18px rgba(124,58,237,.5)}
+.pl-item-cov.c1{display:block}
+.pl-item-cov img{width:100%;height:100%;object-fit:cover;display:block}
+/* Sidebar meta column */
+.pl-item-meta{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.pl-item-name{font-size:12px;font-weight:700;color:#c4b5fd;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:color .2s}
+.pl-item:hover .pl-item-name,.pl-item.on .pl-item-name{color:#e9d5ff}
+.pl-item-dur{font-size:9.5px;color:#334155;transition:color .2s;white-space:nowrap}
+.pl-item:hover .pl-item-dur,.pl-item.on .pl-item-dur{color:#64748b}
+.pl-item-right{display:flex;align-items:center;gap:5px;flex-shrink:0}
+/* Now-playing animated bars */
+@keyframes bars{0%,100%{transform:scaleY(.35)}50%{transform:scaleY(1)}}
+.pl-now-ico{display:flex;align-items:flex-end;gap:2px;height:14px}
+.pl-now-ico i{width:3px;border-radius:1.5px;background:#a78bfa;transform-origin:bottom;display:block}
+.pl-now-ico.playing i{animation:bars .85s ease-in-out infinite}
+.pl-now-ico.playing i:nth-child(1){height:14px;animation-delay:0s}
+.pl-now-ico.playing i:nth-child(2){height:10px;animation-delay:.2s}
+.pl-now-ico.playing i:nth-child(3){height:12px;animation-delay:.4s}
+.pl-now-ico.paused i:nth-child(1){height:10px}
+.pl-now-ico.paused i:nth-child(2){height:7px}
+.pl-now-ico.paused i:nth-child(3){height:9px}
+/* Rename button */
+.pl-ren{width:22px;height:22px;border-radius:50%;border:none;cursor:pointer;background:rgba(124,58,237,.1);color:#7c3aed;font-size:10px;display:none;align-items:center;justify-content:center;transition:background .18s;flex-shrink:0;margin-right:2px}
+.pl-item:hover .pl-ren{display:flex}
+.pl-ren:hover{background:rgba(124,58,237,.3)}
+/* Track drag-drop */
+.pl-song[draggable=true]{cursor:grab}
+.pl-song[draggable=true]:active{cursor:grabbing}
+.pl-song.dg-over{background:rgba(124,58,237,.18);box-shadow:0 -2px 0 #7c3aed inset}
 /* ══ PLAYLIST DETAIL — SPOTIFY STYLE ══ */
 .pl-detail{flex:1;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column}
 /* Back button */
@@ -986,7 +1042,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 
   .pl-side-hd{padding:14px 16px;position:sticky;top:0;background:rgba(7,7,28,.98);z-index:1;border-bottom:1px solid rgba(124,58,237,.1);backdrop-filter:blur(10px)}
   .pl-item{padding:13px 16px;gap:12px;border-radius:0;border-bottom:1px solid rgba(255,255,255,.04);transform:none!important}
-  .pl-item-ico{width:44px;height:44px;border-radius:10px;font-size:18px}
+  .pl-item-ico,.pl-item-cov{width:44px;height:44px;border-radius:10px;font-size:18px}
   .pl-item-name{font-size:14px}
   .pl-item-cnt{font-size:11px;padding:2px 8px}
 
@@ -1800,13 +1856,34 @@ function loadPlaylists(){
     else document.getElementById('pl-detail').innerHTML='<div class="pl-empty">Sélectionnez ou créez une playlist</div>';
   });
 }
+function mkPlCov(files){
+  if(!files.length)return '<div class="pl-item-ico">'+ico('note',15)+'</div>';
+  if(files.length<4)return '<div class="pl-item-cov c1"><img src="/api/cover/'+encodeURIComponent(files[0])+'" onerror="this.style.display=\'none\'"></div>';
+  return '<div class="pl-item-cov">'+files.slice(0,4).map(function(fn){return '<img src="/api/cover/'+encodeURIComponent(fn)+'" onerror="this.style.display=\'none\'">';}).join('')+'</div>';
+}
 function renderPlSide(){
   var list=document.getElementById('pl-list');list.innerHTML='';
   var names=Object.keys(playlists);
   if(!names.length){list.innerHTML='<div style="padding:16px 12px;font-size:12px;color:#334155">Aucune playlist</div>';return;}
+  var durMap={};allLibFiles.forEach(function(f){durMap[f.filename]=f.duration||'';});
   names.forEach(function(name){
+    var files=playlists[name];
     var el=document.createElement('div');el.className='pl-item'+(curPl===name?' on':'');
-    el.innerHTML='<div class="pl-item-ico">'+ico('note',15)+'</div><div class="pl-item-name">'+esc(name)+'</div><span class="pl-item-cnt">'+playlists[name].length+'</span><button class="pl-del" onclick="event.stopPropagation();delPl(\''+esc(name)+'\')">'+ico('x',12)+'</button>';
+    /* duration sum */
+    var totalSec=0;
+    files.forEach(function(fn){var d=durMap[fn]||'';if(!d)return;var p=d.split(':').map(Number);if(p.length===2)totalSec+=p[0]*60+p[1];else if(p.length===3)totalSec+=p[0]*3600+p[1]*60+p[2];});
+    var durStr='';
+    if(totalSec>0){var h=Math.floor(totalSec/3600),mn=Math.floor((totalSec%3600)/60);durStr=h>0?(h+' h '+mn+' min'):(mn>0?mn+' min':(totalSec+' s'));}
+    /* now-playing bars */
+    var isActive=curPl===name&&plyFavFn&&files.indexOf(plyFavFn)>=0;
+    var isPlaying=isActive&&!aud.paused;
+    var nowHtml='';
+    if(isActive)nowHtml='<div class="pl-now-ico'+(isPlaying?' playing':' paused')+'"><i></i><i></i><i></i></div>';
+    el.innerHTML=mkPlCov(files)
+      +'<div class="pl-item-meta"><div class="pl-item-name">'+esc(name)+'</div>'+(durStr?'<div class="pl-item-dur">'+durStr+'</div>':'')+'</div>'
+      +'<div class="pl-item-right">'+nowHtml+'<span class="pl-item-cnt">'+files.length+'</span></div>'
+      +'<button class="pl-ren" onclick="event.stopPropagation();renamePlaylist(\''+esc(name)+'\')" title="Renommer">&#9998;</button>'
+      +'<button class="pl-del" onclick="event.stopPropagation();delPl(\''+esc(name)+'\')">'+ico('x',12)+'</button>';
     el.onclick=function(){curPl=name;renderPlSide();renderPlDetail(name);};
     list.appendChild(el);
   });
@@ -1881,7 +1958,7 @@ function renderPlDetail(name){
     var ar=meta.artist||'';
     var dur=meta.duration||'';
     var delay=Math.min(i*.028,.5);
-    return '<div class="pl-song" onclick="plyFromPl(\''+esc(name)+'\','+i+')" style="animation-delay:'+delay+'s">'
+    return '<div class="pl-song" draggable="true" ondragstart="plDrgS('+i+',event)" ondragover="plDrgO(this,event)" ondrop="plDrpD(this,\''+esc(name)+'\','+i+',event)" ondragleave="this.classList.remove(\'dg-over\')" onclick="plyFromPl(\''+esc(name)+'\','+i+')" style="animation-delay:'+delay+'s">'
       +'<div class="pl-song-idx">'
       +  '<span class="pl-idx-num">'+(i+1)+'</span>'
       +  '<span class="pl-idx-ico">'+ico('play',11)+'</span>'
@@ -1934,6 +2011,30 @@ function delPl(name){
       loadPlaylists();toast('Playlist supprimée');
     });
   });
+}
+function renamePlaylist(name){
+  showInput('Renommer la playlist','Nouveau nom…','Renommer',function(newName){
+    if(!newName||newName===name)return;
+    fetch('/api/playlists/'+encodeURIComponent(name)+'/rename',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({new_name:newName})})
+      .then(function(r){return r.json();}).then(function(d){
+        if(d.error){toast('Erreur : '+d.error);return;}
+        if(curPl===name)curPl=newName;
+        loadPlaylists();toast('Playlist renommée !');
+      });
+  });
+}
+/* Drag-and-drop track reorder */
+var _dragIdx=null;
+function plDrgS(i,ev){_dragIdx=i;ev.dataTransfer.effectAllowed='move';}
+function plDrgO(el,ev){ev.preventDefault();ev.dataTransfer.dropEffect='move';document.querySelectorAll('.pl-song.dg-over').forEach(function(e){e.classList.remove('dg-over');});el.classList.add('dg-over');}
+function plDrpD(el,plName,toIdx,ev){
+  ev.preventDefault();el.classList.remove('dg-over');
+  if(_dragIdx===null||_dragIdx===toIdx){_dragIdx=null;return;}
+  var arr=playlists[plName].slice();
+  arr.splice(toIdx,0,arr.splice(_dragIdx,1)[0]);
+  playlists[plName]=arr;_dragIdx=null;
+  renderPlDetail(plName);
+  fetch('/api/playlists/'+encodeURIComponent(plName)+'/reorder',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({order:arr})});
 }
 function rmPlSong(plName,fn){
   fetch('/api/playlists/'+encodeURIComponent(plName)+'/remove',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({filename:fn})}).then(function(){loadPlaylists();if(curPl===plName)renderPlDetail(plName);});
@@ -2030,13 +2131,14 @@ function plyLoad(fn,title,artist){
   if(nfb){nfb.className='np-fav'+(favSet.has(fn)?' on':'');nfb.innerHTML=favSet.has(fn)?ICO_HEART_F:ICO_HEART_E;}
   setStat('Lecture: '+title);
   updateMediaMeta(fn,title,artist);
+  if(curPl)setTimeout(renderPlSide,0);
   /* Sur mobile, ouvrir directement le grand lecteur */
   if(window.innerWidth<=640 && !npOpen){
     npOpen=true;
     document.getElementById('np-view').classList.add('open');
   }
 }
-function plyToggle(){if(aud.paused)aud.play();else aud.pause();}
+function plyToggle(){if(aud.paused)aud.play();else{aud.pause();if(curPl)setTimeout(renderPlSide,0);}}
 function plyPrev(){
   if(aud.currentTime>5){
     /* Plus de 5s → retour au début de la track courante */
