@@ -459,10 +459,10 @@ HTML = r"""<!DOCTYPE html>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);font:14px/1.5 'Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
 ::selection{background:rgba(124,58,237,.35);color:#fff}
-::-webkit-scrollbar{width:3px;height:3px}
+::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-track{background:transparent}
-::-webkit-scrollbar-thumb{background:rgba(124,58,237,.3);border-radius:3px}
-::-webkit-scrollbar-thumb:hover{background:rgba(124,58,237,.55)}
+::-webkit-scrollbar-thumb{background:rgba(124,58,237,.45);border-radius:5px}
+::-webkit-scrollbar-thumb:hover{background:rgba(124,58,237,.75)}
 #app{position:fixed;inset:0;display:flex;flex-direction:column}
 
 /* ══ HEADER ══ */
@@ -1772,7 +1772,7 @@ document.addEventListener('click',function(e){
 /* RECHERCHE */
 function doSearch(){
   var q=document.getElementById('q').value.trim();if(!q)return;
-  hideSugBox();
+  clearTimeout(_itsTimer);hideIts();hideSugBox();
   var n=50;
   var btn=document.getElementById('sbtn'),lst=document.getElementById('rl'),emp=document.getElementById('mt0');
   btn.disabled=true;btn.innerHTML='<span class="spin"></span> Recherche...';
