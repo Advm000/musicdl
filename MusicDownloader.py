@@ -31,7 +31,7 @@ os.makedirs(OUT_DIR, exist_ok=True)
 FAV_FILE    = os.path.join(OUT_DIR, ".favorites.json")
 PL_FILE     = os.path.join(OUT_DIR, ".playlists.json")
 DEVICE_FILE = os.path.join(OUT_DIR, "device.json")
-APP_VERSION = "2.7.2"
+APP_VERSION = "2.7.3"
 
 app  = Flask(__name__)
 jobs = {}   # job_id -> {"progress":0,"status":"...","done":False,"error":"","cancelled":False}
@@ -58,7 +58,11 @@ def _init_device():
             "data_folder":  OUT_DIR,
         }
         _jsave(DEVICE_FILE, data)
-    return _jload(DEVICE_FILE, {})
+    info = _jload(DEVICE_FILE, {})
+    if info.get("app_version") != APP_VERSION:
+        info["app_version"] = APP_VERSION
+        _jsave(DEVICE_FILE, info)
+    return info
 
 DEVICE_INFO = _init_device()
 
@@ -1643,22 +1647,30 @@ fetch('/api/favorites').then(function(r){return r.json()}).then(function(f){f.fo
 document.getElementById('q').focus();
 
 /* RECHERCHE */
+var _searchCtrl=null;
 function doSearch(){
   var q=document.getElementById('q').value.trim();if(!q)return;
   hideSugBox();
+  if(_searchCtrl){try{_searchCtrl.abort();}catch(e){}_searchCtrl=null;}
   var n=50;
   var btn=document.getElementById('sbtn'),lst=document.getElementById('rl'),emp=document.getElementById('mt0');
   btn.disabled=true;btn.innerHTML='<span class="spin"></span> Recherche...';
   emp.style.display='none';
   Array.from(lst.children).filter(function(c){return c.id!=='mt0'}).forEach(function(c){c.remove()});
   document.getElementById('alldl').style.display='none';setStat('Recherche: '+q);
-  fetch('/api/search?q='+encodeURIComponent(q)+'&n='+n).then(function(r){return r.json()}).then(function(data){
+  _searchCtrl=typeof AbortController!=='undefined'?new AbortController():null;
+  var opts=_searchCtrl?{signal:_searchCtrl.signal}:{};
+  fetch('/api/search?q='+encodeURIComponent(q)+'&n='+n,opts).then(function(r){return r.json()}).then(function(data){
+    _searchCtrl=null;
     if(data.error)throw new Error(data.error);
     results=data;
     if(!data.length){emp.querySelector('p').textContent='Aucun resultat.';emp.style.display='flex';}
     else{data.forEach(function(item,i){lst.appendChild(mkCard(item,i))});document.getElementById('alldl').style.display='inline-flex';setStat(data.length+' resultats');setRight(data.length+' titres');}
     btn.disabled=false;btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg> Chercher';
-  }).catch(function(e){emp.querySelector('p').textContent='Erreur: '+e.message;emp.style.display='flex';btn.disabled=false;btn.innerHTML='Chercher';setStat('Erreur.');});
+  }).catch(function(e){
+    if(e.name==='AbortError')return;
+    emp.querySelector('p').textContent='Erreur: '+e.message;emp.style.display='flex';btn.disabled=false;btn.innerHTML='Chercher';setStat('Erreur.');
+  });
 }
 
 function mkCard(item,i){
@@ -2199,14 +2211,15 @@ function closeNp(){npOpen=false;document.getElementById('np-view').classList.rem
 /* Drag — combined handler */
 var plyBar=document.getElementById('ply-bar');
 var plyVolTrack=document.getElementById('ply-vol-track');
+var npVolTrack=document.getElementById('np-vol-track');
+var _activeVolTrack=null;
 function posIn(e,el){var r=el.getBoundingClientRect();return Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));}
 if(plyBar)plyBar.addEventListener('mousedown',function(e){plyDragging=true;if(aud.duration)aud.currentTime=posIn(e,plyBar)*aud.duration;e.preventDefault();});
 if(plyVolTrack)plyVolTrack.addEventListener('mousedown',function(e){
-  plyVolDragging=true;setVolUI(posIn(e,plyVolTrack));e.preventDefault();
+  plyVolDragging=true;_activeVolTrack=plyVolTrack;setVolUI(posIn(e,plyVolTrack));e.preventDefault();
 });
-var npVolTrack=document.getElementById('np-vol-track');
 if(npVolTrack)npVolTrack.addEventListener('mousedown',function(e){
-  plyVolDragging=true;setVolUI(posIn(e,npVolTrack));e.preventDefault();
+  plyVolDragging=true;_activeVolTrack=npVolTrack;setVolUI(posIn(e,npVolTrack));e.preventDefault();
 });
 document.addEventListener('mousedown',function(e){
   var nt=document.getElementById('np-track');
@@ -2215,7 +2228,7 @@ document.addEventListener('mousedown',function(e){
 document.addEventListener('mousemove',function(e){
   if(plyDragging&&plyBar){var p=posIn(e,plyBar);document.getElementById('ply-bar-f').style.width=(p*100)+'%';if(aud.duration)aud.currentTime=p*aud.duration;}
   if(npDragging){var nt=document.getElementById('np-track');if(nt){var p=posIn(e,nt);document.getElementById('np-fill').style.width=(p*100)+'%';if(aud.duration)aud.currentTime=p*aud.duration;}}
-  if(plyVolDragging){var vt=plyVolDragging&&plyVolTrack?plyVolTrack:npVolTrack;if(vt)setVolUI(posIn(e,vt));}
+  if(plyVolDragging&&_activeVolTrack){setVolUI(posIn(e,_activeVolTrack));}
 });
 document.addEventListener('mouseup',function(){plyDragging=false;npDragging=false;plyVolDragging=false;});
 aud.addEventListener('timeupdate',function(){
