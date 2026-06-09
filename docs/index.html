@@ -3,85 +3,134 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
-  <title>Music DL — Téléchargeur de musique gratuit</title>
-  <meta name="description" content="Téléchargez vos musiques, créez des playlists et écoutez hors-ligne. Application Windows gratuite.">
+  <title>Music DL — Téléchargeur de musique gratuit pour Windows</title>
+  <meta name="description" content="Téléchargez vos musiques depuis YouTube en MP3 320 kbps. Playlists, lecteur audio intégré, pochettes automatiques. Mise à jour automatique. Gratuit.">
+  <meta property="og:title" content="Music DL — Téléchargeur de musique gratuit">
+  <meta property="og:description" content="YouTube → MP3 · Playlists · Lecteur audio · Mise à jour auto · Windows 10/11">
+  <meta property="og:type" content="website">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><defs><linearGradient id='g' x1='0' y1='0' x2='512' y2='512' gradientUnits='userSpaceOnUse'><stop offset='0%25' stop-color='%237c3aed'/><stop offset='100%25' stop-color='%230891b2'/></linearGradient></defs><rect width='512' height='512' rx='112' fill='url(%23g)'/><rect x='60' y='292' width='80' height='160' rx='40' fill='white' opacity='.92'/><rect x='182' y='196' width='80' height='256' rx='40' fill='white'/><rect x='304' y='242' width='80' height='210' rx='40' fill='white' opacity='.88'/><rect x='394' y='78' width='56' height='185' rx='28' fill='white'/><polygon points='364,238 420,318 476,238' fill='white'/></svg>">
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     :root{
-      --bg:#0b0b1a;--bg2:#111128;
+      --bg:#0b0b1a;--bg2:#0f0f24;--bg3:#13132e;
       --purple:#7c3aed;--pl:#a855f7;--cyan:#22d3ee;
       --grad:linear-gradient(135deg,#7c3aed 0%,#a855f7 50%,#22d3ee 100%);
-      --text:#e2e8f0;--muted:#94a3b8;
+      --grad2:linear-gradient(90deg,#7c3aed,#22d3ee);
+      --text:#e2e8f0;--muted:#94a3b8;--border:rgba(255,255,255,.07);
     }
     html{scroll-behavior:smooth}
-    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.6}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;overflow-x:hidden}
 
-    /* HERO */
-    .hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;overflow:hidden;padding:80px 24px 60px;text-align:center}
-    .hero-bg{position:absolute;inset:0;background:radial-gradient(ellipse 70% 60% at 50% 30%,rgba(124,58,237,.25) 0%,transparent 70%),radial-gradient(ellipse 40% 40% at 80% 70%,rgba(34,211,238,.1) 0%,transparent 60%);pointer-events:none}
-    .hero-orb{position:absolute;width:560px;height:560px;border-radius:50%;background:radial-gradient(circle,rgba(124,58,237,.12) 0%,transparent 70%);top:-120px;left:50%;transform:translateX(-50%);pointer-events:none}
-    .hero-content{position:relative;z-index:1;max-width:680px}
+    /* ── NAV ── */
+    nav{position:fixed;top:0;left:0;right:0;z-index:100;height:60px;display:flex;align-items:center;justify-content:space-between;padding:0 32px;background:rgba(11,11,26,.8);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--border)}
+    .nav-logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:1rem;text-decoration:none;color:var(--text)}
+    .nav-ico{width:32px;height:32px;border-radius:8px;background:var(--grad);display:flex;align-items:center;justify-content:center}
+    .nav-links{display:flex;align-items:center;gap:24px}
+    .nav-links a{color:var(--muted);text-decoration:none;font-size:.9rem;transition:color .18s}
+    .nav-links a:hover{color:var(--text)}
+    .nav-ver{display:flex;align-items:center;gap:6px;padding:4px 10px;background:rgba(124,58,237,.15);border:1px solid rgba(124,58,237,.3);border-radius:20px;font-size:.78rem;color:#a855f7;font-weight:600;white-space:nowrap}
+    .live-dot{width:6px;height:6px;border-radius:50%;background:#22d3ee;animation:pulse-dot 2s infinite}
+    @keyframes pulse-dot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.7)}}
 
-    .logo-wrap{width:96px;height:96px;border-radius:26px;background:var(--grad);display:flex;align-items:center;justify-content:center;margin:0 auto 32px;box-shadow:0 0 60px rgba(124,58,237,.5),0 20px 40px rgba(0,0,0,.4)}
+    /* ── HERO ── */
+    .hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;overflow:hidden;padding:120px 24px 80px;text-align:center}
+    .hero-orb1{position:absolute;width:700px;height:700px;border-radius:50%;background:radial-gradient(circle,rgba(124,58,237,.18) 0%,transparent 65%);top:-200px;left:50%;transform:translateX(-50%);pointer-events:none}
+    .hero-orb2{position:absolute;width:400px;height:400px;border-radius:50%;background:radial-gradient(circle,rgba(34,211,238,.1) 0%,transparent 65%);bottom:-80px;right:-80px;pointer-events:none}
+    .hero-orb3{position:absolute;width:300px;height:300px;border-radius:50%;background:radial-gradient(circle,rgba(168,85,247,.08) 0%,transparent 65%);bottom:100px;left:-50px;pointer-events:none}
+    .hero-content{position:relative;z-index:1;max-width:740px}
 
-    h1{font-size:clamp(3rem,8vw,5.5rem);font-weight:800;letter-spacing:-.03em;line-height:1;margin-bottom:20px}
-    h1 span{background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+    .hero-badge{display:inline-flex;align-items:center;gap:8px;padding:6px 16px;background:rgba(124,58,237,.12);border:1px solid rgba(124,58,237,.35);border-radius:30px;font-size:.82rem;color:#a855f7;font-weight:600;margin-bottom:28px;cursor:default}
 
-    .hero p{font-size:1.2rem;color:var(--muted);margin-bottom:40px;line-height:1.7}
+    h1{font-size:clamp(3.2rem,9vw,6rem);font-weight:800;letter-spacing:-.04em;line-height:.95;margin-bottom:24px}
+    h1 .grad{background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
 
-    .btn-dl{display:inline-flex;flex-direction:column;align-items:center;gap:6px;padding:18px 44px;background:var(--grad);color:#fff;text-decoration:none;border-radius:16px;font-weight:700;font-size:1.1rem;box-shadow:0 8px 32px rgba(124,58,237,.45);transition:transform .2s,box-shadow .2s;cursor:pointer;border:none}
-    .btn-dl:hover{transform:translateY(-3px) scale(1.02);box-shadow:0 16px 48px rgba(124,58,237,.65)}
-    .btn-dl svg{margin-bottom:2px}
-    .btn-dl small{font-size:.75rem;font-weight:400;opacity:.8}
+    .hero-sub{font-size:1.15rem;color:var(--muted);margin-bottom:44px;line-height:1.75;max-width:560px;margin-left:auto;margin-right:auto}
 
-    .badges{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:28px}
-    .badge{padding:6px 14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:20px;font-size:.82rem;color:var(--muted)}
+    .hero-cta{display:flex;flex-direction:column;align-items:center;gap:14px}
+    .btn-primary{display:inline-flex;flex-direction:column;align-items:center;gap:5px;padding:18px 48px;background:var(--grad);color:#fff;text-decoration:none;border-radius:16px;font-weight:700;font-size:1.05rem;box-shadow:0 8px 40px rgba(124,58,237,.5);transition:transform .22s,box-shadow .22s;cursor:pointer;border:none;font-family:inherit}
+    .btn-primary:hover{transform:translateY(-4px) scale(1.02);box-shadow:0 20px 60px rgba(124,58,237,.65)}
+    .btn-primary small{font-size:.73rem;font-weight:400;opacity:.82}
+    .btn-secondary{display:inline-flex;align-items:center;gap:7px;color:var(--muted);text-decoration:none;font-size:.88rem;transition:color .18s}
+    .btn-secondary:hover{color:var(--text)}
 
-    /* FEATURES */
-    .features{padding:100px 24px;background:var(--bg2)}
+    .hero-badges{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:36px}
+    .badge{padding:5px 13px;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:20px;font-size:.78rem;color:var(--muted)}
+
+    /* ── STATS BAR ── */
+    .stats-bar{background:var(--bg2);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:20px 24px}
+    .stats-inner{max-width:900px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:16px;text-align:center}
+    .stat-item{}
+    .stat-val{font-size:1.4rem;font-weight:700;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+    .stat-lbl{font-size:.75rem;color:var(--muted);margin-top:2px}
+
+    /* ── SECTION ── */
+    section{padding:96px 24px}
     .container{max-width:1100px;margin:0 auto}
-    .s-label{text-align:center;font-size:.85rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--pl);margin-bottom:16px}
-    .s-title{text-align:center;font-size:clamp(1.8rem,4vw,2.8rem);font-weight:700;margin-bottom:60px;letter-spacing:-.02em}
+    .s-label{text-align:center;font-size:.78rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--pl);margin-bottom:12px}
+    .s-title{text-align:center;font-size:clamp(1.8rem,4vw,2.8rem);font-weight:700;margin-bottom:56px;letter-spacing:-.025em}
+    .s-title span{background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
 
-    .feat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:24px}
-    .feat{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:20px;padding:32px 28px;transition:border-color .2s,transform .2s}
-    .feat:hover{border-color:rgba(124,58,237,.4);transform:translateY(-4px)}
-    .feat-icon{width:52px;height:52px;border-radius:14px;background:rgba(124,58,237,.15);display:flex;align-items:center;justify-content:center;margin-bottom:20px;color:var(--pl)}
-    .feat h3{font-size:1.05rem;font-weight:600;margin-bottom:10px}
-    .feat p{font-size:.9rem;color:var(--muted);line-height:1.6}
+    /* ── FEATURES ── */
+    .features{background:var(--bg2)}
+    .feat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px}
+    .feat{background:rgba(255,255,255,.025);border:1px solid var(--border);border-radius:20px;padding:32px 26px;transition:border-color .22s,transform .22s,background .22s}
+    .feat:hover{border-color:rgba(124,58,237,.4);transform:translateY(-4px);background:rgba(124,58,237,.04)}
+    .feat-icon{width:50px;height:50px;border-radius:14px;background:rgba(124,58,237,.12);border:1px solid rgba(124,58,237,.2);display:flex;align-items:center;justify-content:center;margin-bottom:18px;color:var(--pl)}
+    .feat h3{font-size:1rem;font-weight:600;margin-bottom:9px}
+    .feat p{font-size:.875rem;color:var(--muted);line-height:1.65}
+    .feat-new{display:inline-block;padding:2px 8px;background:rgba(34,211,238,.12);border:1px solid rgba(34,211,238,.3);border-radius:6px;font-size:.68rem;font-weight:700;color:#22d3ee;margin-bottom:10px;letter-spacing:.06em;text-transform:uppercase}
 
-    /* STEPS */
-    .steps{padding:100px 24px}
-    .steps-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:32px;margin-top:60px}
-    .step{text-align:center}
-    .step-num{width:56px;height:56px;border-radius:50%;background:var(--grad);display:flex;align-items:center;justify-content:center;font-size:1.3rem;font-weight:800;margin:0 auto 20px;box-shadow:0 4px 20px rgba(124,58,237,.4)}
+    /* ── STEPS ── */
+    .steps-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:36px;margin-top:56px;position:relative}
+    .steps-grid::before{content:'';position:absolute;top:28px;left:14%;right:14%;height:1px;background:linear-gradient(90deg,transparent,rgba(124,58,237,.4),rgba(34,211,238,.4),transparent);pointer-events:none}
+    .step{text-align:center;position:relative}
+    .step-num{width:56px;height:56px;border-radius:50%;background:var(--grad);display:flex;align-items:center;justify-content:center;font-size:1.2rem;font-weight:800;margin:0 auto 20px;box-shadow:0 4px 24px rgba(124,58,237,.45)}
     .step h3{font-size:1rem;font-weight:600;margin-bottom:8px}
-    .step p{font-size:.88rem;color:var(--muted)}
-    code{background:rgba(255,255,255,.08);padding:2px 7px;border-radius:5px;font-size:.84em}
+    .step p{font-size:.86rem;color:var(--muted);max-width:200px;margin:0 auto}
+    code{background:rgba(255,255,255,.08);padding:2px 7px;border-radius:5px;font-size:.83em;font-family:'SF Mono',Consolas,monospace}
 
-    /* CTA */
-    .cta{padding:100px 24px;text-align:center;background:var(--bg2)}
-    .cta h2{font-size:clamp(1.8rem,4vw,2.6rem);font-weight:700;margin-bottom:16px;letter-spacing:-.02em}
-    .cta p{color:var(--muted);margin-bottom:40px;font-size:1.05rem}
+    /* ── CHANGELOG ── */
+    .changelog{background:var(--bg2)}
+    .cl-list{display:flex;flex-direction:column;gap:14px;max-width:680px;margin:0 auto}
+    .cl-item{background:rgba(255,255,255,.025);border:1px solid var(--border);border-radius:14px;padding:20px 22px;display:flex;align-items:flex-start;gap:16px;transition:border-color .2s}
+    .cl-item:first-child{border-color:rgba(124,58,237,.4);background:rgba(124,58,237,.05)}
+    .cl-tag{flex-shrink:0;padding:4px 11px;border-radius:8px;font-size:.8rem;font-weight:700;font-family:'SF Mono',Consolas,monospace}
+    .cl-tag.latest{background:var(--grad);color:#fff}
+    .cl-tag.old{background:rgba(255,255,255,.06);color:var(--muted)}
+    .cl-info{flex:1}
+    .cl-name{font-weight:600;font-size:.95rem;margin-bottom:3px}
+    .cl-date{font-size:.78rem;color:var(--muted)}
+    .cl-loading{text-align:center;color:var(--muted);font-size:.9rem;padding:40px}
+    .cl-spin{display:inline-block;width:20px;height:20px;border:2px solid rgba(124,58,237,.3);border-top-color:#7c3aed;border-radius:50%;animation:spin .8s linear infinite;margin-right:8px;vertical-align:middle}
+    @keyframes spin{to{transform:rotate(360deg)}}
 
-    /* FOOTER */
-    footer{padding:40px 24px;border-top:1px solid rgba(255,255,255,.06);text-align:center}
-    footer p{color:var(--muted);font-size:.85rem}
-    footer a{color:var(--pl);text-decoration:none}
-    footer a:hover{text-decoration:underline}
+    /* ── CTA ── */
+    .cta-sec{text-align:center;background:linear-gradient(135deg,rgba(124,58,237,.08) 0%,rgba(34,211,238,.06) 100%);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+    .cta-sec h2{font-size:clamp(1.8rem,4vw,2.5rem);font-weight:700;margin-bottom:14px;letter-spacing:-.025em}
+    .cta-sec p{color:var(--muted);margin-bottom:36px;font-size:1rem}
 
-    @media(max-width:600px){.btn-dl{padding:16px 28px;font-size:1rem}}
+    /* ── FOOTER ── */
+    footer{padding:36px 24px;text-align:center;border-top:1px solid var(--border)}
+    footer p{color:var(--muted);font-size:.82rem;line-height:2}
+    footer a{color:var(--pl);text-decoration:none;transition:color .18s}
+    footer a:hover{color:#c084fc}
+
+    /* ── MISC ── */
+    .ver-loading{opacity:.45}
+    @media(max-width:640px){
+      nav{padding:0 16px}.nav-links a:not(:last-child){display:none}
+      h1{letter-spacing:-.03em}.btn-primary{padding:16px 28px;font-size:.95rem}
+      .steps-grid::before{display:none}
+    }
   </style>
 </head>
 <body>
 
-<header class="hero">
-  <div class="hero-bg"></div>
-  <div class="hero-orb"></div>
-  <div class="hero-content">
-    <div class="logo-wrap">
-      <svg width="52" height="52" viewBox="0 0 24 24" fill="none">
+<!-- NAV -->
+<nav>
+  <a class="nav-logo" href="#">
+    <div class="nav-ico">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
         <rect x="1" y="15" width="4" height="8" rx="2" fill="white" opacity=".9"/>
         <rect x="7" y="10" width="4" height="13" rx="2" fill="white"/>
         <rect x="13" y="12" width="4" height="11" rx="2" fill="white" opacity=".9"/>
@@ -89,27 +138,93 @@
         <path d="M18 10l2 3 2-3" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
     </div>
-    <h1>Music <span>DL</span></h1>
-    <p>Téléchargez vos musiques préférées depuis YouTube.<br>Créez des playlists. Écoutez hors-ligne. Gratuit.</p>
-    <a id="dl-btn" href="#" class="btn-dl">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-        <polyline points="7 10 12 15 17 10"/>
-        <line x1="12" y1="15" x2="12" y2="3"/>
-      </svg>
-      Télécharger pour Windows
-      <small>Gratuit · <span id="ver-label">Version 2.2.1</span> · Windows 10 / 11</small>
-    </a>
-    <div class="badges">
-      <span class="badge">Gratuit</span>
+    Music DL
+  </a>
+  <div class="nav-links">
+    <a href="#features">Fonctionnalités</a>
+    <a href="#install">Installation</a>
+    <a id="nav-gh" href="https://github.com/Advm000/musicdl" target="_blank">GitHub</a>
+    <div class="nav-ver"><span class="live-dot"></span><span id="nav-version" class="ver-loading">…</span></div>
+  </div>
+</nav>
+
+<!-- HERO -->
+<header class="hero">
+  <div class="hero-orb1"></div>
+  <div class="hero-orb2"></div>
+  <div class="hero-orb3"></div>
+  <div class="hero-content">
+
+    <div class="hero-badge">
+      <span class="live-dot"></span>
+      <span id="hero-badge-txt">Dernière version disponible</span>
+    </div>
+
+    <h1>
+      Votre musique.<br>
+      <span class="grad">Hors-ligne.</span>
+    </h1>
+    <p class="hero-sub">
+      Téléchargez n'importe quelle chanson depuis YouTube en MP3 320 kbps.
+      Playlists, lecteur audio, pochettes automatiques — tout en un.
+    </p>
+
+    <div class="hero-cta">
+      <a id="dl-hero" href="https://github.com/Advm000/musicdl/releases/latest/download/MusicDL-Setup.exe" class="btn-primary">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        Télécharger pour Windows
+        <small>Gratuit · <span id="hero-ver" class="ver-loading">…</span> · Windows 10/11</small>
+      </a>
+      <a id="gh-releases" href="https://github.com/Advm000/musicdl/releases" target="_blank" class="btn-secondary">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/>
+        </svg>
+        Voir toutes les versions sur GitHub
+      </a>
+    </div>
+
+    <div class="hero-badges">
+      <span class="badge">Gratuit &amp; open-source</span>
       <span class="badge">Windows 10 / 11</span>
+      <span class="badge">MP3 · 320 kbps</span>
       <span class="badge">Mode hors-ligne</span>
-      <span class="badge">Playlists illimitées</span>
+      <span class="badge">Mise à jour automatique</span>
     </div>
   </div>
 </header>
 
-<section class="features">
+<!-- STATS BAR -->
+<div class="stats-bar">
+  <div class="stats-inner">
+    <div class="stat-item">
+      <div class="stat-val" id="stat-ver">—</div>
+      <div class="stat-lbl">Version actuelle</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-val" id="stat-date">—</div>
+      <div class="stat-lbl">Dernière mise à jour</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-val">MP3</div>
+      <div class="stat-lbl">Format audio</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-val">320 kbps</div>
+      <div class="stat-lbl">Qualité maximale</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-val">∞</div>
+      <div class="stat-lbl">Playlists</div>
+    </div>
+  </div>
+</div>
+
+<!-- FEATURES -->
+<section class="features" id="features">
   <div class="container">
     <p class="s-label">Fonctionnalités</p>
     <h2 class="s-title">Tout ce dont vous avez besoin</h2>
@@ -117,140 +232,251 @@
 
       <div class="feat">
         <div class="feat-icon">
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
           </svg>
         </div>
-        <h3>Recherche instantanée</h3>
-        <p>Trouvez n'importe quelle musique, chanson ou artiste en quelques secondes.</p>
+        <h3>Recherche YouTube</h3>
+        <p>Cherchez par titre, artiste ou copiez directement un lien YouTube. Les résultats s'affichent en quelques secondes.</p>
       </div>
 
       <div class="feat">
         <div class="feat-icon">
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
             <polyline points="7 10 12 15 17 10"/>
             <line x1="12" y1="15" x2="12" y2="3"/>
           </svg>
         </div>
         <h3>Téléchargement MP3</h3>
-        <p>Qualité optimale avec métadonnées (titre, artiste, pochette) ajoutées automatiquement.</p>
+        <p>Téléchargement en 320 kbps avec métadonnées (titre, artiste, album) et pochette intégrées automatiquement.</p>
       </div>
 
       <div class="feat">
         <div class="feat-icon">
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M9 18V5l12-2v13"/>
             <circle cx="6" cy="18" r="3"/>
             <circle cx="18" cy="16" r="3"/>
           </svg>
         </div>
         <h3>Playlists style Spotify</h3>
-        <p>Créez et gérez vos playlists avec une interface moderne et intuitive.</p>
+        <p>Créez des playlists avec cover-art collage, réorganisez les pistes par glisser-déposer et renommez-les.</p>
       </div>
 
       <div class="feat">
         <div class="feat-icon">
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="5 3 19 12 5 21 5 3"/>
+          </svg>
+        </div>
+        <h3>Lecteur audio intégré</h3>
+        <p>Lecteur complet avec barre de progression, volume, favoris, lecture aléatoire et raccourcis clavier.</p>
+      </div>
+
+      <div class="feat">
+        <div class="feat-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M1 6v16l7-4 8 4 7-4V2l-7 4-8-4-7 4z"/>
             <path d="M8 2v16"/><path d="M16 6v16"/>
           </svg>
         </div>
         <h3>Mode hors-ligne</h3>
-        <p>Votre bibliothèque disponible sans connexion. Idéal en voyage ou sans Wi-Fi.</p>
+        <p>Toute votre bibliothèque accessible sans connexion internet. Idéal en voyage ou sans Wi-Fi.</p>
       </div>
 
       <div class="feat">
+        <span class="feat-new">Nouveau</span>
         <div class="feat-icon">
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
           </svg>
         </div>
-        <h3>Favoris & Bibliothèque</h3>
-        <p>Marquez vos morceaux préférés et retrouvez-les en un clic.</p>
-      </div>
-
-      <div class="feat">
-        <div class="feat-icon">
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="2" y="3" width="20" height="14" rx="2"/>
-            <line x1="8" y1="21" x2="16" y2="21"/>
-            <line x1="12" y1="17" x2="12" y2="21"/>
-          </svg>
-        </div>
-        <h3>Application native Windows</h3>
-        <p>S'installe comme n'importe quel logiciel. Aucune configuration technique requise.</p>
+        <h3>Mise à jour automatique</h3>
+        <p>L'app se met à jour toute seule : barre de progression intégrée, installation silencieuse, redémarrage en un clic.</p>
       </div>
 
     </div>
   </div>
 </section>
 
-<section class="steps">
+<!-- STEPS -->
+<section id="install">
   <div class="container">
     <p class="s-label">Installation</p>
-    <h2 class="s-title">Prêt en 3 étapes</h2>
+    <h2 class="s-title">Prêt en <span>3 étapes</span></h2>
     <div class="steps-grid">
       <div class="step">
         <div class="step-num">1</div>
         <h3>Télécharger</h3>
-        <p>Cliquez sur le bouton de téléchargement et sauvegardez l'installeur sur votre PC.</p>
+        <p>Cliquez sur le bouton et sauvegardez <code>MusicDL-Setup.exe</code> sur votre PC.</p>
       </div>
       <div class="step">
         <div class="step-num">2</div>
         <h3>Installer</h3>
-        <p>Double-cliquez sur <code>MusicDL-Setup.exe</code> et suivez l'assistant d'installation.</p>
+        <p>Double-cliquez sur l'installeur et suivez l'assistant. Aucune configuration technique requise.</p>
       </div>
       <div class="step">
         <div class="step-num">3</div>
         <h3>Profiter</h3>
-        <p>L'application s'ouvre directement. Aucune configuration requise.</p>
+        <p>L'application s'ouvre directement. Les prochaines mises à jour se font <strong>automatiquement</strong>.</p>
       </div>
     </div>
   </div>
 </section>
 
-<section class="cta">
+<!-- CHANGELOG -->
+<section class="changelog" id="changelog">
   <div class="container">
-    <h2>Commencez gratuitement</h2>
-    <p>Téléchargez Music DL et commencez à construire votre bibliothèque musicale.</p>
-    <a id="dl-btn2" href="#" class="btn-dl">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+    <p class="s-label">Historique</p>
+    <h2 class="s-title">Dernières <span>versions</span></h2>
+    <div class="cl-list" id="cl-list">
+      <div class="cl-loading"><span class="cl-spin"></span>Chargement des versions…</div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-sec">
+  <div class="container">
+    <h2>Prêt à commencer ?</h2>
+    <p>Gratuit, sans compte, sans publicité. Installez Music DL en moins d'une minute.</p>
+    <a id="dl-cta" href="https://github.com/Advm000/musicdl/releases/latest/download/MusicDL-Setup.exe" class="btn-primary">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
         <polyline points="7 10 12 15 17 10"/>
         <line x1="12" y1="15" x2="12" y2="3"/>
       </svg>
       Télécharger Music DL
-      <small>Gratuit · Windows 10 / 11</small>
+      <small>Gratuit · <span id="cta-ver" class="ver-loading">…</span> · Windows 10/11</small>
     </a>
   </div>
 </section>
 
+<!-- FOOTER -->
 <footer>
   <div class="container">
-    <p>Music DL — Application Windows gratuite &nbsp;·&nbsp; <a id="gh-link" href="#">Releases GitHub</a></p>
+    <p>
+      Music DL &nbsp;·&nbsp;
+      <a id="footer-gh" href="https://github.com/Advm000/musicdl" target="_blank">GitHub</a>
+      &nbsp;·&nbsp;
+      <a id="footer-releases" href="https://github.com/Advm000/musicdl/releases" target="_blank">Toutes les versions</a>
+      &nbsp;·&nbsp;
+      Gratuit &amp; open-source
+    </p>
+    <p style="margin-top:6px;font-size:.75rem">
+      Version : <span id="footer-ver" class="ver-loading">…</span>
+      &nbsp;·&nbsp; Mis à jour : <span id="footer-date">…</span>
+    </p>
   </div>
 </footer>
 
 <script>
 (function(){
+  var REPO    = 'Advm000/musicdl';
   var DL_FILE = 'MusicDL-Setup.exe';
-  var BASE    = 'https://github.com/Advm000/musicdl';
-  var dlUrl   = BASE + '/releases/latest/download/' + DL_FILE;
+  var DL_URL  = 'https://github.com/'+REPO+'/releases/latest/download/'+DL_FILE;
 
-  document.getElementById('dl-btn').href  = dlUrl;
-  document.getElementById('dl-btn2').href = dlUrl;
-  document.getElementById('gh-link').href = BASE + '/releases';
+  /* Initialise les liens fixes */
+  ['dl-hero','dl-cta'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el)el.href=DL_URL;
+  });
 
-  fetch('https://api.github.com/repos/Advm000/musicdl/releases/latest',{headers:{'Accept':'application/vnd.github.v3+json'}})
-    .then(function(r){return r.json();})
-    .then(function(d){
-      if(d&&d.tag_name){
-        var v=d.tag_name.replace(/^v/,'');
-        var el=document.getElementById('ver-label');
-        if(el)el.textContent='Version '+v;
-      }
-    }).catch(function(){});
+  function relativeDate(iso){
+    var diff=Math.floor((Date.now()-new Date(iso))/1000);
+    if(diff<60)return"il y a quelques secondes";
+    if(diff<3600)return"il y a "+(Math.floor(diff/60))+" min";
+    if(diff<86400)return"il y a "+(Math.floor(diff/3600))+" h";
+    if(diff<604800)return"il y a "+(Math.floor(diff/86400))+" jour"+(Math.floor(diff/86400)>1?"s":"");
+    if(diff<2592000)return"il y a "+(Math.floor(diff/604800))+" semaine"+(Math.floor(diff/604800)>1?"s":"");
+    return new Date(iso).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'});
+  }
+
+  function setText(id,val){
+    var el=document.getElementById(id);
+    if(el){el.textContent=val;el.classList.remove('ver-loading');}
+  }
+
+  function renderChangelog(releases){
+    var list=document.getElementById('cl-list');
+    if(!list)return;
+    if(!releases||!releases.length){list.innerHTML='<div class="cl-loading">Aucune version trouvée.</div>';return;}
+    list.innerHTML=releases.slice(0,6).map(function(r,i){
+      var tag=r.tag_name||'';
+      var name=r.name||tag;
+      var date=r.published_at?relativeDate(r.published_at):'';
+      var isLatest=(i===0);
+      return'<div class="cl-item">'
+        +'<span class="cl-tag '+(isLatest?'latest':'old')+'">'+tag+'</span>'
+        +'<div class="cl-info">'
+        +'<div class="cl-name">'+name+'</div>'
+        +(date?'<div class="cl-date">'+date+'</div>':'')
+        +'</div>'
+        +(isLatest?'<a href="'+DL_URL+'" class="btn-primary" style="padding:8px 18px;font-size:.82rem;border-radius:10px;text-decoration:none">Télécharger</a>':'')
+        +'</div>';
+    }).join('');
+  }
+
+  function update(latest, releases){
+    if(!latest||!latest.tag_name)return;
+    var ver=latest.tag_name;
+    var verClean=ver.replace(/^v/,'');
+    var date=latest.published_at?relativeDate(latest.published_at):'';
+
+    /* Nav */
+    setText('nav-version', ver);
+
+    /* Hero */
+    setText('hero-ver', verClean);
+    var badgeTxt=document.getElementById('hero-badge-txt');
+    if(badgeTxt)badgeTxt.textContent='Dernière version : '+ver;
+
+    /* Stats bar */
+    setText('stat-ver', ver);
+    if(date)setText('stat-date', date);
+
+    /* CTA */
+    setText('cta-ver', verClean);
+
+    /* Footer */
+    setText('footer-ver', ver);
+    if(date)setText('footer-date', date);
+
+    /* Download link depuis assets GitHub si disponible */
+    var asset=latest.assets&&latest.assets.find(function(a){return a.name===DL_FILE;});
+    if(asset&&asset.browser_download_url){
+      ['dl-hero','dl-cta'].forEach(function(id){
+        var el=document.getElementById(id);
+        if(el)el.href=asset.browser_download_url;
+      });
+    }
+
+    /* Changelog */
+    if(releases)renderChangelog(releases);
+  }
+
+  function fetchData(){
+    var headers={'Accept':'application/vnd.github.v3+json'};
+    var latestP=fetch('https://api.github.com/repos/'+REPO+'/releases/latest',{headers:headers}).then(function(r){return r.json();});
+    var listP=fetch('https://api.github.com/repos/'+REPO+'/releases?per_page=6',{headers:headers}).then(function(r){return r.json();});
+    Promise.all([latestP,listP])
+      .then(function(res){update(res[0],res[1]);})
+      .catch(function(){
+        /* Fallback silencieux — les liens DL_URL fixes restent valides */
+        ['nav-version','hero-ver','cta-ver','footer-ver'].forEach(function(id){
+          var el=document.getElementById(id);
+          if(el)el.classList.remove('ver-loading');
+        });
+        var list=document.getElementById('cl-list');
+        if(list)list.innerHTML='<div class="cl-loading">Impossible de charger les versions. <a href="https://github.com/'+REPO+'/releases" target="_blank" style="color:var(--pl)">Voir sur GitHub →</a></div>';
+      });
+  }
+
+  fetchData();
+  setInterval(fetchData, 5*60*1000); /* Actualise toutes les 5 minutes */
 })();
 </script>
 
