@@ -31,7 +31,7 @@ os.makedirs(OUT_DIR, exist_ok=True)
 FAV_FILE    = os.path.join(OUT_DIR, ".favorites.json")
 PL_FILE     = os.path.join(OUT_DIR, ".playlists.json")
 DEVICE_FILE = os.path.join(OUT_DIR, "device.json")
-APP_VERSION = "2.2.1"
+APP_VERSION = "2.2.2"
 
 app  = Flask(__name__)
 jobs = {}   # job_id -> {"progress":0,"status":"...","done":False,"error":"","cancelled":False}
@@ -414,6 +414,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 @keyframes iconPulse{0%,100%{box-shadow:0 0 0 0 rgba(124,58,237,.5),0 4px 16px rgba(124,58,237,.4)}50%{box-shadow:0 0 0 8px rgba(124,58,237,0),0 4px 20px rgba(124,58,237,.6)}}
 .hd-name{font-size:18px;font-weight:900;letter-spacing:-.6px;background:linear-gradient(90deg,#c4b5fd 30%,#67e8f9);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
 .hd-sub{font-size:9px;color:var(--text4);margin-top:1px;letter-spacing:.3px;text-transform:uppercase}
+#hd-ver{text-transform:none}
 .hd-badge{display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:.4px;background:rgba(124,58,237,.1);border:1px solid rgba(124,58,237,.3);color:#a78bfa;backdrop-filter:blur(10px)}
 .hd-badge::before{content:'';width:6px;height:6px;border-radius:50%;background:#06b6d4;box-shadow:0 0 8px #06b6d4,0 0 14px rgba(6,182,212,.6);flex-shrink:0;animation:dot-pulse 2s ease-in-out infinite}
 @keyframes dot-pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.6;transform:scale(.8)}}
@@ -1133,7 +1134,7 @@ body.is-offline .dl-btn,body.is-offline #alldl{opacity:.3;pointer-events:none}
     </div>
     <div>
       <div class="hd-name">Music DL</div>
-      <div class="hd-sub">YouTube &rarr; MP3 &middot; 320 kbps &middot; <span id="hd-ver">v2.2.1</span></div>
+      <div class="hd-sub">YouTube &rarr; MP3 &middot; 320 kbps &middot; <span id="hd-ver">v2.2.2</span></div>
     </div>
   </div>
   <div class="net-badge on" id="net-badge"><div class="net-dot"></div><span id="net-lbl">En ligne</span></div>
@@ -1264,10 +1265,9 @@ body.is-offline .dl-btn,body.is-offline #alldl{opacity:.3;pointer-events:none}
     <div class="cs-title">Bientôt <span>disponible</span></div>
     <p class="cs-sub">De nouvelles fonctionnalités arrivent prochainement. Restez connecté pour les découvrir en premier.</p>
     <div class="cs-chips">
-      <span class="cs-chip">Lecteur audio intégré</span>
       <span class="cs-chip">Paroles synchronisées</span>
       <span class="cs-chip">Égaliseur</span>
-      <span class="cs-chip">Mode sombre avancé</span>
+      <span class="cs-chip">Recherche dans la bibliothèque</span>
       <span class="cs-chip">Sync cloud</span>
     </div>
   </div>
@@ -1931,7 +1931,7 @@ var VOL_OFF='<path d="M16.5 12A4.5 4.5 0 0 0 14 7.97v2.21l2.45 2.45c.03-.2.05-.4
 
 function plyFromLib(fn,title,artist){
   var grid=document.getElementById('lgrid');
-  plyQueue=Array.from(grid.querySelectorAll('.lcard')).map(function(c){return{fn:c.dataset.fn,title:(c.querySelector('.linfo-t')||{}).textContent||c.dataset.fn,artist:(c.querySelector('.linfo-m span')||{}).textContent||''};}).filter(function(x){return x.fn});
+  plyQueue=Array.from(grid.querySelectorAll('.lcard')).map(function(c){return{fn:c.dataset.fn,title:(c.querySelector('.lrow-t')||{}).textContent||c.dataset.fn,artist:(c.querySelector('.lrow-ar')||{}).textContent||''};}).filter(function(x){return x.fn});
   plyIdx=plyQueue.findIndex(function(x){return x.fn===fn});
   if(plyIdx<0){plyQueue=[{fn:fn,title:title,artist:artist}];plyIdx=0;}
   plyLoad(fn,title,artist);
@@ -1966,7 +1966,7 @@ function plyLoad(fn,title,artist){
   var ns=document.getElementById('np-song');if(ns)ns.textContent=title||fn;
   var na=document.getElementById('np-auth');if(na)na.textContent=artist||'';
   var nfb=document.getElementById('np-fav-btn');
-  if(nfb){nfb.className='np-act-btn'+(favSet.has(fn)?' on':'');nfb.innerHTML=favSet.has(fn)?ICO_HEART_F:ICO_HEART_E;}
+  if(nfb){nfb.className='np-fav'+(favSet.has(fn)?' on':'');nfb.innerHTML=favSet.has(fn)?ICO_HEART_F:ICO_HEART_E;}
   setStat('Lecture: '+title);
   updateMediaMeta(fn,title,artist);
   /* Sur mobile, ouvrir directement le grand lecteur */
@@ -2007,7 +2007,7 @@ function plyToggleFav(){
   if(!plyFavFn)return;
   fetch('/api/favorites/toggle/'+encodeURIComponent(plyFavFn),{method:'POST'}).then(function(r){return r.json();}).then(function(r){
     if(r.added)favSet.add(plyFavFn);else favSet.delete(plyFavFn);
-    [['ply-fav-btn','ply-fav-btn'],['np-fav-btn','np-act-btn']].forEach(function(pair){
+    [['ply-fav-btn','ply-fav-btn'],['np-fav-btn','np-fav']].forEach(function(pair){
       var b=document.getElementById(pair[0]);if(!b)return;
       b.className=pair[1]+(r.added?' on':'');b.innerHTML=r.added?ICO_HEART_F:ICO_HEART_E;
     });
@@ -2119,7 +2119,7 @@ addTouchBar(document.getElementById('np-vol-track'),function(p){aud.volume=p;doc
   var sx=0,sy=0,dx=0,dragging=false,locked=false;
 
   function getCurTab(){
-    for(var i=0;i<3;i++){if(document.getElementById('tab'+i).classList.contains('on'))return i;}
+    for(var i=0;i<4;i++){if(document.getElementById('tab'+i).classList.contains('on'))return i;}
     return 0;
   }
 
@@ -2140,7 +2140,7 @@ addTouchBar(document.getElementById('np-vol-track'),function(p){aud.volume=p;doc
   pages.addEventListener('touchend',function(){
     if(!dragging||Math.abs(dx)<58){dx=0;dragging=false;return;}
     var cur=getCurTab();
-    if(dx<0&&cur<2)goTab(cur+1);
+    if(dx<0&&cur<3)goTab(cur+1);
     else if(dx>0&&cur>0)goTab(cur-1);
     dx=0;dragging=false;
   },{passive:true});
@@ -2205,7 +2205,7 @@ function dlgClose(e){if(e.target===document.getElementById('dlg-overlay'))dlgRej
 
 /* CHECK FOR UPDATE */
 (function(){
-  var CURRENT='2.2.1';
+  var CURRENT='2.2.2';
   function parseVer(v){return v.replace(/^v/,'').split('.').map(Number);}
   function isNewer(a,b){for(var i=0;i<3;i++){if((a[i]||0)>(b[i]||0))return true;if((a[i]||0)<(b[i]||0))return false;}return false;}
   setTimeout(function(){

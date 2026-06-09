@@ -98,7 +98,7 @@
         <line x1="12" y1="15" x2="12" y2="3"/>
       </svg>
       Télécharger pour Windows
-      <small>Gratuit · Version 1.0.0 · Windows 10 / 11</small>
+      <small>Gratuit · <span id="ver-label">Version 2.2.1</span> · Windows 10 / 11</small>
     </a>
     <div class="badges">
       <span class="badge">Gratuit</span>
@@ -199,7 +199,7 @@
       <div class="step">
         <div class="step-num">2</div>
         <h3>Installer</h3>
-        <p>Double-cliquez sur <code>MusicDL_Setup.exe</code> et suivez l'assistant d'installation.</p>
+        <p>Double-cliquez sur <code>MusicDL-Setup.exe</code> et suivez l'assistant d'installation.</p>
       </div>
       <div class="step">
         <div class="step-num">3</div>
@@ -234,7 +234,6 @@
 
 <script>
 (function(){
-  // Nom du fichier fixe — défini dans electron/package.json "artifactName"
   var DL_FILE = 'MusicDL-Setup.exe';
   var BASE    = 'https://github.com/Advm000/musicdl';
   var dlUrl   = BASE + '/releases/latest/download/' + DL_FILE;
@@ -242,6 +241,16 @@
   document.getElementById('dl-btn').href  = dlUrl;
   document.getElementById('dl-btn2').href = dlUrl;
   document.getElementById('gh-link').href = BASE + '/releases';
+
+  fetch('https://api.github.com/repos/Advm000/musicdl/releases/latest',{headers:{'Accept':'application/vnd.github.v3+json'}})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d&&d.tag_name){
+        var v=d.tag_name.replace(/^v/,'');
+        var el=document.getElementById('ver-label');
+        if(el)el.textContent='Version '+v;
+      }
+    }).catch(function(){});
 })();
 </script>
 
