@@ -349,12 +349,17 @@ def api_pl_reorder(name):
 # ══════════════════════════════════════════════════════════════════════════════
 
 def _get_listened_artists():
-    lib = _jload(LIB_FILE, []) if os.path.exists(LIB_FILE) else []
     seen = {}
-    for t in lib:
-        a = (t.get("artist") or "").strip()
-        if a and a.lower() not in ("unknown artist",""):
-            seen[a] = seen.get(a,0)+1
+    try:
+        files = [f for f in os.listdir(OUT_DIR) if f.lower().endswith(".mp3")]
+        for f in files:
+            try:
+                _, artist, _, _ = _read_tags(os.path.join(OUT_DIR, f))
+                a = (artist or "").strip()
+                if a and a.lower() not in ("unknown artist","","-"):
+                    seen[a] = seen.get(a,0)+1
+            except Exception: pass
+    except Exception: pass
     return [a for a,_ in sorted(seen.items(),key=lambda x:-x[1])]
 
 @app.route("/api/home")
