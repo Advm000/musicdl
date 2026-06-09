@@ -61,8 +61,12 @@ function showLoading() {
       .dot:nth-child(2){animation-delay:.2s}.dot:nth-child(3){animation-delay:.4s}
       @keyframes pulse{0%,80%,100%{opacity:.3}40%{opacity:1}}
     </style></head><body>
-    <div class="logo"><svg width="30" height="30" viewBox="0 0 24 24" fill="white">
-      <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
+    <div class="logo"><svg width="30" height="30" viewBox="0 0 24 24" fill="none">
+      <rect x="1" y="15" width="4" height="8" rx="2" fill="white" opacity=".9"/>
+      <rect x="7" y="10" width="4" height="13" rx="2" fill="white"/>
+      <rect x="13" y="12" width="4" height="11" rx="2" fill="white" opacity=".9"/>
+      <path d="M20 4v9" stroke="white" stroke-width="2" stroke-linecap="round"/>
+      <path d="M18 10l2 3 2-3" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
     </svg></div>
     <h2>Music DL</h2>
     <p>Démarrage<span class="dot"></span><span class="dot"></span><span class="dot"></span></p>
