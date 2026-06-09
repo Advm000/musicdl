@@ -116,7 +116,7 @@ function waitForFlask(retries = 90, delay = 666) {
   return new Promise((resolve, reject) => {
     let n = 0
     const try_ = () => {
-      const req = http.get(`http://localhost:${PORT}/`, (res) => {
+      const req = http.get(`http://127.0.0.1:${PORT}/`, (res) => {
         log('Backend responded on port ' + PORT)
         resolve()
       })
@@ -148,7 +148,7 @@ function createWindow() {
   })
 
   Menu.setApplicationMenu(null)
-  mainWindow.loadURL(`http://localhost:${PORT}`)
+  mainWindow.loadURL(`http://127.0.0.1:${PORT}`)
 
   mainWindow.once('ready-to-show', () => {
     if (loadingWin) { loadingWin.close(); loadingWin = null }
@@ -161,7 +161,7 @@ function createWindow() {
   }
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    if (!url.startsWith('http://localhost')) shell.openExternal(url)
+    if (!url.startsWith('http://127.0.0.1') && !url.startsWith('http://localhost')) shell.openExternal(url)
     return { action: 'deny' }
   })
 
