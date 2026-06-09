@@ -2166,6 +2166,8 @@ if __name__ == "__main__":
         print(f"  Device  : {DEVICE_INFO.get('hostname','?')}  [{DEVICE_INFO.get('device_id','?')[:8]}...]")
         print(f"  PC      -> http://localhost:{PORT}")
         print(f"  Reseau  -> http://{local_ip}:{PORT}  (telephone sur le meme WiFi)\n")
+    NO_BROWSER = '--no-browser' in sys.argv
     delay = 1.5 if IS_FROZEN else 1.0
-    threading.Timer(delay, lambda: webbrowser.open(f"http://localhost:{PORT}")).start()
+    if not NO_BROWSER:
+        threading.Timer(delay, lambda: webbrowser.open(f"http://localhost:{PORT}")).start()
     app.run(host="0.0.0.0", port=PORT, debug=False, threaded=True, use_reloader=False)

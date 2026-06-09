@@ -6,6 +6,10 @@ __pycache__/
 *.pyc
 *.pyo
 
+# Electron build
+electron/node_modules/
+electron/dist-electron/
+
 # Python env
 .env
 *.egg-info/
