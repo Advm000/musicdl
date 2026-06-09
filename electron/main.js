@@ -1,5 +1,5 @@
 const { app, BrowserWindow, Menu, shell, dialog, ipcMain } = require('electron')
-const { spawn } = require('child_process')
+const { spawn, execSync } = require('child_process')
 const path = require('path')
 const http = require('http')
 const fs   = require('fs')
@@ -75,6 +75,19 @@ function showLoading() {
     <p>Démarrage<span class="dot"></span><span class="dot"></span><span class="dot"></span></p>
     </body></html>
   `))
+}
+
+function killPort(port) {
+  try {
+    const out = execSync(`netstat -ano | findstr :${port} | findstr LISTENING`, { encoding: 'utf8', timeout: 3000 })
+    out.trim().split('\n').forEach(line => {
+      const pid = line.trim().split(/\s+/).pop()
+      if (pid && /^\d+$/.test(pid) && pid !== '0') {
+        try { execSync(`taskkill /F /PID ${pid}`, { timeout: 2000 }); log(`Killed stale process PID ${pid} on port ${port}`) }
+        catch(e) {}
+      }
+    })
+  } catch(e) { /* port not in use — fine */ }
 }
 
 function startFlask() {
@@ -211,6 +224,7 @@ function createWindow() {
 
 app.whenReady().then(async () => {
   showLoading()
+  killPort(PORT)
   startFlask()
 
   try {
