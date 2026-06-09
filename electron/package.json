@@ -1,6 +1,6 @@
 {
   "name": "music-dl",
-  "version": "2.4.0",
+  "version": "2.5.0",
   "description": "Music DL — Téléchargeur de musique pour Windows",
   "main": "main.js",
   "repository": {

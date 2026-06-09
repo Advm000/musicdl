@@ -3,7 +3,7 @@ Music Downloader — Flask + HTML/CSS/JS
 Interface web professionnelle avec glassmorphism et animations CSS 3D
 """
 
-import os, io, json, uuid, shutil, tempfile, threading, time, webbrowser, socket, struct, zlib, platform
+import os, io, json, uuid, shutil, tempfile, threading, time, webbrowser, socket, struct, zlib, platform, urllib.request, urllib.parse
 from datetime import datetime
 from flask import Flask, Response, request, jsonify, send_file, stream_with_context
 import yt_dlp, imageio_ffmpeg
@@ -31,7 +31,7 @@ os.makedirs(OUT_DIR, exist_ok=True)
 FAV_FILE    = os.path.join(OUT_DIR, ".favorites.json")
 PL_FILE     = os.path.join(OUT_DIR, ".playlists.json")
 DEVICE_FILE = os.path.join(OUT_DIR, "device.json")
-APP_VERSION = "2.4.0"
+APP_VERSION = "2.5.0"
 
 app  = Flask(__name__)
 jobs = {}   # job_id -> {"progress":0,"status":"...","done":False,"error":"","cancelled":False}
@@ -321,6 +321,39 @@ def api_pl_reorder(name):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# ITUNES SEARCH API
+# ══════════════════════════════════════════════════════════════════════════════
+
+@app.route("/api/itunes/search")
+def api_itunes_search():
+    q = request.args.get("q", "").strip()
+    if not q: return jsonify([])
+    try:
+        params = urllib.parse.urlencode({"term": q, "media": "music", "entity": "song", "limit": 10})
+        req = urllib.request.Request(
+            "https://itunes.apple.com/search?" + params,
+            headers={"User-Agent": f"MusicDL/{APP_VERSION}"}
+        )
+        with urllib.request.urlopen(req, timeout=6) as resp:
+            data = json.loads(resp.read())
+        results = []
+        for item in data.get("results", []):
+            dur_ms = item.get("trackTimeMillis", 0)
+            dur_s  = (dur_ms or 0) // 1000
+            m, s   = divmod(dur_s, 60)
+            results.append({
+                "title":    item.get("trackName", ""),
+                "artist":   item.get("artistName", ""),
+                "album":    item.get("collectionName", ""),
+                "duration": f"{m}:{s:02d}" if dur_ms else "",
+                "cover":    item.get("artworkUrl100", "").replace("100x100bb", "400x400bb"),
+            })
+        return jsonify(results)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # LOGIQUE TÉLÉCHARGEMENT
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -471,6 +504,21 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 .si-inner input::placeholder{color:var(--text4)}
 #sug-box{display:none;position:absolute;top:calc(100% + 6px);left:0;right:0;z-index:9999;background:rgba(11,11,32,.97);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid rgba(124,58,237,.3);border-radius:14px;overflow:hidden;box-shadow:0 16px 48px rgba(0,0,0,.8),0 0 0 1px rgba(255,255,255,.03);animation:sugDrop .18s cubic-bezier(.4,0,.2,1)}
 @keyframes sugDrop{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+/* iTunes search dropdown */
+#its-box{display:none;position:absolute;top:calc(100% + 8px);left:0;right:0;z-index:9999;background:rgba(11,11,32,.98);backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px);border:1px solid rgba(124,58,237,.28);border-radius:14px;overflow:hidden;box-shadow:0 20px 56px rgba(0,0,0,.85),0 0 0 1px rgba(255,255,255,.03);animation:sugDrop .18s cubic-bezier(.4,0,.2,1);max-height:420px;overflow-y:auto}
+#its-box.show{display:block}
+.its-hd{padding:8px 14px 6px;font-size:9.5px;font-weight:800;letter-spacing:1.4px;text-transform:uppercase;color:rgba(167,139,250,.6);border-bottom:1px solid rgba(255,255,255,.05);display:flex;align-items:center;gap:6px}
+.its-item{display:flex;align-items:center;gap:12px;padding:9px 14px;cursor:pointer;transition:background .14s;border-bottom:1px solid rgba(255,255,255,.04)}
+.its-item:last-child{border-bottom:none}
+.its-item:hover{background:rgba(124,58,237,.14)}
+.its-cov{width:44px;height:44px;border-radius:7px;object-fit:cover;flex-shrink:0;background:rgba(124,58,237,.1)}
+.its-cov-ph{width:44px;height:44px;border-radius:7px;flex-shrink:0;background:linear-gradient(135deg,#1e1e50,#0d0d28);display:flex;align-items:center;justify-content:center;color:rgba(167,139,250,.4);font-size:18px}
+.its-info{flex:1;min-width:0}
+.its-t{font-size:13px;font-weight:600;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.its-ar{font-size:11px;color:#a78bfa;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.its-dur{font-size:11px;color:#475569;flex-shrink:0;font-variant-numeric:tabular-nums}
+.its-dl{padding:5px 12px;border-radius:8px;border:none;background:var(--grad);color:#fff;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0;transition:box-shadow .2s,transform .18s;font-family:inherit}
+.its-dl:hover{box-shadow:0 4px 14px rgba(124,58,237,.55);transform:scale(1.06)}
 .sug-item{padding:11px 14px;font-size:13px;font-weight:500;color:#c4b5fd;cursor:pointer;transition:background .15s,color .15s,padding-left .15s;display:flex;align-items:center;gap:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sug-item:hover{background:rgba(124,58,237,.15);color:#e9d5ff;padding-left:18px}
 .sug-item::before{content:'';display:inline-block;width:13px;height:13px;flex-shrink:0;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237c3aed' stroke-width='2.5'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E") center/contain no-repeat;opacity:.6}
@@ -1277,9 +1325,10 @@ body.is-offline .dl-btn,body.is-offline #alldl{opacity:.3;pointer-events:none}
       <div class="si-wrap">
         <div class="si-inner">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-          <input id="q" type="text" placeholder="Artiste, titre, album..." autocomplete="off" onkeydown="if(event.key==='Enter'){doSearch();hideSugBox();}">
+          <input id="q" type="text" placeholder="Artiste, titre, lien YouTube..." autocomplete="off" oninput="itsInput()" onkeydown="if(event.key==='Enter'){doSearch();hideSugBox();hideIts();}">
         </div>
         <div id="sug-box"></div>
+        <div id="its-box"></div>
       </div>
       <button class="btn-go" id="sbtn" onclick="doSearch()">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
@@ -1636,6 +1685,89 @@ function goTab(i){
 /* INIT */
 fetch('/api/favorites').then(function(r){return r.json()}).then(function(f){f.forEach(function(fn){favSet.add(fn)})});
 document.getElementById('q').focus();
+
+/* ─── ITUNES SEARCH ─── */
+var _itsTimer=null,_itsFetching=false;
+function isYtUrl(v){return /^https?:\/\/|youtu\.?be|youtube\.|soundcloud\.|deezer\./.test(v);}
+function itsInput(){
+  var v=document.getElementById('q').value.trim();
+  clearTimeout(_itsTimer);hideIts();
+  if(!v||v.length<2||isYtUrl(v))return;
+  _itsTimer=setTimeout(function(){itsSearch(v);},420);
+}
+function itsSearch(q){
+  _itsFetching=true;
+  fetch('/api/itunes/search?q='+encodeURIComponent(q))
+    .then(function(r){return r.json();})
+    .then(function(data){
+      _itsFetching=false;
+      if(!data||data.error||!data.length)return;
+      var box=document.getElementById('its-box');
+      box.innerHTML='<div class="its-hd">&#9835; iTunes — Suggestions</div>'
+        +data.map(function(it){
+          var cov=it.cover
+            ?'<img class="its-cov" src="'+esc(it.cover)+'" loading="lazy" onerror="this.outerHTML=\'<div class=its-cov-ph>&#9835;</div>\'">'
+            :'<div class="its-cov-ph">&#9835;</div>';
+          var safe_t=esc(it.title).replace(/\'/g,'&#39;'),safe_ar=esc(it.artist).replace(/\'/g,'&#39;');
+          return '<div class="its-item" onclick="itsDownload(\''+safe_t+'\',\''+safe_ar+'\')">'
+            +cov
+            +'<div class="its-info"><div class="its-t">'+esc(it.title)+'</div>'
+            +'<div class="its-ar">'+esc(it.artist)+(it.album?' · <span style="color:#475569">'+esc(it.album)+'</span>':'')+'</div></div>'
+            +(it.duration?'<div class="its-dur">'+esc(it.duration)+'</div>':'')
+            +'<button class="its-dl" onclick="event.stopPropagation();itsDownload(\''+safe_t+'\',\''+safe_ar+'\')">&#8659; MP3</button>'
+            +'</div>';
+        }).join('');
+      box.classList.add('show');
+    })
+    .catch(function(){_itsFetching=false;});
+}
+function hideIts(){document.getElementById('its-box').classList.remove('show');}
+function itsDownload(title,artist){
+  hideIts();hideSugBox();
+  var query=title+(artist?' '+artist:'');
+  var fid='its-'+Date.now();
+  var url='ytsearch1:'+query;
+  var lst=document.getElementById('rl');
+  document.getElementById('mt0').style.display='none';
+  document.getElementById('alldl').style.display='none';
+  var card=document.createElement('div');card.className='rc';
+  card.innerHTML='<div class="rt-ph">&#9835;</div>'
+    +'<div class="ri"><div class="ri-title">'+esc(title)+'</div>'
+    +'<div class="ri-row"><span class="ri-ch">'+esc(artist)+'</span></div>'
+    +'<div class="rp" id="pg-'+fid+'"><div class="rp-track"><div class="rp-fill" id="pf-'+fid+'"></div></div>'
+    +'<div class="rp-lbl" id="pl-'+fid+'">Recherche sur YouTube...</div></div></div>'
+    +'<div class="ra"><button class="dl-btn" id="db-'+fid+'" disabled><span class="spin"></span></button>'
+    +'<button class="cancel-btn" id="cb-'+fid+'" style="display:none">&#215; Annuler</button></div>';
+  lst.insertBefore(card, lst.firstChild);
+  fetch('/api/download',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:url,title:title})})
+    .then(function(r){return r.json();})
+    .then(function(res){
+      var jid=res.job_id;
+      var fill=document.getElementById('pf-'+fid);
+      var lbl=document.getElementById('pl-'+fid);
+      var btn=document.getElementById('db-'+fid);
+      var cbtn=document.getElementById('cb-'+fid);
+      cbtn.style.display='inline-flex';
+      cbtn.onclick=function(){fetch('/api/cancel/'+jid,{method:'POST'});cbtn.disabled=true;cbtn.textContent='...';};
+      setStat('Téléchargement : '+title);
+      var es=new EventSource('/api/progress/'+jid);
+      es.onerror=function(){es.close();btn.disabled=false;btn.innerHTML='&#8659; Réessayer';cbtn.style.display='none';toast('⚠ Erreur réseau');};
+      es.onmessage=function(ev){
+        var d=JSON.parse(ev.data);fill.style.width=d.progress+'%';lbl.textContent=d.status;
+        if(d.done){
+          es.close();cbtn.style.display='none';
+          if(d.cancelled){fill.style.width='0%';lbl.textContent='Annulé';btn.disabled=false;btn.innerHTML='&#8659; Réessayer';}
+          else if(!d.error){fill.classList.add('done');btn.outerHTML='<div class="ok-badge">&#10003; Téléchargée</div>';setStat('OK : '+title);toast('&#10003; '+title);loadLib();}
+          else{btn.disabled=false;btn.innerHTML='&#8659; Réessayer';setStat('Erreur.');toast('⚠ Échec : '+title);}
+        }
+      };
+    })
+    .catch(function(){var btn=document.getElementById('db-'+fid);if(btn){btn.disabled=false;btn.innerHTML='&#8659; MP3';}});
+}
+/* Fermer iTunes box en cliquant dehors */
+document.addEventListener('click',function(e){
+  if(!e.target.closest('#its-box')&&!e.target.closest('.si-wrap'))hideIts();
+});
 
 /* RECHERCHE */
 function doSearch(){
