@@ -3,6 +3,7 @@
 # Usage: pyinstaller musicdl.spec
 
 import sys, os
+_icon = 'icon.ico' if os.path.exists('icon.ico') else None
 block_cipher = None
 
 a = Analysis(
@@ -46,7 +47,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon='icon.ico',        # place un icon.ico a cote de ce fichier
+    icon=_icon,
     version_file=None,
 )
 

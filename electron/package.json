@@ -23,15 +23,10 @@
         "from": "../dist/MusicDL",
         "to": "backend",
         "filter": ["**/*"]
-      },
-      {
-        "from": "../icon.ico",
-        "to": "icon.ico"
       }
     ],
     "win": {
       "target": [{ "target": "nsis", "arch": ["x64"] }],
-      "icon": "../icon.ico",
       "requestedExecutionLevel": "asInvoker"
     },
     "nsis": {
@@ -39,8 +34,6 @@
       "perMachine": false,
       "allowToChangeInstallationDirectory": true,
       "deleteAppDataOnUninstall": false,
-      "installerIcon": "../icon.ico",
-      "installerHeaderIcon": "../icon.ico",
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "Music DL"
