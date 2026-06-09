@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "description": "Music DL — Téléchargeur de musique pour Windows",
   "main": "main.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Advm000/musicdl"
+  },
   "scripts": {
     "start": "electron .",
     "build": "electron-builder --win"
@@ -25,6 +29,7 @@
         "filter": ["**/*"]
       }
     ],
+    "publish": null,
     "win": {
       "target": [{ "target": "nsis", "arch": ["x64"] }],
       "requestedExecutionLevel": "asInvoker"

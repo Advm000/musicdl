@@ -18,7 +18,6 @@ a = Analysis(
         'yt_dlp', 'yt_dlp.extractor', 'yt_dlp.downloader',
         'mutagen', 'mutagen.mp3', 'mutagen.id3', 'mutagen.easyid3',
         'imageio_ffmpeg',
-        'engineio', 'socketio',
     ],
     hookspath=[],
     hooksconfig={},
