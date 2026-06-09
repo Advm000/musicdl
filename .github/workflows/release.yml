@@ -37,6 +37,12 @@ jobs:
         working-directory: electron
         run: npm install
 
+      - name: Generate app icon from SVG
+        working-directory: electron
+        run: |
+          npm install sharp
+          node gen-icon.js
+
       - name: Build Electron app
         working-directory: electron
         run: npm run build

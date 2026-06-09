@@ -1,6 +1,6 @@
 {
   "name": "music-dl",
-  "version": "2.0.9",
+  "version": "2.1.0",
   "description": "Music DL — Téléchargeur de musique pour Windows",
   "main": "main.js",
   "repository": {
@@ -32,6 +32,7 @@
     "artifactName": "MusicDL-Setup.exe",
     "publish": null,
     "win": {
+      "icon": "icon.png",
       "target": [{ "target": "nsis", "arch": ["x64"] }],
       "requestedExecutionLevel": "asInvoker"
     },
