@@ -31,7 +31,7 @@ os.makedirs(OUT_DIR, exist_ok=True)
 FAV_FILE    = os.path.join(OUT_DIR, ".favorites.json")
 PL_FILE     = os.path.join(OUT_DIR, ".playlists.json")
 DEVICE_FILE = os.path.join(OUT_DIR, "device.json")
-APP_VERSION = "2.6.1"
+APP_VERSION = "2.7.0"
 
 app  = Flask(__name__)
 jobs = {}   # job_id -> {"progress":0,"status":"...","done":False,"error":"","cancelled":False}
@@ -544,7 +544,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 .fav-btn.on{background:rgba(244,63,94,.2);border-color:var(--pink);color:#fda4af;box-shadow:0 2px 10px rgba(244,63,94,.25)}
 
 /* ══ LIBRARY TABLE — SPOTIFY STYLE ══ */
-.lgrid{flex:1;overflow-y:auto;display:flex;flex-direction:column}
+.lgrid{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column}
 /* Table header */
 .ltbl-hd{
   display:grid;
@@ -1240,7 +1240,7 @@ body.is-offline .dl-btn,body.is-offline #alldl{opacity:.3;pointer-events:none}
 
 <div class="pages">
 <!-- PAGE 0: RECHERCHE -->
-<div class="page on" id="page0" style="position:relative">
+<div class="page on" id="page0">
   <div class="offl-wall" id="offl-wall">
     <div class="offl-card">
       <div class="offl-ico">
