@@ -231,38 +231,14 @@
 
 <script>
 (function(){
-  var host = window.location.hostname;
-  var path = window.location.pathname;
-  var repo = path.split('/').filter(Boolean)[0] || 'musicdl';
-  var user = host.replace('.github.io', '');
-  var ghBase = (user && user !== host)
-    ? 'https://github.com/' + user + '/' + repo
-    : 'https://github.com/Advm000/musicdl';
+  // Nom du fichier fixe — défini dans electron/package.json "artifactName"
+  var DL_FILE = 'MusicDL-Setup.exe';
+  var BASE    = 'https://github.com/Advm000/musicdl';
+  var dlUrl   = BASE + '/releases/latest/download/' + DL_FILE;
 
-  var releasesUrl = ghBase + '/releases/latest';
-  document.getElementById('gh-link').href = ghBase + '/releases';
-
-  // Fetch latest release via GitHub API pour avoir le vrai nom du fichier
-  var apiUrl = 'https://api.github.com/repos/' +
-    (user && user !== host ? user : 'Advm000') + '/' + repo + '/releases/latest';
-
-  fetch(apiUrl)
-    .then(function(r){ return r.json(); })
-    .then(function(data){
-      var asset = (data.assets || []).find(function(a){
-        return a.name.toLowerCase().endsWith('.exe') && !a.name.includes('blockmap');
-      });
-      var dlUrl = asset
-        ? asset.browser_download_url
-        : ghBase + '/releases/latest';
-      document.getElementById('dl-btn').href  = dlUrl;
-      document.getElementById('dl-btn2').href = dlUrl;
-    })
-    .catch(function(){
-      // Fallback: page releases
-      document.getElementById('dl-btn').href  = releasesUrl;
-      document.getElementById('dl-btn2').href = releasesUrl;
-    });
+  document.getElementById('dl-btn').href  = dlUrl;
+  document.getElementById('dl-btn2').href = dlUrl;
+  document.getElementById('gh-link').href = BASE + '/releases';
 })();
 </script>
 

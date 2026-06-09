@@ -29,6 +29,7 @@
         "filter": ["**/*"]
       }
     ],
+    "artifactName": "MusicDL-Setup.exe",
     "publish": null,
     "win": {
       "target": [{ "target": "nsis", "arch": ["x64"] }],
