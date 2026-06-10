@@ -33,7 +33,7 @@ os.makedirs(OUT_DIR, exist_ok=True)
 FAV_FILE    = os.path.join(OUT_DIR, ".favorites.json")
 PL_FILE     = os.path.join(OUT_DIR, ".playlists.json")
 DEVICE_FILE = os.path.join(OUT_DIR, "device.json")
-APP_VERSION = "3.0.0"
+APP_VERSION = "3.0.1"
 
 # ── HOME / AUTO-PLAYLISTS ──────────────────────────────────────────────────────
 HOME_CACHE_FILE   = os.path.join(_appdata, "MusicDL", ".home_cache.json")
@@ -1035,14 +1035,23 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 .hm-card{flex-shrink:0;width:162px;cursor:pointer;border-radius:8px;padding:12px;background:#181818;transition:background .2s;position:relative;animation:cardIn .3s ease both}
 .hm-card:hover{background:#252525}
 .hm-card-img{width:138px;height:138px;border-radius:5px;background:#2a2a2a;position:relative;overflow:hidden;margin-bottom:11px;box-shadow:0 8px 28px rgba(0,0,0,.6)}
-.hm-card-img img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .4s ease}
-.hm-card:hover .hm-card-img img{transform:scale(1.05)}
-.hm-card-play{position:absolute;bottom:8px;right:8px;width:46px;height:46px;border-radius:50%;background:#1ed760;display:flex;align-items:center;justify-content:center;opacity:0;transform:translateY(12px);transition:opacity .22s cubic-bezier(.4,0,.2,1),transform .22s cubic-bezier(.4,0,.2,1);box-shadow:0 8px 24px rgba(0,0,0,.5)}
+/* Mosaic cover (2×2 track thumbnails) */
+.hm-mosaic{position:absolute;inset:0;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;overflow:hidden}
+.hm-mos-img{width:100%;height:100%;object-fit:cover;display:block;min-height:0;transition:transform .42s ease}
+.hm-mos-fill{width:100%;height:100%;display:block;min-height:0}
+.hm-cov-over{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;z-index:1;transition:transform .42s ease}
+.hm-card:hover .hm-mos-img,.hm-card:hover .hm-cov-over{transform:scale(1.06)}
+.hm-card-play{position:absolute;bottom:8px;right:8px;width:46px;height:46px;border-radius:50%;background:#1ed760;display:flex;align-items:center;justify-content:center;opacity:0;transform:translateY(12px);transition:opacity .22s cubic-bezier(.4,0,.2,1),transform .22s cubic-bezier(.4,0,.2,1);box-shadow:0 8px 24px rgba(0,0,0,.5);z-index:3}
 .hm-card:hover .hm-card-play{opacity:1;transform:translateY(0)}
 .hm-card-play:hover{background:#1fdf64;transform:scale(1.08)!important}
 .hm-card-name{font-size:14px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px;line-height:1.3}
 .hm-card-sub{font-size:12px;color:rgba(255,255,255,.4);line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.hm-dm-badge{position:absolute;top:8px;left:8px;background:rgba(0,0,0,.72);border-radius:4px;padding:3px 7px;font-size:9px;font-weight:800;color:#fff;letter-spacing:.1em;text-transform:uppercase;backdrop-filter:blur(6px)}
+.hm-dm-badge{position:absolute;top:8px;left:8px;background:rgba(0,0,0,.72);border-radius:4px;padding:3px 7px;font-size:9px;font-weight:800;color:#fff;letter-spacing:.1em;text-transform:uppercase;backdrop-filter:blur(6px);z-index:3}
+/* Detail cover mosaic */
+.hm-det-mosaic{position:absolute;inset:0;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;overflow:hidden;border-radius:inherit}
+.hm-det-mos-img{width:100%;height:100%;object-fit:cover;display:block;min-height:0}
+.hm-det-mos-fill{width:100%;height:100%;display:block;min-height:0}
+.hm-det-cov-over{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;z-index:1;border-radius:inherit}
 /* Mood card */
 .hm-mood{flex-shrink:0;width:162px;cursor:pointer;border-radius:12px;padding:52px 14px 16px;position:relative;overflow:hidden;transition:transform .2s cubic-bezier(.4,0,.2,1),box-shadow .2s;animation:cardIn .3s ease both}
 .hm-mood:hover{transform:translateY(-4px);box-shadow:0 16px 44px rgba(0,0,0,.55)}
@@ -2235,17 +2244,33 @@ function _mkSecFn(title,pls,cardFn,order){
     +'<div class="hm-row">'+cards+'</div></div>';
 }
 
+function _mkMosaicHtml(pl,cls,ovCls){
+  var tracks=pl.tracks||[];
+  var thumbs=[];
+  for(var i=0;i<tracks.length&&thumbs.length<4;i++){
+    if(tracks[i]&&tracks[i].thumb) thumbs.push(tracks[i].thumb);
+  }
+  var c=pl.color||'#7c3aed';
+  var FILLS=['#7c3aed','#06b6d4','#10b981','#f59e0b'];
+  var cells='';
+  for(var j=0;j<4;j++){
+    if(thumbs[j])
+      cells+='<img class="'+(cls||'hm-mos-img')+'" src="'+escH(thumbs[j])+'" loading="lazy" onerror="this.style.display=\'none\'">';
+    else
+      cells+='<div class="'+(cls==='hm-det-mos-img'?'hm-det-mos-fill':'hm-mos-fill')+'" style="background:linear-gradient(135deg,'+escH(FILLS[j%4]||c)+'44,'+escH(c)+'22)"></div>';
+  }
+  var mosaicCls=cls==='hm-det-mos-img'?'hm-det-mosaic':'hm-mosaic';
+  var overlay=pl.picture?'<img class="'+(ovCls||'hm-cov-over')+'" src="'+escH(pl.picture)+'" loading="lazy" onerror="this.remove()">':'';
+  return '<div class="'+mosaicCls+'">'+cells+'</div>'+overlay;
+}
+
 function _mkPlCard(pl,idx){
   var key=pl.key||encodeURIComponent((pl.name||'').replace(/\s+/g,'_').toLowerCase());
-  var grad='linear-gradient(135deg,'+(pl.color||'#7c3aed')+',#06b6d4)';
-  var imgIn=pl.picture
-    ?('<img src="'+escH(pl.picture)+'" onerror="this.parentNode.style.background=\''+escH(grad)+'\';this.remove()">')
-    :('<div style="width:100%;height:100%;background:'+escH(grad)+'"></div>');
   var badge=pl.type==='daily'?'<div class="hm-dm-badge">Daily Mix</div>':
              pl.type==='news'?'<div class="hm-dm-badge" style="background:#f43f5e">NEW</div>':'';
   var sub=(pl.artists||[]).slice(0,3).join(', ');
   return '<div class="hm-card" onclick="openHomeDetail(\''+escH(key)+'\')" style="animation-delay:'+((idx||0)*40)+'ms">'
-    +'<div class="hm-card-img">'+imgIn+badge
+    +'<div class="hm-card-img">'+_mkMosaicHtml(pl)+badge
     +'<div class="hm-card-play" onclick="event.stopPropagation();openHomeDetail(\''+escH(key)+'\');playHomeAll()">'
     +'<svg width="16" height="16" viewBox="0 0 24 24" fill="#000"><polygon points="5,3 19,12 5,21"/></svg>'
     +'</div></div>'
@@ -2327,9 +2352,14 @@ function openHomeDetail(key){
   var isRound=pl.type==='station'||pl.type==='artist'||pl.type==='decouverte';
   var covEl=document.getElementById('home-detail-cover');
   covEl.style.borderRadius=isRound?'50%':'12px';
-  covEl.innerHTML=pl.picture
-    ?'<img src="'+escH(pl.picture)+'" style="width:100%;height:100%;object-fit:cover">'
-    :'<div style="width:100%;height:100%;background:linear-gradient(135deg,'+escH(grad)+',#06b6d4)"></div>';
+  covEl.style.position='relative';covEl.style.overflow='hidden';
+  if(isRound){
+    covEl.innerHTML=pl.picture
+      ?'<img src="'+escH(pl.picture)+'" style="width:100%;height:100%;object-fit:cover;display:block">'
+      :'<div style="width:100%;height:100%;background:linear-gradient(135deg,'+escH(grad)+',#06b6d4)"></div>';
+  } else {
+    covEl.innerHTML=_mkMosaicHtml(pl,'hm-det-mos-img','hm-det-cov-over');
+  }
   var headBg=document.getElementById('home-detail-head-bg');
   if(headBg) headBg.style.background='linear-gradient(180deg,'+grad+' 0%,transparent 100%)';
   var typeMap={daily:'Daily Mix',station:'Radio',artist:'Artiste Mix',genre:'Genre Mix',mood:'Ambiance',throwback:'Throwback',decouverte:'Découverte',news:'Nouveautés'};
