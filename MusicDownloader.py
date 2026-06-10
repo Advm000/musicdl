@@ -33,7 +33,7 @@ os.makedirs(OUT_DIR, exist_ok=True)
 FAV_FILE    = os.path.join(OUT_DIR, ".favorites.json")
 PL_FILE     = os.path.join(OUT_DIR, ".playlists.json")
 DEVICE_FILE = os.path.join(OUT_DIR, "device.json")
-APP_VERSION = "2.9.0"
+APP_VERSION = "3.0.0"
 
 # ── HOME / AUTO-PLAYLISTS ──────────────────────────────────────────────────────
 HOME_CACHE_FILE   = os.path.join(_appdata, "MusicDL", ".home_cache.json")
@@ -370,10 +370,12 @@ def api_home():
         return jsonify({"playlists":[],"artists":artists,"generating":False})
     cache = _jload(HOME_CACHE_FILE, {})
     now = time.time()
-    fresh = all(
+    _EXPECTED_TYPES = {"daily","station","artist","genre","mood","throwback","decouverte","news"}
+    _cached_types   = {v.get("type","") for v in cache.values()}
+    fresh = bool(cache) and _EXPECTED_TYPES.issubset(_cached_types) and all(
         now - v.get("generated_at",0) < REFRESH_INTERVALS.get(v.get("type","daily"),86400)
         for v in cache.values()
-    ) if cache else False
+    )
     if fresh:
         return jsonify({"playlists":list(cache.values()),"artists":artists,"generating":False})
     with _home_lock:
@@ -585,8 +587,8 @@ def _generate_home(artists):
                        "picture":artist_info.get(a0,{}).get("picture",""),
                        "tracks":tracks,"generated_at":now,"color":GRAD[(idx-1)%8]}
 
-    # ── Artist Stations (up to 6) — 50 tracks each ───────────────────────────
-    for i, artist in enumerate(list(artists)[:6]):
+    # ── Artist Stations — one per library artist (cap 20) ───────────────────
+    for i, artist in enumerate(list(artists)[:20]):
         safe = re.sub(r"[^\w]","_", artist.lower())
         key  = "station_" + safe
         if not _needs(key, "station"):
@@ -602,8 +604,8 @@ def _generate_home(artists):
                        "picture":artist_info.get(artist,{}).get("picture",""),
                        "tracks":tracks,"generated_at":now,"color":GRAD[i%8]}
 
-    # ── Artist Mix — best of one artist — 50 tracks ───────────────────────────
-    for i, artist in enumerate(list(artists)[:5]):
+    # ── Artist Mix — best of one artist, all library artists (cap 20) ──────
+    for i, artist in enumerate(list(artists)[:20]):
         safe = re.sub(r"[^\w]","_", artist.lower())
         key  = "artist_" + safe
         if not _needs(key, "artist"):
@@ -2114,6 +2116,7 @@ function goTab(i){
     if(t)t.classList.toggle('on',n===i);
   });
   _curTab=i;
+  if(i!==3) closeHomeDetail();
   if(i===1){var ls=document.getElementById('lib-search');if(ls&&libQuery){libQuery='';ls.value='';} loadLib();}
   if(i===2) loadPlaylists();
   if(i===3) loadHome();
