@@ -5,6 +5,7 @@ Interface web professionnelle avec glassmorphism et animations CSS 3D
 
 import os, io, json, uuid, shutil, tempfile, threading, time, webbrowser, socket, struct, zlib, platform
 import concurrent.futures
+import urllib.request, urllib.parse
 from datetime import datetime
 from flask import Flask, Response, request, jsonify, send_file, stream_with_context
 import yt_dlp, imageio_ffmpeg
@@ -35,7 +36,7 @@ DEVICE_FILE = os.path.join(OUT_DIR, "device.json")
 APP_VERSION = "2.8.0"
 
 # ── HOME / AUTO-PLAYLISTS ──────────────────────────────────────────────────────
-HOME_CACHE_FILE   = os.path.join(os.environ.get("LOCALAPPDATA") or os.path.join(os.path.expanduser("~"), "AppData", "Local"), "MusicDL", ".home_cache.json")
+HOME_CACHE_FILE   = os.path.join(_appdata, "MusicDL", ".home_cache.json")
 LASTFM_KEY        = "ea1d7dc215630b0a24a419698442337d"
 REFRESH_INTERVALS = {"daily": 86400, "news": 43200, "artist": 172800, "genre": 172800}
 GENRE_KEYWORDS    = {
@@ -101,7 +102,6 @@ def api_version():
 @app.route("/api/ping")
 def api_ping():
     """Vérifie la connectivité internet réelle (pas juste le réseau local)."""
-    import urllib.request
     try:
         urllib.request.urlopen("https://www.google.com", timeout=4)
         return jsonify({"online": True})
@@ -120,7 +120,6 @@ def api_quit():
 
 @app.route("/api/suggest")
 def api_suggest():
-    import urllib.request, urllib.parse
     q = request.args.get("q", "").strip()
     if not q:
         return jsonify([])
@@ -133,14 +132,15 @@ def api_suggest():
         data = json.loads(raw)
         suggestions = data[1] if len(data) > 1 else []
         return jsonify(suggestions[:8])
-    except:
+    except Exception:
         return jsonify([])
 
 
 @app.route("/api/search")
 def api_search():
     q = request.args.get("q", "").strip()
-    n = min(int(request.args.get("n", 20)), 100)
+    try: n = min(int(request.args.get("n", 20)), 100)
+    except (ValueError, TypeError): n = 20
     if not q:
         return jsonify([])
     try:
@@ -169,7 +169,7 @@ def api_search():
 
 @app.route("/api/download", methods=["POST"])
 def api_download():
-    data   = request.json
+    data   = request.json or {}
     vid_id = data.get("id","")
     url    = data.get("url") or f"https://www.youtube.com/watch?v={vid_id}"
     title  = data.get("title","track")
@@ -485,7 +485,6 @@ def _fmt_views(n):
     return f"{n} vues"
 
 def _deezer_artist(name):
-    import urllib.request, urllib.parse
     try:
         url = "https://api.deezer.com/search/artist?q="+urllib.parse.quote(name)+"&limit=1"
         req = urllib.request.Request(url, headers={"User-Agent":"Mozilla/5.0"})
@@ -495,10 +494,9 @@ def _deezer_artist(name):
         if not items: return {}
         a = items[0]
         return {"picture": a.get("picture_medium",""), "name": a.get("name","")}
-    except: return {}
+    except Exception: return {}
 
 def _lastfm_artist(name):
-    import urllib.request, urllib.parse
     try:
         url = ("http://ws.audioscrobbler.com/2.0/?method=artist.getInfo"
                "&artist="+urllib.parse.quote(name)
@@ -510,7 +508,7 @@ def _lastfm_artist(name):
         tags    = [t["name"].lower() for t in artist.get("tags",{}).get("tag",[])]
         similar = [s["name"] for s in artist.get("similar",{}).get("artist",[])[:4]]
         return {"tags": tags, "similar": similar}
-    except: return {"tags":[], "similar":[]}
+    except Exception: return {"tags":[], "similar":[]}
 
 def _detect_genre(tags):
     for genre, kws in GENRE_KEYWORDS.items():
@@ -536,10 +534,9 @@ def _yt_quick(query, n=12):
                         "views":_fmt_views(e.get("view_count")),
                         "thumb":thumb,"url":e.get("url","")})
         return out
-    except: return []
+    except Exception: return []
 
 def _generate_home(artists):
-    global _home_generating
     import random as rnd
 
     def _fetch(a):
@@ -570,7 +567,7 @@ def _generate_home(artists):
             result[key] = cache[key]; continue
         q = " ".join(chunk[:2])+" best mix playlist"
         tracks = _yt_quick(q, 15)
-        result[key] = {"name":f"Daily Mix {idx}","type":"daily","artists":chunk,
+        result[key] = {"key":key,"name":f"Daily Mix {idx}","type":"daily","artists":chunk,
                        "picture":artist_info.get(chunk[0],{}).get("picture",""),
                        "tracks":tracks,"generated_at":now,
                        "color":GRAD_COLORS[idx-1]}
@@ -582,7 +579,7 @@ def _generate_home(artists):
         if not _needs(key,"artist"):
             result[key] = cache[key]; continue
         tracks = _yt_quick(f"{artist} best hits top songs", 12)
-        result[key] = {"name":f"{artist} Mix","type":"artist","artists":[artist],
+        result[key] = {"key":key,"name":f"{artist} Mix","type":"artist","artists":[artist],
                        "picture":artist_info.get(artist,{}).get("picture",""),
                        "tracks":tracks,"generated_at":now,"color":"#10b981"}
 
@@ -597,7 +594,7 @@ def _generate_home(artists):
             result[key] = cache[key]; continue
         q = " ".join(g_artists[:2])+f" {genre} mix playlist"
         tracks = _yt_quick(q, 15)
-        result[key] = {"name":f"{genre} Mix","type":"genre","artists":g_artists,
+        result[key] = {"key":key,"name":f"{genre} Mix","type":"genre","artists":g_artists,
                        "picture":artist_info.get(g_artists[0],{}).get("picture",""),
                        "tracks":tracks,"generated_at":now,
                        "color":GRAD_COLORS[3+i%3]}
@@ -609,7 +606,7 @@ def _generate_home(artists):
         for a in list(artists)[:4]:
             all_tracks += _yt_quick(f"{a} 2025 nouveau son", 3)
         rnd.shuffle(all_tracks)
-        result[key] = {"name":"Nouveautés 🔥","type":"news",
+        result[key] = {"key":key,"name":"Nouveautés 🔥","type":"news",
                        "artists":list(artists)[:4],"picture":"",
                        "tracks":all_tracks[:18],"generated_at":now,"color":"#f43f5e"}
     else:
@@ -1065,9 +1062,6 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 .pl-song:hover .pl-song-rm{color:rgba(244,63,94,.6)}
 .pl-song-rm:hover{background:rgba(244,63,94,.18)!important;color:#f43f5e!important;transform:scale(1.18)}
 .pl-empty{padding:60px 20px;text-align:center;color:rgba(255,255,255,.18);font-size:13px;line-height:1.8}
-/* Unused old classes kept for compat */
-.pl-dhd,.pl-dname,.pl-playall,.pl-song-play{display:none}
-
 /* ══ POPUP PLAYLIST ══ */
 #pl-popup{display:none;position:fixed;z-index:500;background:rgba(10,10,30,.95);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid rgba(124,58,237,.28);border-radius:14px;padding:6px;box-shadow:0 12px 40px rgba(0,0,0,.7),0 0 0 1px rgba(255,255,255,.03);min-width:190px}
 #pl-popup.show{display:block;animation:popIn .18s cubic-bezier(.4,0,.2,1)}
@@ -1981,10 +1975,11 @@ function _startHomePoll(){
 
 function refreshHome(){
   var btn=document.getElementById('home-refresh-all');
-  if(btn){btn.style.animation='spin .6s linear';setTimeout(function(){btn.style.animation='';},700);}
+  if(btn){btn.style.animation='spin .6s linear infinite';setTimeout(function(){btn.style.animation='';},700);}
   var cache=_homeData?(_homeData.playlists||[]):[];
   var promises=cache.map(function(pl){
-    return fetch('/api/home/refresh/'+encodeURIComponent(pl.name.replace(/\s+/g,'_').toLowerCase()),{method:'POST'});
+    var k=pl.key||pl.name.replace(/\s+/g,'_').toLowerCase();
+    return fetch('/api/home/refresh/'+encodeURIComponent(k),{method:'POST'});
   });
   Promise.all(promises).then(function(){loadHome();}).catch(function(){loadHome();});
 }
@@ -2099,6 +2094,7 @@ function playHomeAll(){
 
 /* INIT */
 fetch('/api/favorites').then(function(r){return r.json()}).then(function(f){f.forEach(function(fn){favSet.add(fn)})});
+function escH(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 document.getElementById('q').focus();
 
 /* RECHERCHE */
@@ -2264,10 +2260,10 @@ function mkLib(f,i){
 }
 
 /* FAVORIS */
-function toggleFav(fn,ico){
+function toggleFav(fn,favBtn){
   fetch('/api/favorites/toggle/'+encodeURIComponent(fn),{method:'POST'}).then(function(r){return r.json()}).then(function(r){
-    if(r.added){favSet.add(fn);ico.innerHTML=ICO_HEART_F;ico.classList.add('on');}
-    else{favSet.delete(fn);ico.innerHTML=ICO_HEART_E;ico.classList.remove('on');}
+    if(r.added){favSet.add(fn);favBtn.innerHTML=ICO_HEART_F;favBtn.classList.add('on');}
+    else{favSet.delete(fn);favBtn.innerHTML=ICO_HEART_E;favBtn.classList.remove('on');}
     if(favOn)renderLib();
   });
 }
@@ -2371,7 +2367,7 @@ function renderPlDetail(name){
   var totalSec=0;
   files.forEach(function(fn){
     var m=libMap[fn];
-    if(m&&m.duration){var p=m.duration.split(':');if(p.length===2)totalSec+=parseInt(p[0]||0)*60+parseInt(p[1]||0);}
+    if(m&&m.duration){var p=m.duration.split(':').map(Number);if(p.length===2)totalSec+=p[0]*60+p[1];else if(p.length===3)totalSec+=p[0]*3600+p[1]*60+p[2];}
   });
   var durStr='';
   if(totalSec>0){var h=Math.floor(totalSec/3600),mn=Math.floor((totalSec%3600)/60);durStr=h>0?h+' hr '+mn+' min':mn+' min';}
@@ -2692,7 +2688,7 @@ aud.addEventListener('timeupdate',function(){
   if(!plyDragging){document.getElementById('ply-bar-f').style.width=p+'%';document.getElementById('ply-cur').textContent=tc;document.getElementById('ply-dur').textContent=td;}
   if(!npDragging){var nf=document.getElementById('np-fill');if(nf)nf.style.width=p+'%';var nc=document.getElementById('np-cur');if(nc)nc.textContent=tc;var nd=document.getElementById('np-dur');if(nd)nd.textContent=td;}
   var ptf=document.getElementById('ply-prog-top-f');if(ptf)ptf.style.width=p+'%';
-  if('mediaSession' in navigator&&navigator.setPositionState){try{navigator.mediaSession.setPositionState({duration:aud.duration,playbackRate:aud.playbackRate||1,position:aud.currentTime});}catch(e){}}
+  if('mediaSession' in navigator&&navigator.mediaSession.setPositionState){try{navigator.mediaSession.setPositionState({duration:aud.duration,playbackRate:aud.playbackRate||1,position:aud.currentTime});}catch(e){}}
 });
 function seekFromTop(e){
   var bar=document.getElementById('ply-prog-top');
@@ -2976,7 +2972,6 @@ def app_icon():
   <rect x="394" y="78" width="56" height="185" rx="28" fill="white"/>
   <polygon points="364,238 420,318 476,238" fill="white"/>
 </svg>'''
-    from flask import Response
     return Response(svg, mimetype='image/svg+xml', headers={'Cache-Control':'public,max-age=86400'})
 
 @app.route("/manifest.json")
