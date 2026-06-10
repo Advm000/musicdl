@@ -3,11 +3,58 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
-  <title>Music DL — Téléchargeur de musique gratuit pour Windows</title>
-  <meta name="description" content="Téléchargez vos musiques depuis YouTube en MP3 320 kbps. Playlists, lecteur audio intégré, pochettes automatiques. Mise à jour automatique. Gratuit.">
-  <meta property="og:title" content="Music DL — Téléchargeur de musique gratuit">
-  <meta property="og:description" content="YouTube → MP3 · Playlists · Lecteur audio · Mise à jour auto · Windows 10/11">
+
+  <!-- Google Search Console -->
+  <meta name="google-site-verification" content="8MLWJijjGvXruA_HC6IQd7LGEblW1qxVWUt1pESNMHA" />
+
+  <!-- Google AdSense -->
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7471349162509691" crossorigin="anonymous"></script>
+
+  <!-- SEO Primary -->
+  <title>Music DL — Télécharger musique MP3 gratuit | Windows & Android</title>
+  <meta name="description" content="Music DL : téléchargez de la musique depuis YouTube en MP3 320 kbps gratuitement. Application Windows et Android. Playlists, lecteur audio, pochettes automatiques. 100% gratuit et open-source.">
+  <meta name="keywords" content="music dl, télécharger musique gratuit, youtube mp3, convertisseur youtube mp3, téléchargeur musique, music downloader gratuit, mp3 320kbps, music dl app, musicdl">
+  <meta name="author" content="Music DL">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://musicdl-official.netlify.app/">
+
+  <!-- Open Graph (Facebook, WhatsApp, Discord) -->
+  <meta property="og:title" content="Music DL — Télécharger musique MP3 gratuit">
+  <meta property="og:description" content="Téléchargez vos musiques depuis YouTube en MP3 320 kbps. Windows & Android. Gratuit et open-source.">
   <meta property="og:type" content="website">
+  <meta property="og:url" content="https://musicdl-official.netlify.app/">
+  <meta property="og:site_name" content="Music DL">
+  <meta property="og:locale" content="fr_FR">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Music DL — Télécharger musique MP3 gratuit">
+  <meta name="twitter:description" content="YouTube → MP3 320kbps. Windows & Android. Gratuit.">
+
+  <!-- Schema.org SoftwareApplication (Google Rich Results) -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Music DL",
+    "alternateName": "MusicDL",
+    "description": "Téléchargez de la musique depuis YouTube en MP3 320 kbps. Application gratuite pour Windows et Android.",
+    "url": "https://musicdl-official.netlify.app/",
+    "downloadUrl": "https://github.com/Advm000/musicdl/releases/latest/download/MusicDL-Setup.exe",
+    "operatingSystem": "Windows 10, Windows 11, Android",
+    "applicationCategory": "MultimediaApplication",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "EUR"
+    },
+    "softwareVersion": "3.1.0",
+    "author": {
+      "@type": "Person",
+      "name": "Advm000"
+    }
+  }
+  </script>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><defs><linearGradient id='g' x1='0' y1='0' x2='512' y2='512' gradientUnits='userSpaceOnUse'><stop offset='0%25' stop-color='%237c3aed'/><stop offset='100%25' stop-color='%230891b2'/></linearGradient></defs><rect width='512' height='512' rx='112' fill='url(%23g)'/><rect x='60' y='292' width='80' height='160' rx='40' fill='white' opacity='.92'/><rect x='182' y='196' width='80' height='256' rx='40' fill='white'/><rect x='304' y='242' width='80' height='210' rx='40' fill='white' opacity='.88'/><rect x='394' y='78' width='56' height='185' rx='28' fill='white'/><polygon points='364,238 420,318 476,238' fill='white'/></svg>">
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -47,9 +94,13 @@
     .hero-sub{font-size:1.15rem;color:var(--muted);margin-bottom:44px;line-height:1.75;max-width:560px;margin-left:auto;margin-right:auto}
 
     .hero-cta{display:flex;flex-direction:column;align-items:center;gap:14px}
+    .hero-dl-row{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
     .btn-primary{display:inline-flex;flex-direction:column;align-items:center;gap:5px;padding:18px 48px;background:var(--grad);color:#fff;text-decoration:none;border-radius:16px;font-weight:700;font-size:1.05rem;box-shadow:0 8px 40px rgba(124,58,237,.5);transition:transform .22s,box-shadow .22s;cursor:pointer;border:none;font-family:inherit}
     .btn-primary:hover{transform:translateY(-4px) scale(1.02);box-shadow:0 20px 60px rgba(124,58,237,.65)}
     .btn-primary small{font-size:.73rem;font-weight:400;opacity:.82}
+    .btn-android{display:inline-flex;flex-direction:column;align-items:center;gap:5px;padding:18px 40px;background:linear-gradient(135deg,#10b981,#059669);color:#fff;text-decoration:none;border-radius:16px;font-weight:700;font-size:1.05rem;box-shadow:0 8px 40px rgba(16,185,129,.4);transition:transform .22s,box-shadow .22s}
+    .btn-android:hover{transform:translateY(-4px) scale(1.02);box-shadow:0 20px 60px rgba(16,185,129,.6)}
+    .btn-android small{font-size:.73rem;font-weight:400;opacity:.82}
     .btn-secondary{display:inline-flex;align-items:center;gap:7px;color:var(--muted);text-decoration:none;font-size:.88rem;transition:color .18s}
     .btn-secondary:hover{color:var(--text)}
 
@@ -170,15 +221,22 @@
     </p>
 
     <div class="hero-cta">
-      <a id="dl-hero" href="https://github.com/Advm000/musicdl/releases/latest/download/MusicDL-Setup.exe" class="btn-primary">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-          <polyline points="7 10 12 15 17 10"/>
-          <line x1="12" y1="15" x2="12" y2="3"/>
-        </svg>
-        Télécharger pour Windows
-        <small>Gratuit · <span id="hero-ver" class="ver-loading">…</span> · Windows 10/11</small>
-      </a>
+      <div class="hero-dl-row">
+        <a id="dl-hero" href="https://github.com/Advm000/musicdl/releases/latest/download/MusicDL-Setup.exe" class="btn-primary">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="3" width="20" height="14" rx="2"/><polyline points="8 21 12 17 16 21"/>
+          </svg>
+          Télécharger pour Windows
+          <small>Gratuit · <span id="hero-ver" class="ver-loading">…</span> · Windows 10/11</small>
+        </a>
+        <a href="https://github.com/Advm000/musicdl-android/releases/download/v1.0.0/MusicDL-v1.0.0.apk" class="btn-android">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/>
+          </svg>
+          Télécharger pour Android
+          <small>APK · v1.0.0 · Android 7+</small>
+        </a>
+      </div>
       <a id="gh-releases" href="https://github.com/Advm000/musicdl/releases" target="_blank" class="btn-secondary">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/>
@@ -190,6 +248,7 @@
     <div class="hero-badges">
       <span class="badge">Gratuit &amp; open-source</span>
       <span class="badge">Windows 10 / 11</span>
+      <span class="badge">Android 7+</span>
       <span class="badge">MP3 · 320 kbps</span>
       <span class="badge">Mode hors-ligne</span>
       <span class="badge">Mise à jour automatique</span>
