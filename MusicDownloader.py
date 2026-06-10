@@ -33,12 +33,12 @@ os.makedirs(OUT_DIR, exist_ok=True)
 FAV_FILE    = os.path.join(OUT_DIR, ".favorites.json")
 PL_FILE     = os.path.join(OUT_DIR, ".playlists.json")
 DEVICE_FILE = os.path.join(OUT_DIR, "device.json")
-APP_VERSION = "2.8.6"
+APP_VERSION = "2.9.0"
 
 # ── HOME / AUTO-PLAYLISTS ──────────────────────────────────────────────────────
 HOME_CACHE_FILE   = os.path.join(_appdata, "MusicDL", ".home_cache.json")
 LASTFM_KEY        = "ea1d7dc215630b0a24a419698442337d"
-REFRESH_INTERVALS = {"daily": 86400, "news": 43200, "artist": 172800, "genre": 172800, "station": 172800}
+REFRESH_INTERVALS = {"daily": 86400, "news": 43200, "artist": 172800, "genre": 172800, "station": 172800, "mood": 86400, "throwback": 604800, "decouverte": 172800}
 GENRE_KEYWORDS    = {
     "Rap":       ["rap","hip-hop","hip hop","gangsta rap","trap rap"],
     "Trap":      ["trap","drill","cloud rap","plugg"],
@@ -539,7 +539,6 @@ def _yt_quick(query, n=12):
 def _generate_home(artists):
     import random as rnd
 
-    # Genre tag keywords for disambiguation — to refine YouTube queries
     _DISAMBIG_KW = ["rap","hip","r&b","rnb","soul","rai","chaabi","gnawa","trap","drill",
                     "afro","arab","maghreb","french","marocain","algerien","tunisien",
                     "pop","rock","chill","lo-fi","k-pop","dancehall"]
@@ -549,7 +548,6 @@ def _generate_home(artists):
         lf = _lastfm_artist(a)
         tags   = lf.get("tags", [])
         genre  = _detect_genre(tags)
-        # Pick the first tag that helps disambiguate (e.g. "rap français" for Shaw)
         genre_hint = next((t for t in tags[:5]
                            if any(kw in t for kw in _DISAMBIG_KW)), "")
         return a, {"picture": dz.get("picture",""), "genre": genre,
@@ -568,53 +566,59 @@ def _generate_home(artists):
     result = {}
     GRAD = ["#7c3aed","#06b6d4","#f43f5e","#10b981","#f59e0b","#8b5cf6","#0ea5e9","#ec4899"]
 
-    # ── Daily Mix (up to 6) ──────────────────────────────────────────────────
+    # ── Daily Mix (up to 6) — 50 tracks each ─────────────────────────────────
     shuffled = list(artists); rnd.shuffle(shuffled)
-    # Pad list so we always get 6 mixes even with few artists
     while len(shuffled) < 18: shuffled += list(artists)
     chunks = [shuffled[i:i+3] for i in range(0, 18, 3)]
     for idx, chunk in enumerate(chunks[:6], 1):
-        key = f"daily_mix_{idx}"
+        key = "daily_mix_" + str(idx)
         if not _needs(key, "daily"):
             result[key] = cache[key]; continue
         a0   = chunk[0]
         hint = artist_info.get(a0,{}).get("genre_hint","")
-        # Quote artist names to avoid cross-genre results
-        q = " ".join(f'"{c}"' for c in chunk[:2]) + (f" {hint}" if hint else "") + " mix"
-        tracks = _yt_quick(q, 25)
-        result[key] = {"key":key,"name":f"Daily Mix {idx}","type":"daily","artists":chunk,
+        q_parts = ['"' + c + '"' for c in chunk[:2]]
+        if hint: q_parts.append(hint)
+        q_parts.append("mix playlist")
+        q = " ".join(q_parts)
+        tracks = _yt_quick(q, 50)
+        result[key] = {"key":key,"name":"Daily Mix " + str(idx),"type":"daily","artists":chunk,
                        "picture":artist_info.get(a0,{}).get("picture",""),
                        "tracks":tracks,"generated_at":now,"color":GRAD[(idx-1)%8]}
 
-    # ── Artist Stations (up to 6) — like Spotify Radio ──────────────────────
+    # ── Artist Stations (up to 6) — 50 tracks each ───────────────────────────
     for i, artist in enumerate(list(artists)[:6]):
         safe = re.sub(r"[^\w]","_", artist.lower())
-        key  = f"station_{safe}"
+        key  = "station_" + safe
         if not _needs(key, "station"):
             result[key] = cache[key]; continue
         hint    = artist_info.get(artist,{}).get("genre_hint","")
         similar = artist_info.get(artist,{}).get("similar",[])[:2]
-        # Quote artist name for disambiguation + include genre hint
-        q = f'"{artist}"' + (f" {hint}" if hint else "") + " playlist officiel"
-        tracks = _yt_quick(q, 20)
-        result[key] = {"key":key,"name":f"{artist} Radio","type":"station","artists":[artist]+similar,
+        q_parts = ['"' + artist + '"']
+        if hint: q_parts.append(hint)
+        q_parts.append("playlist officiel top")
+        q = " ".join(q_parts)
+        tracks = _yt_quick(q, 50)
+        result[key] = {"key":key,"name":artist+" Radio","type":"station","artists":[artist]+similar,
                        "picture":artist_info.get(artist,{}).get("picture",""),
                        "tracks":tracks,"generated_at":now,"color":GRAD[i%8]}
 
-    # ── Artist Mix — best of one artist ──────────────────────────────────────
+    # ── Artist Mix — best of one artist — 50 tracks ───────────────────────────
     for i, artist in enumerate(list(artists)[:5]):
         safe = re.sub(r"[^\w]","_", artist.lower())
-        key  = f"artist_{safe}"
+        key  = "artist_" + safe
         if not _needs(key, "artist"):
             result[key] = cache[key]; continue
         hint  = artist_info.get(artist,{}).get("genre_hint","")
-        q = f'"{artist}"' + (f" {hint}" if hint else "") + " meilleurs sons top"
-        tracks = _yt_quick(q, 20)
-        result[key] = {"key":key,"name":f"{artist} Mix","type":"artist","artists":[artist],
+        q_parts = ['"' + artist + '"']
+        if hint: q_parts.append(hint)
+        q_parts.append("meilleurs sons top 50")
+        q = " ".join(q_parts)
+        tracks = _yt_quick(q, 50)
+        result[key] = {"key":key,"name":artist+" Mix","type":"artist","artists":[artist],
                        "picture":artist_info.get(artist,{}).get("picture",""),
                        "tracks":tracks,"generated_at":now,"color":GRAD[(i+2)%8]}
 
-    # ── Genre Mix ─────────────────────────────────────────────────────────────
+    # ── Genre Mix — 50 tracks each ────────────────────────────────────────────
     genre_groups = {}
     for a, info in artist_info.items():
         if info["genre"]: genre_groups.setdefault(info["genre"],[]).append(a)
@@ -624,23 +628,94 @@ def _generate_home(artists):
         if not _needs(key, "genre"):
             result[key] = cache[key]; continue
         hint = artist_info.get(g_artists[0],{}).get("genre_hint","")
-        q = " ".join(f'"{a}"' for a in g_artists[:2]) + f" {genre} {hint} mix playlist"
-        tracks = _yt_quick(q, 20)
-        result[key] = {"key":key,"name":f"{genre} Mix","type":"genre","artists":g_artists,
+        q_parts = ['"' + a + '"' for a in g_artists[:2]]
+        q_parts.append(genre)
+        if hint: q_parts.append(hint)
+        q_parts.append("mix playlist")
+        q = " ".join(q_parts)
+        tracks = _yt_quick(q, 50)
+        result[key] = {"key":key,"name":genre+" Mix","type":"genre","artists":g_artists,
                        "picture":artist_info.get(g_artists[0],{}).get("picture",""),
                        "tracks":tracks,"generated_at":now,"color":GRAD[(i+4)%8]}
 
-    # ── Nouveautés ────────────────────────────────────────────────────────────
+    # ── Mood Mix (NEW) — 4 ambiances, 50 tracks each ─────────────────────────
+    a0 = artists[0] if artists else ""
+    base_hint = artist_info.get(a0, {}).get("genre_hint", "")
+    MOODS = [
+        ("Mix Chill",   "chill relaxing lofi ambient",             "#06b6d4"),
+        ("Mix Focus",   "focus concentration study instrumental",  "#10b981"),
+        ("Mix Energie", "energy workout motivation upbeat",        "#f59e0b"),
+        ("Mix Nuit",    "late night sombre vibes chill",           "#8b5cf6"),
+    ]
+    for mood_name, mood_kw, mood_color in MOODS:
+        safe_m = re.sub(r'[^\w]', '_', mood_name.lower())
+        key = "mood_" + safe_m
+        if not _needs(key, "mood"):
+            result[key] = cache[key]; continue
+        q_parts = mood_kw.split()
+        if base_hint: q_parts.append(base_hint)
+        q_parts.append("playlist mix 2024")
+        q = " ".join(q_parts)
+        tracks = _yt_quick(q, 50)
+        result[key] = {"key": key, "name": mood_name, "type": "mood",
+                       "artists": list(artists)[:3],
+                       "picture": artist_info.get(a0, {}).get("picture", ""),
+                       "tracks": tracks, "generated_at": now, "color": mood_color}
+
+    # ── Throwback Mix (NEW) — 2 décennies, 50 tracks each ────────────────────
+    THROWBACKS = [
+        ("Throwback 2010s", "2010s hits classics best"),
+        ("Throwback 2000s", "2000s hits throwback nostalgia"),
+    ]
+    for tb_name, tb_kw in THROWBACKS:
+        safe_t = re.sub(r'[^\w]', '_', tb_name.lower())
+        key = "throw_" + safe_t
+        if not _needs(key, "throwback"):
+            result[key] = cache[key]; continue
+        q_parts = tb_kw.split()
+        if base_hint: q_parts.append(base_hint)
+        q_parts.append("playlist mix")
+        q = " ".join(q_parts)
+        tracks = _yt_quick(q, 50)
+        result[key] = {"key": key, "name": tb_name, "type": "throwback",
+                       "artists": list(artists)[:3],
+                       "picture": "", "tracks": tracks,
+                       "generated_at": now, "color": "#ec4899"}
+
+    # ── Découvertes (NEW) — artistes similaires, 50 tracks each ──────────────
+    all_similar = []
+    known = set(a.lower() for a in artists)
+    for a, info in artist_info.items():
+        for s in info.get("similar", []):
+            if s.lower() not in known and s not in all_similar:
+                all_similar.append(s)
+    rnd.shuffle(all_similar)
+    for i, sim_artist in enumerate(all_similar[:3]):
+        safe_s = re.sub(r'[^\w]', '_', sim_artist.lower())
+        key = "dec_" + safe_s
+        if not _needs(key, "decouverte"):
+            result[key] = cache[key]; continue
+        q = '"' + sim_artist + '" meilleurs sons mix playlist'
+        tracks = _yt_quick(q, 50)
+        dz_pic = _deezer_artist(sim_artist).get("picture", "")
+        result[key] = {"key": key, "name": sim_artist, "type": "decouverte",
+                       "artists": [sim_artist], "picture": dz_pic,
+                       "tracks": tracks, "generated_at": now, "color": GRAD[(i+1)%8]}
+
+    # ── Nouveautés — 50 tracks ────────────────────────────────────────────────
     key = "news"
     if _needs(key, "news"):
         all_tracks = []
-        for a in list(artists)[:4]:
+        for a in list(artists)[:6]:
             hint = artist_info.get(a,{}).get("genre_hint","")
-            all_tracks += _yt_quick(f'"{a}" {hint} 2025 nouveau'.strip(), 5)
+            q_parts = ['"' + a + '"']
+            if hint: q_parts.append(hint)
+            q_parts.append("2025 nouveau")
+            all_tracks += _yt_quick(" ".join(q_parts), 9)
         rnd.shuffle(all_tracks)
-        result[key] = {"key":key,"name":"Nouveautés","type":"news",
+        result[key] = {"key":key,"name":"Nouveautés 2025","type":"news",
                        "artists":list(artists)[:4],"picture":"",
-                       "tracks":all_tracks[:20],"generated_at":now,"color":"#f43f5e"}
+                       "tracks":all_tracks[:50],"generated_at":now,"color":"#f43f5e"}
     else:
         if key in cache: result[key] = cache[key]
 
@@ -924,72 +999,120 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 .cs-sub{font-size:15px;color:#64748b;max-width:400px;line-height:1.7;margin-bottom:36px}
 .cs-chips{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
 .cs-chip{padding:8px 18px;border-radius:20px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);font-size:13px;color:#94a3b8}
-/* ── Home Page ── */
-.home-wrap{flex:1;overflow-y:auto;padding:0 0 120px;display:flex;flex-direction:column}
-.home-header{display:flex;align-items:flex-start;justify-content:space-between;padding:22px 18px 6px}
-.home-title{font-size:26px;font-weight:800;letter-spacing:-.03em;color:#fff;line-height:1.15}
-.home-title-sub{font-size:13px;font-weight:400;color:rgba(255,255,255,.5);display:block;margin-top:3px}
-.home-refresh-all{background:transparent;border:none;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:rgba(255,255,255,.35);transition:color .18s;flex-shrink:0;margin-top:4px}
-.home-refresh-all:hover{color:#fff}
-.home-gen-bar{display:flex;align-items:center;gap:10px;font-size:13px;color:#94a3b8;margin:6px 16px 0;padding:10px 14px;background:rgba(124,58,237,.08);border:1px solid rgba(124,58,237,.18);border-radius:10px}
-.home-gen-dot{width:8px;height:8px;border-radius:50%;background:#7c3aed;animation:homeDot 1.2s ease-in-out infinite}
-@keyframes homeDot{0%,100%{opacity:.3;transform:scale(.8)}50%{opacity:1;transform:scale(1.3)}}
+/* ── Home Page — Ultra Professional ── */
+.home-wrap{flex:1;overflow-y:auto;overflow-x:hidden;padding:0 0 120px;display:flex;flex-direction:column;scrollbar-width:thin;scrollbar-color:rgba(124,58,237,.15) transparent}
+.home-wrap::-webkit-scrollbar{width:5px}
+.home-wrap::-webkit-scrollbar-track{background:transparent}
+.home-wrap::-webkit-scrollbar-thumb{background:rgba(124,58,237,.22);border-radius:3px}
+.home-header{display:flex;align-items:flex-start;justify-content:space-between;padding:24px 20px 8px}
+.home-title{font-size:28px;font-weight:900;letter-spacing:-.04em;color:#fff;line-height:1.1}
+.home-title-sub{font-size:13px;font-weight:400;color:rgba(255,255,255,.42);display:block;margin-top:4px}
+.home-refresh-all{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:rgba(255,255,255,.4);transition:all .18s;flex-shrink:0;margin-top:4px}
+.home-refresh-all:hover{background:rgba(255,255,255,.13);color:#fff;border-color:rgba(255,255,255,.22)}
+.home-gen-bar{display:flex;align-items:center;gap:10px;font-size:12px;color:#94a3b8;margin:4px 18px;padding:10px 14px;background:rgba(124,58,237,.07);border:1px solid rgba(124,58,237,.16);border-radius:10px}
+.home-gen-dot{width:8px;height:8px;border-radius:50%;background:#7c3aed;animation:homeDot 1.2s ease-in-out infinite;flex-shrink:0}
+@keyframes homeDot{0%,100%{opacity:.25;transform:scale(.75)}50%{opacity:1;transform:scale(1.35)}}
 /* Quick access grid */
-.hm-quick{padding:14px 14px 4px;display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
-.hm-qi{display:flex;align-items:center;gap:0;background:rgba(255,255,255,.09);border-radius:6px;overflow:hidden;cursor:pointer;transition:background .15s;height:56px;min-width:0}
-.hm-qi:hover{background:rgba(255,255,255,.18)}
+.hm-quick{padding:8px 18px 4px;display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.hm-qi{display:flex;align-items:center;background:rgba(255,255,255,.08);border-radius:6px;overflow:hidden;cursor:pointer;transition:background .15s,transform .15s;height:56px;min-width:0}
+.hm-qi:hover{background:rgba(255,255,255,.15);transform:scale(1.02)}
+.hm-qi:active{transform:scale(.97)}
 .hm-qi-img{width:56px;height:56px;flex-shrink:0;object-fit:cover;display:block}
-.hm-qi-ph{width:56px;height:56px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:20px;background:rgba(255,255,255,.06)}
-.hm-qi-name{font-size:12px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 10px}
+.hm-qi-ph{width:56px;height:56px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:rgba(124,58,237,.28)}
+.hm-qi-name{font-size:12px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 12px;flex:1}
 /* Sections */
-.hm-sec{margin-bottom:26px}
-.hm-sec-hd{display:flex;align-items:baseline;justify-content:space-between;padding:18px 18px 10px}
+@keyframes hmSecIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.hm-sec{margin-bottom:28px;animation:hmSecIn .38s ease both}
+.hm-sec-hd{display:flex;align-items:baseline;justify-content:space-between;padding:18px 20px 12px}
 .hm-sec-title{font-size:22px;font-weight:800;color:#fff;letter-spacing:-.02em}
-.hm-sec-more{font-size:11px;font-weight:700;color:rgba(255,255,255,.45);cursor:pointer;border:none;background:none;text-transform:uppercase;letter-spacing:.08em;transition:color .15s;padding:0}
-.hm-sec-more:hover{color:#fff}
-.hm-row{display:flex;gap:14px;overflow-x:auto;padding:0 16px 6px;scrollbar-width:none}
+/* Horizontal row */
+.hm-row{display:flex;gap:14px;overflow-x:auto;padding:0 18px 6px;scrollbar-width:none;-ms-overflow-style:none}
 .hm-row::-webkit-scrollbar{display:none}
-/* Playlist card */
-.hm-card{flex-shrink:0;width:160px;cursor:pointer;border-radius:8px;padding:12px;background:#181818;transition:background .18s;position:relative}
-.hm-card:hover{background:#282828}
-.hm-card-img{width:136px;height:136px;border-radius:4px;background:#333;position:relative;overflow:hidden;margin-bottom:10px;box-shadow:0 8px 28px rgba(0,0,0,.6)}
-.hm-card-img img{width:100%;height:100%;object-fit:cover;display:block}
-.hm-card-play{position:absolute;bottom:8px;right:8px;width:44px;height:44px;border-radius:50%;background:#1ed760;display:flex;align-items:center;justify-content:center;opacity:0;transform:translateY(10px);transition:opacity .2s,transform .2s;box-shadow:0 8px 20px rgba(0,0,0,.5)}
+/* Standard playlist card */
+@keyframes cardIn{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:scale(1)}}
+.hm-card{flex-shrink:0;width:162px;cursor:pointer;border-radius:8px;padding:12px;background:#181818;transition:background .2s;position:relative;animation:cardIn .3s ease both}
+.hm-card:hover{background:#252525}
+.hm-card-img{width:138px;height:138px;border-radius:5px;background:#2a2a2a;position:relative;overflow:hidden;margin-bottom:11px;box-shadow:0 8px 28px rgba(0,0,0,.6)}
+.hm-card-img img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .4s ease}
+.hm-card:hover .hm-card-img img{transform:scale(1.05)}
+.hm-card-play{position:absolute;bottom:8px;right:8px;width:46px;height:46px;border-radius:50%;background:#1ed760;display:flex;align-items:center;justify-content:center;opacity:0;transform:translateY(12px);transition:opacity .22s cubic-bezier(.4,0,.2,1),transform .22s cubic-bezier(.4,0,.2,1);box-shadow:0 8px 24px rgba(0,0,0,.5)}
 .hm-card:hover .hm-card-play{opacity:1;transform:translateY(0)}
-.hm-card-name{font-size:14px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px}
-.hm-card-sub{font-size:12px;color:rgba(255,255,255,.42);line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;white-space:normal}
-.hm-dm-badge{position:absolute;top:8px;left:8px;background:rgba(0,0,0,.72);border-radius:3px;padding:2px 7px;font-size:9px;font-weight:800;color:#fff;letter-spacing:.08em;text-transform:uppercase}
+.hm-card-play:hover{background:#1fdf64;transform:scale(1.08)!important}
+.hm-card-name{font-size:14px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px;line-height:1.3}
+.hm-card-sub{font-size:12px;color:rgba(255,255,255,.4);line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.hm-dm-badge{position:absolute;top:8px;left:8px;background:rgba(0,0,0,.72);border-radius:4px;padding:3px 7px;font-size:9px;font-weight:800;color:#fff;letter-spacing:.1em;text-transform:uppercase;backdrop-filter:blur(6px)}
+/* Mood card */
+.hm-mood{flex-shrink:0;width:162px;cursor:pointer;border-radius:12px;padding:52px 14px 16px;position:relative;overflow:hidden;transition:transform .2s cubic-bezier(.4,0,.2,1),box-shadow .2s;animation:cardIn .3s ease both}
+.hm-mood:hover{transform:translateY(-4px);box-shadow:0 16px 44px rgba(0,0,0,.55)}
+.hm-mood:active{transform:scale(.96)}
+.hm-mood-shine{position:absolute;inset:0;background:radial-gradient(circle at 70% 20%,rgba(255,255,255,.2),transparent 65%);pointer-events:none}
+.hm-mood-ico{position:absolute;top:14px;right:14px;opacity:.7}
+.hm-mood-name{font-size:16px;font-weight:800;color:#fff;letter-spacing:-.02em;line-height:1.2;position:relative;z-index:1}
+.hm-mood-cnt{font-size:11px;color:rgba(255,255,255,.6);margin-top:3px;position:relative;z-index:1}
+/* Throwback card */
+.hm-throw{flex-shrink:0;width:196px;cursor:pointer;border-radius:10px;overflow:hidden;position:relative;transition:transform .2s cubic-bezier(.4,0,.2,1),box-shadow .2s;animation:cardIn .3s ease both;height:96px;display:flex;align-items:center;padding:0 16px;gap:14px}
+.hm-throw:hover{transform:translateY(-3px);box-shadow:0 16px 44px rgba(0,0,0,.55)}
+.hm-throw:active{transform:scale(.96)}
+.hm-throw-yr{font-size:38px;font-weight:900;color:#fff;opacity:.12;position:absolute;right:8px;bottom:-6px;letter-spacing:-2px;pointer-events:none;user-select:none}
+.hm-throw-ico{width:52px;height:52px;border-radius:14px;background:rgba(255,255,255,.14);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.hm-throw-info{min-width:0;flex:1}
+.hm-throw-name{font-size:15px;font-weight:800;color:#fff;letter-spacing:-.02em;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hm-throw-sub{font-size:11px;color:rgba(255,255,255,.5);margin-top:3px}
 /* Artist card (round) */
-.hm-art{flex-shrink:0;width:148px;cursor:pointer;border-radius:8px;padding:12px 12px 14px;background:#181818;transition:background .18s;text-align:center}
-.hm-art:hover{background:#282828}
-.hm-art-img{width:124px;height:124px;border-radius:50%;background:#333;overflow:hidden;margin:0 auto 10px;box-shadow:0 8px 28px rgba(0,0,0,.55)}
-.hm-art-img img{width:100%;height:100%;object-fit:cover;display:block}
-.hm-art-ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#7c3aed,#06b6d4)}
+.hm-art{flex-shrink:0;width:148px;cursor:pointer;border-radius:8px;padding:12px 12px 14px;background:#181818;transition:background .2s;text-align:center;animation:cardIn .3s ease both}
+.hm-art:hover{background:#252525}
+.hm-art-img{width:124px;height:124px;border-radius:50%;background:#2a2a2a;overflow:hidden;margin:0 auto 11px;box-shadow:0 8px 28px rgba(0,0,0,.5);transition:box-shadow .2s}
+.hm-art-img img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .4s ease}
+.hm-art:hover .hm-art-img img{transform:scale(1.06)}
+.hm-art:hover .hm-art-img{box-shadow:0 16px 44px rgba(0,0,0,.65)}
+.hm-art-ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,rgba(124,58,237,.55),rgba(6,182,212,.55))}
 .hm-art-name{font-size:14px;font-weight:700;color:#fff;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.hm-art-type{font-size:12px;color:rgba(255,255,255,.42)}
-.home-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:#475569;text-align:center;padding:40px}
-/* Home Detail Overlay */
-.home-detail{position:absolute;inset:0;background:#0f0f17;z-index:50;overflow-y:auto;display:flex;flex-direction:column}
-.home-detail-head{display:flex;align-items:flex-end;gap:16px;padding:20px 16px 18px;background:linear-gradient(180deg,rgba(30,10,60,.9),rgba(15,15,23,.0))}
-.home-detail-back{background:none;border:none;color:#94a3b8;cursor:pointer;padding:4px;margin-bottom:2px;display:flex;align-items:center}
-.home-detail-back:hover{color:#f1f5f9}
-.home-detail-cover{width:90px;height:90px;border-radius:12px;background:rgba(255,255,255,.08);overflow:hidden;flex-shrink:0}
-.home-detail-cover img{width:100%;height:100%;object-fit:cover}
-.home-detail-info{flex:1;min-width:0}
-.home-detail-name{font-size:18px;font-weight:800;color:#f1f5f9;margin-bottom:4px}
-.home-detail-sub{font-size:12px;color:#64748b;margin-bottom:12px}
-.home-play-all{background:var(--grad);border:none;border-radius:20px;color:#fff;font-size:13px;font-weight:700;padding:8px 20px;cursor:pointer;display:flex;align-items:center;gap:7px;box-shadow:0 4px 16px rgba(124,58,237,.4)}
-.home-detail-tracks{padding:8px 0 100px}
-.home-track-row{display:flex;align-items:center;gap:12px;padding:9px 16px;cursor:pointer;border-radius:8px;margin:0 4px;transition:background .15s}
+.hm-art-type{font-size:11px;color:rgba(255,255,255,.4)}
+/* Découverte card */
+.hm-dec{flex-shrink:0;width:148px;cursor:pointer;border-radius:8px;padding:12px 12px 14px;background:#181818;transition:background .2s;text-align:center;animation:cardIn .3s ease both}
+.hm-dec:hover{background:#252525}
+.hm-dec-img{width:124px;height:124px;border-radius:50%;background:#2a2a2a;overflow:hidden;margin:0 auto 11px;box-shadow:0 8px 28px rgba(0,0,0,.5);transition:box-shadow .2s;position:relative}
+.hm-dec:hover .hm-dec-img{box-shadow:0 16px 44px rgba(0,0,0,.65)}
+.hm-dec-img img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .4s ease}
+.hm-dec:hover .hm-dec-img img{transform:scale(1.06)}
+.hm-dec-ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,rgba(124,58,237,.55),rgba(236,72,153,.55))}
+.hm-dec-badge{position:absolute;top:-2px;right:4px;background:#7c3aed;color:#fff;font-size:8px;font-weight:800;padding:2px 6px;border-radius:3px;letter-spacing:.08em;text-transform:uppercase}
+.hm-dec-name{font-size:14px;font-weight:700;color:#fff;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hm-dec-type{font-size:11px;color:rgba(124,58,237,.85)}
+/* Home empty */
+.home-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:#475569;text-align:center;padding:60px 20px;min-height:200px}
+.home-empty p{font-size:14px;line-height:1.7;max-width:280px}
+/* Home Detail Overlay — slide from right */
+.home-detail{position:absolute;inset:0;background:#0c0c18;z-index:50;overflow-y:auto;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .32s cubic-bezier(.4,0,.2,1);pointer-events:none}
+.home-detail.open{transform:translateX(0);pointer-events:all}
+.home-detail-head{display:flex;align-items:flex-end;gap:16px;padding:50px 18px 20px;position:relative;flex-shrink:0}
+.home-detail-head-bg{position:absolute;inset:0;opacity:.5;pointer-events:none}
+.home-detail-back{position:absolute;top:12px;left:12px;background:rgba(0,0,0,.45);border:none;color:#fff;cursor:pointer;width:34px;height:34px;display:flex;align-items:center;justify-content:center;border-radius:50%;backdrop-filter:blur(8px);transition:background .18s;z-index:2}
+.home-detail-back:hover{background:rgba(0,0,0,.72)}
+.home-detail-cover{width:100px;height:100px;border-radius:12px;background:rgba(255,255,255,.08);overflow:hidden;flex-shrink:0;box-shadow:0 16px 44px rgba(0,0,0,.65);position:relative;z-index:1}
+.home-detail-cover img{width:100%;height:100%;object-fit:cover;display:block}
+.home-detail-info{flex:1;min-width:0;position:relative;z-index:1}
+.home-detail-type{font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.45);margin-bottom:6px}
+.home-detail-name{font-size:20px;font-weight:900;color:#f1f5f9;margin-bottom:4px;letter-spacing:-.03em;line-height:1.2}
+.home-detail-sub{font-size:12px;color:rgba(255,255,255,.42);margin-bottom:14px;line-height:1.5}
+.home-play-all{background:var(--grad);border:none;border-radius:22px;color:#fff;font-size:13px;font-weight:700;padding:9px 20px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;box-shadow:0 4px 16px rgba(124,58,237,.42);transition:box-shadow .2s,transform .18s;font-family:inherit}
+.home-play-all:hover{box-shadow:0 6px 26px rgba(124,58,237,.62);transform:translateY(-1px)}
+.home-play-all:active{transform:scale(.94)}
+.home-detail-cnt{font-size:11px;color:#475569;padding:10px 18px 4px;letter-spacing:.02em}
+.home-detail-tracks{flex:1;padding:2px 0 80px}
+@keyframes trackIn{from{opacity:0;transform:translateX(-6px)}to{opacity:1;transform:translateX(0)}}
+.home-track-row{display:flex;align-items:center;gap:12px;padding:8px 18px;cursor:pointer;transition:background .15s;animation:trackIn .22s ease both}
 .home-track-row:hover{background:rgba(255,255,255,.05)}
-.home-track-row.active{background:rgba(124,58,237,.12)}
-.home-track-num{width:20px;text-align:right;font-size:12px;color:#475569;flex-shrink:0}
-.home-track-thumb{width:40px;height:40px;border-radius:6px;background:rgba(255,255,255,.06);overflow:hidden;flex-shrink:0}
-.home-track-thumb img{width:100%;height:100%;object-fit:cover}
+.home-track-row.active{background:rgba(124,58,237,.14)}
+.home-track-num{width:22px;text-align:right;font-size:12px;color:#475569;flex-shrink:0;font-variant-numeric:tabular-nums}
+.home-track-row.active .home-track-num{color:#a78bfa}
+.home-track-thumb{width:42px;height:42px;border-radius:6px;background:rgba(255,255,255,.06);overflow:hidden;flex-shrink:0}
+.home-track-thumb img{width:100%;height:100%;object-fit:cover;display:block}
 .home-track-info{flex:1;min-width:0}
-.home-track-title{font-size:13px;font-weight:600;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.home-track-ch{font-size:11px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.home-track-dur{font-size:11px;color:#475569;flex-shrink:0}
+.home-track-title{font-size:13px;font-weight:600;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.35}
+.home-track-row.active .home-track-title{color:#a78bfa}
+.home-track-ch{font-size:11px;color:#475569;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.home-track-dur{font-size:11px;color:#334155;flex-shrink:0;font-variant-numeric:tabular-nums}
 /* Animations boutons lecteur */
 @keyframes btnBounce{0%{transform:scale(1)}28%{transform:scale(.78)}62%{transform:scale(1.16)}82%{transform:scale(.95)}100%{transform:scale(1)}}
 @keyframes btnRipple{0%{box-shadow:0 0 0 0 rgba(124,58,237,.7),0 0 0 0 rgba(6,182,212,.4)}100%{box-shadow:0 0 0 22px rgba(124,58,237,0),0 0 0 36px rgba(6,182,212,0)}}
@@ -1694,13 +1817,15 @@ body.is-offline .dl-btn,body.is-offline #alldl{opacity:.3;pointer-events:none}
     </div>
   </div>
   <!-- Home playlist detail overlay -->
-  <div class="home-detail" id="home-detail" style="display:none">
+  <div class="home-detail" id="home-detail">
     <div class="home-detail-head">
+      <div class="home-detail-head-bg" id="home-detail-head-bg"></div>
       <button class="home-detail-back" onclick="closeHomeDetail()">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15,18 9,12 15,6"/></svg>
       </button>
       <div class="home-detail-cover" id="home-detail-cover"></div>
       <div class="home-detail-info">
+        <div class="home-detail-type" id="home-detail-type"></div>
         <div class="home-detail-name" id="home-detail-name"></div>
         <div class="home-detail-sub" id="home-detail-sub"></div>
         <button class="home-play-all" id="home-play-all" onclick="playHomeAll()">
@@ -1709,6 +1834,7 @@ body.is-offline .dl-btn,body.is-offline #alldl{opacity:.3;pointer-events:none}
         </button>
       </div>
     </div>
+    <div class="home-detail-cnt" id="home-detail-cnt"></div>
     <div class="home-detail-tracks" id="home-detail-tracks"></div>
   </div>
 </div>
@@ -2009,11 +2135,12 @@ function loadHome(){
   fetch('/api/home').then(function(r){return r.json();}).then(function(d){
     _homeData=d;
     renderHome(d);
+    var bar=document.getElementById('home-gen-bar');
     if(d.generating){
-      document.getElementById('home-gen-bar').style.display='flex';
+      if(bar) bar.style.display='flex';
       _startHomePoll();
-    }else{
-      document.getElementById('home-gen-bar').style.display='none';
+    } else {
+      if(bar) bar.style.display='none';
       if(_homePollTimer){clearInterval(_homePollTimer);_homePollTimer=null;}
     }
   }).catch(function(){});
@@ -2047,109 +2174,189 @@ function renderHome(d){
   var secs=document.getElementById('home-sections');
   var quickEl=document.getElementById('hm-quick');
   if(!d||!d.artists||d.artists.length===0){
-    if(empty)empty.style.display='flex';secs.innerHTML='';if(quickEl)quickEl.style.display='none';return;
+    if(empty) empty.style.display='flex';
+    if(secs) secs.innerHTML='';
+    if(quickEl) quickEl.style.display='none';
+    return;
   }
-  if(empty)empty.style.display='none';
+  if(empty) empty.style.display='none';
   var pls=d.playlists||[];
-  if(pls.length===0){secs.innerHTML='';if(quickEl)quickEl.style.display='none';return;}
+  if(pls.length===0){
+    if(secs) secs.innerHTML='';
+    if(quickEl) quickEl.style.display='none';
+    return;
+  }
 
-  /* Quick access grid — top 6 daily mixes for fast replay */
+  /* Quick access grid — top 6 items for fast replay */
   var quick=pls.filter(function(p){return p.type==='daily'||p.type==='artist';}).slice(0,6);
   if(quickEl&&quick.length>0){
     quickEl.innerHTML=quick.map(function(pl){
       var key=pl.key||'';
       var img=pl.picture
-        ?('<img class="hm-qi-img" src="'+escH(pl.picture)+'" onerror="this.outerHTML=\'<div class=hm-qi-ph>&#9835;</div>\'">')
-        :'<div class="hm-qi-ph">&#9835;</div>';
-      return '<div class="hm-qi" onclick="openHomeDetail(\''+escH(key)+'\')">'+img
+        ?('<img class="hm-qi-img" src="'+escH(pl.picture)+'" onerror="this.outerHTML=\'<div class=hm-qi-ph>'+ico('note',18).replace(/'/g,'&apos;')+'</div>\'">')
+        :'<div class="hm-qi-ph">'+ico('note',18)+'</div>';
+      return '<div class="hm-qi" onclick="openHomeDetail(\''+escH(key)+'\')" title="'+escH(pl.name||'')+'">'+img
         +'<div class="hm-qi-name">'+escH(pl.name||'')+'</div></div>';
     }).join('');
     quickEl.style.display='grid';
+  } else if(quickEl){
+    quickEl.style.display='none';
   }
 
-  /* Sections */
+  /* Split playlists by type */
   var daily=pls.filter(function(p){return p.type==='daily';});
   var station=pls.filter(function(p){return p.type==='station';});
   var artist=pls.filter(function(p){return p.type==='artist';});
   var genre=pls.filter(function(p){return p.type==='genre';});
+  var mood=pls.filter(function(p){return p.type==='mood';});
+  var throwback=pls.filter(function(p){return p.type==='throwback';});
+  var decouverte=pls.filter(function(p){return p.type==='decouverte';});
   var news=pls.filter(function(p){return p.type==='news';});
+
   var html='';
-  if(daily.length)  html+=_mkSec('Votre Daily Mix',daily,false);
-  if(station.length)html+=_mkSec('Stations recommandées',station,true);
-  if(artist.length) html+=_mkSec('Vos top mixes',artist,false);
-  if(genre.length)  html+=_mkSec('Par genre',genre,false);
-  if(news.length)   html+=_mkSec('Nouveautés',news,false);
-  secs.innerHTML=html;
+  if(daily.length)      html+=_mkSecFn('Votre Daily Mix',daily,_mkPlCard,0);
+  if(station.length)    html+=_mkSecFn('Stations recommandées',station,_mkArtCard,1);
+  if(artist.length)     html+=_mkSecFn('Vos Top Mixes',artist,_mkArtCard,2);
+  if(mood.length)       html+=_mkSecFn('Mix Ambiance',mood,_mkMoodCard,3);
+  if(throwback.length)  html+=_mkSecFn('Throwback',throwback,_mkThrowCard,4);
+  if(decouverte.length) html+=_mkSecFn('Découvertes',decouverte,_mkDecCard,5);
+  if(genre.length)      html+=_mkSecFn('Par Genre',genre,_mkPlCard,6);
+  if(news.length)       html+=_mkSecFn('Nouveautés 2025',news,_mkPlCard,7);
+  if(secs) secs.innerHTML=html;
 }
 
-function _mkSec(title,pls,round){
-  var cards=pls.map(function(pl){return round?_mkArtCard(pl):_mkPlCard(pl);}).join('');
-  return '<div class="hm-sec"><div class="hm-sec-hd"><div class="hm-sec-title">'+escH(title)+'</div></div>'
+function _mkSecFn(title,pls,cardFn,order){
+  var cards=pls.map(function(pl,i){return cardFn(pl,i);}).join('');
+  return '<div class="hm-sec" style="animation-delay:'+(order*80)+'ms">'
+    +'<div class="hm-sec-hd"><div class="hm-sec-title">'+escH(title)+'</div></div>'
     +'<div class="hm-row">'+cards+'</div></div>';
 }
 
-function _mkPlCard(pl){
+function _mkPlCard(pl,idx){
   var key=pl.key||encodeURIComponent((pl.name||'').replace(/\s+/g,'_').toLowerCase());
   var grad='linear-gradient(135deg,'+(pl.color||'#7c3aed')+',#06b6d4)';
   var imgIn=pl.picture
     ?('<img src="'+escH(pl.picture)+'" onerror="this.parentNode.style.background=\''+escH(grad)+'\';this.remove()">')
     :('<div style="width:100%;height:100%;background:'+escH(grad)+'"></div>');
-  var badge=pl.type==='daily'?'<div class="hm-dm-badge">Daily Mix</div>':'';
+  var badge=pl.type==='daily'?'<div class="hm-dm-badge">Daily Mix</div>':
+             pl.type==='news'?'<div class="hm-dm-badge" style="background:#f43f5e">NEW</div>':'';
   var sub=(pl.artists||[]).slice(0,3).join(', ');
-  return '<div class="hm-card" onclick="openHomeDetail(\''+escH(key)+'\')" data-key="'+escH(key)+'">'
+  return '<div class="hm-card" onclick="openHomeDetail(\''+escH(key)+'\')" style="animation-delay:'+((idx||0)*40)+'ms">'
     +'<div class="hm-card-img">'+imgIn+badge
-    +'<div class="hm-card-play"><svg width="16" height="16" viewBox="0 0 24 24" fill="#000"><polygon points="5,3 19,12 5,21"/></svg></div>'
-    +'</div>'
+    +'<div class="hm-card-play" onclick="event.stopPropagation();openHomeDetail(\''+escH(key)+'\');playHomeAll()">'
+    +'<svg width="16" height="16" viewBox="0 0 24 24" fill="#000"><polygon points="5,3 19,12 5,21"/></svg>'
+    +'</div></div>'
     +'<div class="hm-card-name">'+escH(pl.name||'')+'</div>'
     +'<div class="hm-card-sub">'+escH(sub)+'</div>'
     +'</div>';
 }
 
-function _mkArtCard(pl){
+function _mkArtCard(pl,idx){
   var key=pl.key||encodeURIComponent((pl.name||'').replace(/\s+/g,'_').toLowerCase());
   var imgIn=pl.picture
-    ?('<img src="'+escH(pl.picture)+'" onerror="this.outerHTML=\'<div class=hm-art-ph>'+ico('note',36).replace(/'/g,'&apos;')+'</div>\'">')
-    :'<div class="hm-art-ph">'+ico('note',36)+'</div>';
+    ?('<img src="'+escH(pl.picture)+'" onerror="this.outerHTML=\'<div class=hm-art-ph>'+ico('note',32).replace(/'/g,'&apos;')+'</div>\'">')
+    :'<div class="hm-art-ph">'+ico('note',32)+'</div>';
   var artistName=(pl.artists||[])[0]||pl.name||'';
-  return '<div class="hm-art" onclick="openHomeDetail(\''+escH(key)+'\')" data-key="'+escH(key)+'">'
+  var typeLabel=pl.type==='station'?'Radio':'Artiste Mix';
+  return '<div class="hm-art" onclick="openHomeDetail(\''+escH(key)+'\')" style="animation-delay:'+((idx||0)*40)+'ms">'
     +'<div class="hm-art-img">'+imgIn+'</div>'
     +'<div class="hm-art-name">'+escH(artistName)+'</div>'
-    +'<div class="hm-art-type">Artiste</div>'
+    +'<div class="hm-art-type">'+escH(typeLabel)+'</div>'
+    +'</div>';
+}
+
+function _mkMoodCard(pl,idx){
+  var key=pl.key||encodeURIComponent((pl.name||'').replace(/\s+/g,'_').toLowerCase());
+  var color=pl.color||'#7c3aed';
+  var n=(pl.name||'').toLowerCase();
+  var icoSvg;
+  if(n.indexOf('chill')>=0||n.indexOf('relax')>=0||n.indexOf('ambient')>=0)
+    icoSvg='<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.75)" stroke-width="1.8" stroke-linecap="round"><path d="M2 12a5 5 0 0 0 5 5 8 8 0 0 1 5 2 8 8 0 0 1 5-2 5 5 0 0 0 5-5V7H2v5z"/></svg>';
+  else if(n.indexOf('focus')>=0||n.indexOf('study')>=0||n.indexOf('concentr')>=0)
+    icoSvg='<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.75)" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>';
+  else if(n.indexOf('nuit')>=0||n.indexOf('night')>=0||n.indexOf('sombre')>=0)
+    icoSvg='<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.75)" stroke-width="1.8" stroke-linecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
+  else
+    icoSvg='<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.75)" stroke-width="1.8" stroke-linecap="round"><polygon points="13,2 3,14 12,14 11,22 21,10 12,10 13,2"/></svg>';
+  var cnt=(pl.tracks||[]).length;
+  return '<div class="hm-mood" onclick="openHomeDetail(\''+escH(key)+'\')" style="background:'+escH(color)+';animation-delay:'+((idx||0)*50)+'ms">'
+    +'<div class="hm-mood-shine"></div>'
+    +'<div class="hm-mood-ico">'+icoSvg+'</div>'
+    +'<div class="hm-mood-name">'+escH(pl.name||'')+'</div>'
+    +(cnt?'<div class="hm-mood-cnt">'+cnt+' titres</div>':'')
+    +'</div>';
+}
+
+function _mkThrowCard(pl,idx){
+  var key=pl.key||encodeURIComponent((pl.name||'').replace(/\s+/g,'_').toLowerCase());
+  var color=pl.color||'#ec4899';
+  var name=pl.name||'';
+  var decade=name.replace(/throwback\s*/i,'').trim();
+  var icoSvg='<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.8)" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg>';
+  return '<div class="hm-throw" onclick="openHomeDetail(\''+escH(key)+'\')" style="background:linear-gradient(135deg,'+escH(color)+',#7c3aed);animation-delay:'+((idx||0)*60)+'ms">'
+    +'<div class="hm-throw-ico">'+icoSvg+'</div>'
+    +'<div class="hm-throw-info"><div class="hm-throw-name">'+escH(name)+'</div><div class="hm-throw-sub">Les meilleurs classiques</div></div>'
+    +'<div class="hm-throw-yr">'+escH(decade)+'</div>'
+    +'</div>';
+}
+
+function _mkDecCard(pl,idx){
+  var key=pl.key||encodeURIComponent((pl.name||'').replace(/\s+/g,'_').toLowerCase());
+  var imgIn=pl.picture
+    ?('<img src="'+escH(pl.picture)+'" onerror="this.outerHTML=\'<div class=hm-dec-ph>'+ico('note',32).replace(/'/g,'&apos;')+'</div>\'">')
+    :'<div class="hm-dec-ph">'+ico('note',32)+'</div>';
+  return '<div class="hm-dec" onclick="openHomeDetail(\''+escH(key)+'\')" style="animation-delay:'+((idx||0)*40)+'ms">'
+    +'<div class="hm-dec-img">'+imgIn+'<div class="hm-dec-badge">Nouveau</div></div>'
+    +'<div class="hm-dec-name">'+escH(pl.name||'')+'</div>'
+    +'<div class="hm-dec-type">Découverte</div>'
     +'</div>';
 }
 
 function openHomeDetail(key){
   if(!_homeData) return;
-  var pl=(_homeData.playlists||[]).find(function(p){return (p.key||encodeURIComponent((p.name||'').replace(/\s+/g,'_').toLowerCase()))===key;});
+  var pl=(_homeData.playlists||[]).find(function(p){
+    return (p.key||encodeURIComponent((p.name||'').replace(/\s+/g,'_').toLowerCase()))===key;
+  });
   if(!pl) return;
   _homePl=pl;
   var det=document.getElementById('home-detail');
   var grad=pl.color||'#7c3aed';
-  var isStation=pl.type==='station';
+  var isRound=pl.type==='station'||pl.type==='artist'||pl.type==='decouverte';
   var covEl=document.getElementById('home-detail-cover');
-  covEl.style.borderRadius=isStation?'50%':'12px';
+  covEl.style.borderRadius=isRound?'50%':'12px';
   covEl.innerHTML=pl.picture
     ?'<img src="'+escH(pl.picture)+'" style="width:100%;height:100%;object-fit:cover">'
     :'<div style="width:100%;height:100%;background:linear-gradient(135deg,'+escH(grad)+',#06b6d4)"></div>';
+  var headBg=document.getElementById('home-detail-head-bg');
+  if(headBg) headBg.style.background='linear-gradient(180deg,'+grad+' 0%,transparent 100%)';
+  var typeMap={daily:'Daily Mix',station:'Radio',artist:'Artiste Mix',genre:'Genre Mix',mood:'Ambiance',throwback:'Throwback',decouverte:'Découverte',news:'Nouveautés'};
+  var typeEl=document.getElementById('home-detail-type');
+  if(typeEl) typeEl.textContent=typeMap[pl.type]||'Playlist';
   document.getElementById('home-detail-name').textContent=pl.name||'';
-  var artists=(pl.artists||[]).slice(0,4).join(', ');
-  document.getElementById('home-detail-sub').textContent=artists;
+  document.getElementById('home-detail-sub').textContent=(pl.artists||[]).slice(0,4).join(', ');
   var tracks=pl.tracks||[];
+  var cntEl=document.getElementById('home-detail-cnt');
+  if(cntEl) cntEl.textContent=tracks.length+' titre'+(tracks.length!==1?'s':'');
   var rows=tracks.map(function(t,i){
-    return '<div class="home-track-row" onclick="playHomeTrack('+i+')" id="htr-'+i+'">'
+    var delay=(i<20?(i*16)+'ms':'0ms');
+    return '<div class="home-track-row" onclick="playHomeTrack('+i+')" id="htr-'+i+'" style="animation-delay:'+delay+'">'
       +'<div class="home-track-num">'+(i+1)+'</div>'
-      +'<div class="home-track-thumb">'+(t.thumb?'<img src="'+escH(t.thumb)+'" onerror="this.style.display=\'none\'">':'')+'</div>'
-      +'<div class="home-track-info"><div class="home-track-title">'+escH(t.title||'')+'</div><div class="home-track-ch">'+escH(t.channel||'')+'</div></div>'
+      +'<div class="home-track-thumb">'+(t.thumb?'<img src="'+escH(t.thumb)+'" loading="lazy" onerror="this.style.display=\'none\'">':'')+'</div>'
+      +'<div class="home-track-info">'
+      +'<div class="home-track-title">'+escH(t.title||'')+'</div>'
+      +'<div class="home-track-ch">'+escH(t.channel||'')+'</div>'
+      +'</div>'
       +'<div class="home-track-dur">'+escH(t.duration||'')+'</div>'
       +'</div>';
   }).join('');
   document.getElementById('home-detail-tracks').innerHTML=rows||'<div style="padding:40px;text-align:center;color:#475569">Aucune piste</div>';
-  det.style.display='flex';det.style.flexDirection='column';
+  det.classList.add('open');
+  det.scrollTop=0;
 }
 
 function closeHomeDetail(){
   var det=document.getElementById('home-detail');
-  if(det)det.style.display='none';
+  if(det) det.classList.remove('open');
   _homePl=null;
 }
 
@@ -2157,14 +2364,14 @@ function playHomeTrack(idx){
   if(!_homePl) return;
   var tracks=_homePl.tracks||[];
   if(idx<0||idx>=tracks.length) return;
-  /* Build full queue from all home playlist tracks */
   plyQueue=tracks.map(function(t){
     var v=t.id||(t.url||'').replace(/.*v=/,'').split('&')[0];
     return {fn:'__yt__'+v+'.m4a',title:t.title||'',artist:t.channel||'',thumb:t.thumb||''};
   });
   plyIdx=idx;
   document.querySelectorAll('.home-track-row').forEach(function(r){r.classList.remove('active');});
-  var row=document.getElementById('htr-'+idx);if(row)row.classList.add('active');
+  var row=document.getElementById('htr-'+idx);
+  if(row){row.classList.add('active');row.scrollIntoView({block:'nearest',behavior:'smooth'});}
   var q=plyQueue[idx];plyLoad(q.fn,q.title,q.artist);
 }
 
