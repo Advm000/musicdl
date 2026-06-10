@@ -33,7 +33,7 @@ os.makedirs(OUT_DIR, exist_ok=True)
 FAV_FILE    = os.path.join(OUT_DIR, ".favorites.json")
 PL_FILE     = os.path.join(OUT_DIR, ".playlists.json")
 DEVICE_FILE = os.path.join(OUT_DIR, "device.json")
-APP_VERSION = "2.8.0"
+APP_VERSION = "2.8.3"
 
 # ── HOME / AUTO-PLAYLISTS ──────────────────────────────────────────────────────
 HOME_CACHE_FILE   = os.path.join(_appdata, "MusicDL", ".home_cache.json")
@@ -60,7 +60,7 @@ jobs = {}   # job_id -> {"progress":0,"status":"...","done":False,"error":"","ca
 def _jload(path, default):
     try:
         with open(path, encoding="utf-8") as f: return json.load(f)
-    except: return default
+    except Exception: return default
 
 def _jsave(path, data):
     with open(path, "w", encoding="utf-8") as f: json.dump(data, f, ensure_ascii=False, indent=2)
@@ -465,7 +465,7 @@ def _download(job_id, url):
         if jobs[job_id].get("cancelled") or "__cancelled__" in str(ex):
             jobs[job_id].update({"cancelled":True,"status":"Annulé","done":True,"error":""})
         else:
-            jobs[job_id].update({"error":str(ex),"done":True})
+            jobs[job_id].update({"error":str(ex),"status":"Erreur","done":True})
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -606,7 +606,7 @@ def _generate_home(artists):
         for a in list(artists)[:4]:
             all_tracks += _yt_quick(f"{a} 2025 nouveau son", 3)
         rnd.shuffle(all_tracks)
-        result[key] = {"key":key,"name":"Nouveautés 🔥","type":"news",
+        result[key] = {"key":key,"name":"Nouveautés","type":"news",
                        "artists":list(artists)[:4],"picture":"",
                        "tracks":all_tracks[:18],"generated_at":now,"color":"#f43f5e"}
     else:
@@ -1507,13 +1507,13 @@ body.is-offline .dl-btn,body.is-offline #alldl{opacity:.3;pointer-events:none}
   <span id="upd-msg">Mise à jour disponible&nbsp;: <strong id="upd-ver"></strong></span>
   <div id="upd-prog"><div id="upd-ptrack"><div id="upd-pfill"></div></div><span id="upd-plbl">0%</span></div>
   <button id="upd-btn" class="upd-btn" onclick="updAction()">Installer</button>
-  <button class="upd-close" onclick="document.getElementById('upd-banner').style.display='none'" title="Fermer">✕</button>
+  <button class="upd-close" onclick="document.getElementById('upd-banner').style.display='none'" title="Fermer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
 </div>
 
 <!-- TABS -->
 <div class="tabs">
   <div class="tb on" id="tab0" onclick="goTab(0)"><svg class="tb-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><div class="tbdot"></div>RECHERCHE</div>
-  <div class="tb" id="tab1" onclick="goTab(1)"><svg class="tb-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg><div class="tbdot"></div>Bibliothèque</div>
+  <div class="tb" id="tab1" onclick="goTab(1)"><svg class="tb-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg><div class="tbdot"></div>BIBLIOTHÈQUE</div>
   <div class="tb" id="tab2" onclick="goTab(2)"><svg class="tb-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg><div class="tbdot"></div>PLAYLISTS</div>
   <div class="tb" id="tab3" onclick="goTab(3)"><svg class="tb-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg><div class="tbdot"></div>ACCUEIL</div>
 </div>
@@ -1947,7 +1947,7 @@ var _homePollTimer=null;
 
 function loadHome(){
   var greet=document.getElementById('home-time-greet');
-  if(greet){var h=new Date().getHours();greet.textContent=h<12?'☀️':h<18?'🌤️':'🌙';}
+  if(greet){var h=new Date().getHours();var _gs=h<12?'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>':h<18?'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9z"/></svg>':'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';greet.innerHTML=_gs;}
   fetch('/api/home').then(function(r){return r.json();}).then(function(d){
     _homeData=d;
     renderHome(d);
@@ -1999,7 +1999,7 @@ function renderHome(d){
   var news=pls.filter(function(p){return p.type==='news';});
   var html='';
   if(daily.length){html+=mkHomeSection('Daily Mix',daily);}
-  if(news.length){html+=mkHomeSection('Nouveautés 🔥',news);}
+  if(news.length){html+=mkHomeSection('Nouveautés',news);}
   if(artist.length){html+=mkHomeSection('Par artiste',artist);}
   if(genre.length){html+=mkHomeSection('Par genre',genre);}
   secs.innerHTML=html;
@@ -2014,8 +2014,8 @@ function mkHomeCard(pl, idx){
   var img=pl.picture?('<img src="'+escH(pl.picture)+'" onerror="this.style.display=\'none\'">'):''
   var grad='linear-gradient(135deg,'+(pl.color||'#7c3aed')+',#06b6d4)';
   var artists=(pl.artists||[]).slice(0,3).join(' · ');
-  var key=encodeURIComponent((pl.name||'').replace(/\s+/g,'_').toLowerCase());
-  return '<div class="home-card" onclick="openHomeDetail(\''+key+'\')" data-key="'+key+'">'
+  var key=pl.key||encodeURIComponent((pl.name||'').replace(/\s+/g,'_').toLowerCase());
+  return '<div class="home-card" onclick="openHomeDetail(\''+escH(key)+'\')" data-key="'+escH(key)+'">'
     +'<div class="home-card-img">'+(img||'<div class="home-card-grad" style="background:'+escH(grad)+';opacity:1;position:absolute;inset:0;border-radius:0"></div>')
     +'<div class="home-card-grad" style="background:linear-gradient(180deg,transparent 40%,rgba(0,0,0,.7))"></div>'
     +'<div class="home-card-play"><svg width="13" height="13" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21"/></svg></div>'
@@ -2026,7 +2026,7 @@ function mkHomeCard(pl, idx){
 
 function openHomeDetail(key){
   if(!_homeData) return;
-  var pl=(_homeData.playlists||[]).find(function(p){return encodeURIComponent((p.name||'').replace(/\s+/g,'_').toLowerCase())===key;});
+  var pl=(_homeData.playlists||[]).find(function(p){return (p.key||encodeURIComponent((p.name||'').replace(/\s+/g,'_').toLowerCase()))===key;});
   if(!pl) return;
   _homePl=pl;
   var det=document.getElementById('home-detail');
@@ -2060,31 +2060,15 @@ function playHomeTrack(idx){
   if(!_homePl) return;
   var tracks=_homePl.tracks||[];
   if(idx<0||idx>=tracks.length) return;
-  var t=tracks[idx];
-  var vid=t.id||(t.url||'').replace(/.*v=/,'').split('&')[0];
-  if(!vid) return;
+  /* Build full queue from all home playlist tracks */
+  plyQueue=tracks.map(function(t){
+    var v=t.id||(t.url||'').replace(/.*v=/,'').split('&')[0];
+    return {fn:'__yt__'+v+'.m4a',title:t.title||'',artist:t.channel||'',thumb:t.thumb||''};
+  });
+  plyIdx=idx;
   document.querySelectorAll('.home-track-row').forEach(function(r){r.classList.remove('active');});
-  var row=document.getElementById('htr-'+idx);
-  if(row)row.classList.add('active');
-  /* prefill player UI immediately then load URL async */
-  var tmpFn='__yt__'+vid+'.m4a';
-  plyQueue=[{fn:tmpFn,title:t.title||'',artist:t.channel||'',_yt:vid,_idx:idx,_pl:_homePl}];
-  plyIdx=0;
-  /* Update player meta without changing aud.src yet */
-  var tEl=document.getElementById('ply-title'),aEl=document.getElementById('ply-artist');
-  if(tEl)tEl.textContent=t.title||'';if(aEl)aEl.textContent=t.channel||'';
-  var covHtml=t.thumb?('<img src="'+escH(t.thumb)+'" style="width:100%;height:100%;object-fit:cover;display:block" onerror="this.parentNode.innerHTML=\'<div class=ply-art-ph>&#9835;</div>\'">'):'<div class="ply-art-ph">&#9835;</div>';
-  var artEl=document.getElementById('ply-art');if(artEl)artEl.innerHTML=covHtml;
-  document.getElementById('ply-idle').style.display='none';
-  var pt=document.getElementById('ply-prog-top');if(pt)pt.style.display='block';
-  ['ply-left','ply-center','ply-right'].forEach(function(id){document.getElementById(id).style.visibility='visible';});
-  /* now fetch actual stream URL */
-  fetch('/api/yt/url/'+encodeURIComponent(vid)).then(function(r){return r.json();}).then(function(d){
-    if(!d.url) return;
-    aud.src=d.url;aud.play();
-    setStat('Lecture: '+(t.title||''));
-    updateMediaMeta(tmpFn,t.title||'',t.channel||'');
-  }).catch(function(){setStat('Erreur lecture YouTube');});
+  var row=document.getElementById('htr-'+idx);if(row)row.classList.add('active');
+  var q=plyQueue[idx];plyLoad(q.fn,q.title,q.artist);
 }
 
 function playHomeAll(){
@@ -2151,7 +2135,7 @@ function startDl(id,url,title){
     .then(function(res){
       var jid=res.job_id;btn.dataset.jobid=jid;setStat('Téléchargement : '+title);
       var es=new EventSource('/api/progress/'+jid);
-      es.onerror=function(){es.close();btn.dataset.go='';btn.disabled=false;btn.innerHTML=ico('refresh',13)+' Réessayer';cbtn.style.display='none';setStat('Erreur réseau.');toast('⚠ Erreur réseau');};
+      es.onerror=function(){es.close();btn.dataset.go='';btn.disabled=false;btn.innerHTML=ico('refresh',13)+' Réessayer';cbtn.style.display='none';setStat('Erreur réseau.');toast('Erreur réseau');};
       es.onmessage=function(e){
         var d=JSON.parse(e.data);fill.style.width=d.progress+'%';lbl.textContent=d.status;
         if(d.done){
@@ -2166,7 +2150,7 @@ function startDl(id,url,title){
             setStat('OK : '+title);toast('&#10003; '+title);loadLib();
           } else {
             btn.dataset.go='';btn.disabled=false;btn.innerHTML=ico('refresh',13)+' Réessayer';
-            setStat('Erreur.');toast('⚠ Échec : '+title);
+            setStat('Erreur.');toast('Echec : '+title);
           }
         }
       };
@@ -2174,7 +2158,7 @@ function startDl(id,url,title){
     .catch(function(){
       btn.dataset.go='';btn.disabled=false;btn.innerHTML='&#8659; MP3';
       cbtn.style.display='none';pg.style.display='none';
-      setStat('Erreur réseau.');toast('⚠ Impossible de lancer le téléchargement');
+      setStat('Erreur réseau.');toast('Impossible de lancer le téléchargement');
     });
 }
 function cancelDl(id){
@@ -2584,9 +2568,19 @@ function plyLoad(fn,title,artist){
   document.querySelectorAll('.lcard.now-playing').forEach(function(c){c.classList.remove('now-playing')});
   var nc=document.querySelector('.lcard[data-fn="'+fn.replace(/"/g,'&quot;')+'"]');
   if(nc)nc.classList.add('now-playing');
-  aud.src='/api/stream/'+encodeURIComponent(fn);aud.play();
-  var covUrl='/api/cover/'+encodeURIComponent(fn);
-  var artHtml='<img src="'+covUrl+'" style="width:100%;height:100%;object-fit:cover;display:block" onerror="this.parentNode.innerHTML=\'<div class=ply-art-ph>&#9835;</div>\'">';
+  var isYt=fn.indexOf('__yt__')===0;
+  var ytThumb=isYt&&plyQueue[plyIdx]?plyQueue[plyIdx].thumb||'':'';
+  var covUrl=isYt?(ytThumb||''):('/api/cover/'+encodeURIComponent(fn));
+  if(isYt){
+    var ytVid=fn.replace('__yt__','').replace(/\.[^.]+$/,'');
+    aud.src='';
+    fetch('/api/yt/url/'+encodeURIComponent(ytVid)).then(function(r){return r.json();}).then(function(d){
+      if(!d.url)return;aud.src=d.url;aud.play();
+    }).catch(function(){setStat('Erreur lecture YouTube');});
+  } else {
+    aud.src='/api/stream/'+encodeURIComponent(fn);aud.play();
+  }
+  var artHtml=covUrl?('<img src="'+escH(covUrl)+'" style="width:100%;height:100%;object-fit:cover;display:block" onerror="this.parentNode.innerHTML=\'<div class=ply-art-ph>&#9835;</div>\'">'):('<div class="ply-art-ph">&#9835;</div>');
   /* animated title change */
   var tEl=document.getElementById('ply-title'),aEl=document.getElementById('ply-artist');
   if(tEl.textContent){tEl.classList.add('changing');aEl.classList.add('changing');setTimeout(function(){tEl.textContent=title||fn;aEl.textContent=artist||'';tEl.classList.remove('changing');aEl.classList.remove('changing');},180);}
@@ -2654,7 +2648,7 @@ function plyToggleFav(){
     toast(r.added?'Ajouté aux favoris':'Retiré des favoris');
   });
 }
-function plyMute(){aud.muted=!aud.muted;var ico=aud.muted?VOL_OFF:VOL_ON;document.getElementById('ply-vol-svg').innerHTML=ico;var ns=document.getElementById('np-vol-svg');if(ns)ns.innerHTML=ico;var pf=document.getElementById('ply-vol-f');if(pf)pf.style.width=aud.muted?'0%':(aud.volume*100)+'%';var nf=document.getElementById('np-vol-fill');if(nf)nf.style.width=aud.muted?'0%':(aud.volume*100)+'%';}
+function plyMute(){aud.muted=!aud.muted;var svgPath=aud.muted?VOL_OFF:VOL_ON;document.getElementById('ply-vol-svg').innerHTML=svgPath;var ns=document.getElementById('np-vol-svg');if(ns)ns.innerHTML=svgPath;var pf=document.getElementById('ply-vol-f');if(pf)pf.style.width=aud.muted?'0%':(aud.volume*100)+'%';var nf=document.getElementById('np-vol-fill');if(nf)nf.style.width=aud.muted?'0%':(aud.volume*100)+'%';}
 function fmtT(s){s=Math.floor(s||0);var m=Math.floor(s/60),sec=s%60;return m+':'+(sec<10?'0':'')+sec;}
 /* NOW PLAYING VIEW */
 function toggleNowPlaying(){if(!plyFavFn)return;npOpen=!npOpen;document.getElementById('np-view').classList.toggle('open',npOpen);}
