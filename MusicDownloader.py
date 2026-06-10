@@ -33,7 +33,7 @@ os.makedirs(OUT_DIR, exist_ok=True)
 FAV_FILE    = os.path.join(OUT_DIR, ".favorites.json")
 PL_FILE     = os.path.join(OUT_DIR, ".playlists.json")
 DEVICE_FILE = os.path.join(OUT_DIR, "device.json")
-APP_VERSION = "2.8.4"
+APP_VERSION = "2.8.5"
 
 # ── HOME / AUTO-PLAYLISTS ──────────────────────────────────────────────────────
 HOME_CACHE_FILE   = os.path.join(_appdata, "MusicDL", ".home_cache.json")
@@ -390,7 +390,7 @@ def api_home():
                 _home_generating = False
     threading.Thread(target=_bg, daemon=True).start()
     cached = list(cache.values())
-    return jsonify({"playlists":cached,"artists":artists,"generating":len(cached)==0})
+    return jsonify({"playlists":cached,"artists":artists,"generating":True})
 
 @app.route("/api/home/refresh/<key>", methods=["POST"])
 def api_home_refresh(key):
@@ -437,7 +437,7 @@ def _download(job_id, url):
             raw = (d.get("_percent_str","0")
                    .replace("%","").replace("\x1b[0;94m","").replace("\x1b[0m","").strip())
             try:    pct = float(raw)
-            except: pct = 0.0
+            except (ValueError, TypeError): pct = 0.0
             spd = d.get("_speed_str","").strip()
             eta = d.get("_eta_str","").strip()
             j["progress"] = pct
@@ -619,7 +619,7 @@ def _generate_home(artists):
     for a, info in artist_info.items():
         if info["genre"]: genre_groups.setdefault(info["genre"],[]).append(a)
     for i,(genre,g_artists) in enumerate(list(genre_groups.items())[:4]):
-        key = f"genre_{re.sub(r'[^\\w]','_',genre.lower())}"
+        key = f"genre_{re.sub(r'[^\w]','_',genre.lower())}"
         if not _needs(key, "genre"):
             result[key] = cache[key]; continue
         hint = artist_info.get(g_artists[0],{}).get("genre_hint","")

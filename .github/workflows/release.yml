@@ -28,7 +28,7 @@ jobs:
           node-version: '20'
 
       - name: Install Python dependencies
-        run: pip install -r requirements.txt pyinstaller
+        run: pip install -r requirements.txt "pyinstaller>=6.0,<7"
 
       - name: Build Python backend (PyInstaller)
         run: pyinstaller musicdl.spec --noconfirm --clean
