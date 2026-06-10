@@ -3,7 +3,7 @@ Music Downloader — Flask + HTML/CSS/JS
 Interface web professionnelle avec glassmorphism et animations CSS 3D
 """
 
-import os, io, json, uuid, shutil, tempfile, threading, time, webbrowser, socket, struct, zlib, platform
+import os, io, json, uuid, shutil, tempfile, threading, time, webbrowser, socket, struct, zlib, platform, re
 import concurrent.futures
 import urllib.request, urllib.parse
 from datetime import datetime
@@ -33,12 +33,12 @@ os.makedirs(OUT_DIR, exist_ok=True)
 FAV_FILE    = os.path.join(OUT_DIR, ".favorites.json")
 PL_FILE     = os.path.join(OUT_DIR, ".playlists.json")
 DEVICE_FILE = os.path.join(OUT_DIR, "device.json")
-APP_VERSION = "2.8.3"
+APP_VERSION = "2.8.4"
 
 # ── HOME / AUTO-PLAYLISTS ──────────────────────────────────────────────────────
 HOME_CACHE_FILE   = os.path.join(_appdata, "MusicDL", ".home_cache.json")
 LASTFM_KEY        = "ea1d7dc215630b0a24a419698442337d"
-REFRESH_INTERVALS = {"daily": 86400, "news": 43200, "artist": 172800, "genre": 172800}
+REFRESH_INTERVALS = {"daily": 86400, "news": 43200, "artist": 172800, "genre": 172800, "station": 172800}
 GENRE_KEYWORDS    = {
     "Rap":       ["rap","hip-hop","hip hop","gangsta rap","trap rap"],
     "Trap":      ["trap","drill","cloud rap","plugg"],
@@ -539,14 +539,24 @@ def _yt_quick(query, n=12):
 def _generate_home(artists):
     import random as rnd
 
+    # Genre tag keywords for disambiguation — to refine YouTube queries
+    _DISAMBIG_KW = ["rap","hip","r&b","rnb","soul","rai","chaabi","gnawa","trap","drill",
+                    "afro","arab","maghreb","french","marocain","algerien","tunisien",
+                    "pop","rock","chill","lo-fi","k-pop","dancehall"]
+
     def _fetch(a):
         dz = _deezer_artist(a)
         lf = _lastfm_artist(a)
-        genre = _detect_genre(lf.get("tags",[]))
-        return a, {"picture":dz.get("picture",""),"genre":genre,
-                   "tags":lf.get("tags",[]),"similar":lf.get("similar",[])}
+        tags   = lf.get("tags", [])
+        genre  = _detect_genre(tags)
+        # Pick the first tag that helps disambiguate (e.g. "rap français" for Shaw)
+        genre_hint = next((t for t in tags[:5]
+                           if any(kw in t for kw in _DISAMBIG_KW)), "")
+        return a, {"picture": dz.get("picture",""), "genre": genre,
+                   "tags": tags, "similar": lf.get("similar",[]),
+                   "genre_hint": genre_hint}
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as ex:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=6) as ex:
         artist_info = dict(ex.map(_fetch, artists))
 
     cache = _jload(HOME_CACHE_FILE, {})
@@ -556,59 +566,80 @@ def _generate_home(artists):
         return now - cache.get(key,{}).get("generated_at",0) > REFRESH_INTERVALS.get(ptype,86400)
 
     result = {}
-    GRAD_COLORS = ["#7c3aed","#06b6d4","#f43f5e","#10b981","#f59e0b","#8b5cf6"]
+    GRAD = ["#7c3aed","#06b6d4","#f43f5e","#10b981","#f59e0b","#8b5cf6","#0ea5e9","#ec4899"]
 
-    # Daily Mix
+    # ── Daily Mix (up to 6) ──────────────────────────────────────────────────
     shuffled = list(artists); rnd.shuffle(shuffled)
-    chunks = [shuffled[i:i+3] for i in range(0, min(9,len(shuffled)), 3)]
-    for idx, chunk in enumerate(chunks[:3], 1):
+    # Pad list so we always get 6 mixes even with few artists
+    while len(shuffled) < 18: shuffled += list(artists)
+    chunks = [shuffled[i:i+3] for i in range(0, 18, 3)]
+    for idx, chunk in enumerate(chunks[:6], 1):
         key = f"daily_mix_{idx}"
-        if not _needs(key,"daily"):
+        if not _needs(key, "daily"):
             result[key] = cache[key]; continue
-        q = " ".join(chunk[:2])+" best mix playlist"
-        tracks = _yt_quick(q, 15)
+        a0   = chunk[0]
+        hint = artist_info.get(a0,{}).get("genre_hint","")
+        # Quote artist names to avoid cross-genre results
+        q = " ".join(f'"{c}"' for c in chunk[:2]) + (f" {hint}" if hint else "") + " mix"
+        tracks = _yt_quick(q, 25)
         result[key] = {"key":key,"name":f"Daily Mix {idx}","type":"daily","artists":chunk,
-                       "picture":artist_info.get(chunk[0],{}).get("picture",""),
-                       "tracks":tracks,"generated_at":now,
-                       "color":GRAD_COLORS[idx-1]}
+                       "picture":artist_info.get(a0,{}).get("picture",""),
+                       "tracks":tracks,"generated_at":now,"color":GRAD[(idx-1)%8]}
 
-    # Artist Mix (top 5)
-    for artist in list(artists)[:5]:
-        safe = artist.lower().replace(" ","_").replace("-","_")
-        key  = f"artist_{safe}"
-        if not _needs(key,"artist"):
+    # ── Artist Stations (up to 6) — like Spotify Radio ──────────────────────
+    for i, artist in enumerate(list(artists)[:6]):
+        safe = re.sub(r"[^\w]","_", artist.lower())
+        key  = f"station_{safe}"
+        if not _needs(key, "station"):
             result[key] = cache[key]; continue
-        tracks = _yt_quick(f"{artist} best hits top songs", 12)
+        hint    = artist_info.get(artist,{}).get("genre_hint","")
+        similar = artist_info.get(artist,{}).get("similar",[])[:2]
+        # Quote artist name for disambiguation + include genre hint
+        q = f'"{artist}"' + (f" {hint}" if hint else "") + " playlist officiel"
+        tracks = _yt_quick(q, 20)
+        result[key] = {"key":key,"name":f"{artist} Radio","type":"station","artists":[artist]+similar,
+                       "picture":artist_info.get(artist,{}).get("picture",""),
+                       "tracks":tracks,"generated_at":now,"color":GRAD[i%8]}
+
+    # ── Artist Mix — best of one artist ──────────────────────────────────────
+    for i, artist in enumerate(list(artists)[:5]):
+        safe = re.sub(r"[^\w]","_", artist.lower())
+        key  = f"artist_{safe}"
+        if not _needs(key, "artist"):
+            result[key] = cache[key]; continue
+        hint  = artist_info.get(artist,{}).get("genre_hint","")
+        q = f'"{artist}"' + (f" {hint}" if hint else "") + " meilleurs sons top"
+        tracks = _yt_quick(q, 20)
         result[key] = {"key":key,"name":f"{artist} Mix","type":"artist","artists":[artist],
                        "picture":artist_info.get(artist,{}).get("picture",""),
-                       "tracks":tracks,"generated_at":now,"color":"#10b981"}
+                       "tracks":tracks,"generated_at":now,"color":GRAD[(i+2)%8]}
 
-    # Genre Mix
+    # ── Genre Mix ─────────────────────────────────────────────────────────────
     genre_groups = {}
     for a, info in artist_info.items():
-        if info["genre"]:
-            genre_groups.setdefault(info["genre"],[]).append(a)
+        if info["genre"]: genre_groups.setdefault(info["genre"],[]).append(a)
     for i,(genre,g_artists) in enumerate(list(genre_groups.items())[:4]):
-        key = f"genre_{genre.lower().replace(' ','_').replace('&','')}"
-        if not _needs(key,"genre"):
+        key = f"genre_{re.sub(r'[^\\w]','_',genre.lower())}"
+        if not _needs(key, "genre"):
             result[key] = cache[key]; continue
-        q = " ".join(g_artists[:2])+f" {genre} mix playlist"
-        tracks = _yt_quick(q, 15)
+        hint = artist_info.get(g_artists[0],{}).get("genre_hint","")
+        q = " ".join(f'"{a}"' for a in g_artists[:2]) + f" {genre} {hint} mix playlist"
+        tracks = _yt_quick(q, 20)
         result[key] = {"key":key,"name":f"{genre} Mix","type":"genre","artists":g_artists,
                        "picture":artist_info.get(g_artists[0],{}).get("picture",""),
-                       "tracks":tracks,"generated_at":now,
-                       "color":GRAD_COLORS[3+i%3]}
+                       "tracks":tracks,"generated_at":now,"color":GRAD[(i+4)%8]}
 
-    # Nouveautés
+    # ── Nouveautés ────────────────────────────────────────────────────────────
     key = "news"
-    if _needs(key,"news"):
+    if _needs(key, "news"):
         all_tracks = []
         for a in list(artists)[:4]:
-            all_tracks += _yt_quick(f"{a} 2025 nouveau son", 3)
+            hint = artist_info.get(a,{}).get("genre_hint","")
+            all_tracks += _yt_quick(f'"{a}" {hint} 2025 nouveau'.strip(), 5)
         rnd.shuffle(all_tracks)
         result[key] = {"key":key,"name":"Nouveautés","type":"news",
                        "artists":list(artists)[:4],"picture":"",
-                       "tracks":all_tracks[:18],"generated_at":now,"color":"#f43f5e"}
+                       "tracks":all_tracks[:20],"generated_at":now,"color":"#f43f5e"}
     else:
         if key in cache: result[key] = cache[key]
 
@@ -893,29 +924,48 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 .cs-chips{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
 .cs-chip{padding:8px 18px;border-radius:20px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);font-size:13px;color:#94a3b8}
 /* ── Home Page ── */
-.home-wrap{flex:1;overflow-y:auto;padding:16px 16px 120px;display:flex;flex-direction:column}
-.home-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
-.home-title{font-size:22px;font-weight:800;letter-spacing:-.02em;color:#f1f5f9}
-.home-refresh-all{background:transparent;border:1px solid rgba(255,255,255,.1);border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#94a3b8;transition:all .2s}
-.home-refresh-all:hover{background:rgba(255,255,255,.06);color:#f1f5f9}
-.home-gen-bar{display:flex;align-items:center;gap:10px;font-size:13px;color:#94a3b8;margin-bottom:16px;padding:10px 14px;background:rgba(124,58,237,.08);border:1px solid rgba(124,58,237,.18);border-radius:10px}
+.home-wrap{flex:1;overflow-y:auto;padding:0 0 120px;display:flex;flex-direction:column}
+.home-header{display:flex;align-items:flex-start;justify-content:space-between;padding:22px 18px 6px}
+.home-title{font-size:26px;font-weight:800;letter-spacing:-.03em;color:#fff;line-height:1.15}
+.home-title-sub{font-size:13px;font-weight:400;color:rgba(255,255,255,.5);display:block;margin-top:3px}
+.home-refresh-all{background:transparent;border:none;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:rgba(255,255,255,.35);transition:color .18s;flex-shrink:0;margin-top:4px}
+.home-refresh-all:hover{color:#fff}
+.home-gen-bar{display:flex;align-items:center;gap:10px;font-size:13px;color:#94a3b8;margin:6px 16px 0;padding:10px 14px;background:rgba(124,58,237,.08);border:1px solid rgba(124,58,237,.18);border-radius:10px}
 .home-gen-dot{width:8px;height:8px;border-radius:50%;background:#7c3aed;animation:homeDot 1.2s ease-in-out infinite}
 @keyframes homeDot{0%,100%{opacity:.3;transform:scale(.8)}50%{opacity:1;transform:scale(1.3)}}
-.home-section{margin-bottom:28px}
-.home-sec-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
-.home-sec-title{font-size:15px;font-weight:700;color:#e2e8f0}
-.home-sec-more{font-size:12px;color:#7c3aed;cursor:pointer;background:none;border:none;padding:0}
-.home-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px}
-.home-card{border-radius:14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);cursor:pointer;overflow:hidden;transition:transform .18s,box-shadow .18s}
-.home-card:hover{transform:translateY(-3px);box-shadow:0 8px 28px rgba(0,0,0,.35)}
-.home-card-img{width:100%;aspect-ratio:1;background:rgba(255,255,255,.06);position:relative;overflow:hidden}
-.home-card-img img{width:100%;height:100%;object-fit:cover;display:block}
-.home-card-grad{position:absolute;inset:0;opacity:.7}
-.home-card-body{padding:10px 10px 12px}
-.home-card-name{font-size:12px;font-weight:700;color:#f1f5f9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.home-card-sub{font-size:11px;color:#64748b;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.home-card-play{position:absolute;bottom:8px;right:8px;width:32px;height:32px;border-radius:50%;background:var(--grad);display:flex;align-items:center;justify-content:center;opacity:0;transform:translateY(4px);transition:all .2s;box-shadow:0 4px 14px rgba(0,0,0,.4)}
-.home-card:hover .home-card-play{opacity:1;transform:translateY(0)}
+/* Quick access grid */
+.hm-quick{padding:14px 14px 4px;display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.hm-qi{display:flex;align-items:center;gap:0;background:rgba(255,255,255,.09);border-radius:6px;overflow:hidden;cursor:pointer;transition:background .15s;height:56px;min-width:0}
+.hm-qi:hover{background:rgba(255,255,255,.18)}
+.hm-qi-img{width:56px;height:56px;flex-shrink:0;object-fit:cover;display:block}
+.hm-qi-ph{width:56px;height:56px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:20px;background:rgba(255,255,255,.06)}
+.hm-qi-name{font-size:12px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 10px}
+/* Sections */
+.hm-sec{margin-bottom:26px}
+.hm-sec-hd{display:flex;align-items:baseline;justify-content:space-between;padding:18px 18px 10px}
+.hm-sec-title{font-size:22px;font-weight:800;color:#fff;letter-spacing:-.02em}
+.hm-sec-more{font-size:11px;font-weight:700;color:rgba(255,255,255,.45);cursor:pointer;border:none;background:none;text-transform:uppercase;letter-spacing:.08em;transition:color .15s;padding:0}
+.hm-sec-more:hover{color:#fff}
+.hm-row{display:flex;gap:14px;overflow-x:auto;padding:0 16px 6px;scrollbar-width:none}
+.hm-row::-webkit-scrollbar{display:none}
+/* Playlist card */
+.hm-card{flex-shrink:0;width:160px;cursor:pointer;border-radius:8px;padding:12px;background:#181818;transition:background .18s;position:relative}
+.hm-card:hover{background:#282828}
+.hm-card-img{width:136px;height:136px;border-radius:4px;background:#333;position:relative;overflow:hidden;margin-bottom:10px;box-shadow:0 8px 28px rgba(0,0,0,.6)}
+.hm-card-img img{width:100%;height:100%;object-fit:cover;display:block}
+.hm-card-play{position:absolute;bottom:8px;right:8px;width:44px;height:44px;border-radius:50%;background:#1ed760;display:flex;align-items:center;justify-content:center;opacity:0;transform:translateY(10px);transition:opacity .2s,transform .2s;box-shadow:0 8px 20px rgba(0,0,0,.5)}
+.hm-card:hover .hm-card-play{opacity:1;transform:translateY(0)}
+.hm-card-name{font-size:14px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px}
+.hm-card-sub{font-size:12px;color:rgba(255,255,255,.42);line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;white-space:normal}
+.hm-dm-badge{position:absolute;top:8px;left:8px;background:rgba(0,0,0,.72);border-radius:3px;padding:2px 7px;font-size:9px;font-weight:800;color:#fff;letter-spacing:.08em;text-transform:uppercase}
+/* Artist card (round) */
+.hm-art{flex-shrink:0;width:148px;cursor:pointer;border-radius:8px;padding:12px 12px 14px;background:#181818;transition:background .18s;text-align:center}
+.hm-art:hover{background:#282828}
+.hm-art-img{width:124px;height:124px;border-radius:50%;background:#333;overflow:hidden;margin:0 auto 10px;box-shadow:0 8px 28px rgba(0,0,0,.55)}
+.hm-art-img img{width:100%;height:100%;object-fit:cover;display:block}
+.hm-art-ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#7c3aed,#06b6d4)}
+.hm-art-name{font-size:14px;font-weight:700;color:#fff;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hm-art-type{font-size:12px;color:rgba(255,255,255,.42)}
 .home-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:#475569;text-align:center;padding:40px}
 /* Home Detail Overlay */
 .home-detail{position:absolute;inset:0;background:#0f0f17;z-index:50;overflow-y:auto;display:flex;flex-direction:column}
@@ -1623,15 +1673,19 @@ body.is-offline .dl-btn,body.is-offline #alldl{opacity:.3;pointer-events:none}
 <div class="page" id="page3">
   <div class="home-wrap" id="home-wrap">
     <div class="home-header">
-      <div class="home-title">Bonne écoute <span id="home-time-greet"></span></div>
-      <button class="home-refresh-all" id="home-refresh-all" onclick="refreshHome()" title="Rafraîchir tout">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23,4 23,10 17,10"/><polyline points="1,20 1,14 7,14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+      <div>
+        <div class="home-title" id="home-greeting">Bonne écoute</div>
+        <span class="home-title-sub" id="home-greeting-sub"></span>
+      </div>
+      <button class="home-refresh-all" id="home-refresh-all" onclick="refreshHome()" title="Rafraîchir">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23,4 23,10 17,10"/><polyline points="1,20 1,14 7,14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
       </button>
     </div>
     <div class="home-gen-bar" id="home-gen-bar" style="display:none">
       <div class="home-gen-dot"></div>
       Génération des playlists en cours…
     </div>
+    <div id="hm-quick" class="hm-quick" style="display:none"></div>
     <div id="home-sections"></div>
     <div class="home-empty" id="home-empty" style="display:none">
       <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".22"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
@@ -1946,8 +2000,11 @@ var _homePl=null;
 var _homePollTimer=null;
 
 function loadHome(){
-  var greet=document.getElementById('home-time-greet');
-  if(greet){var h=new Date().getHours();var _gs=h<12?'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>':h<18?'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9z"/></svg>':'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';greet.innerHTML=_gs;}
+  var h=new Date().getHours();
+  var gEl=document.getElementById('home-greeting');
+  var gSub=document.getElementById('home-greeting-sub');
+  if(gEl) gEl.textContent=h<12?'Bonjour':h<18?'Bonne après-midi':'Bonne soirée';
+  if(gSub) gSub.textContent='Basé sur vos artistes favoris';
   fetch('/api/home').then(function(r){return r.json();}).then(function(d){
     _homeData=d;
     renderHome(d);
@@ -1987,40 +2044,76 @@ function refreshHome(){
 function renderHome(d){
   var empty=document.getElementById('home-empty');
   var secs=document.getElementById('home-sections');
+  var quickEl=document.getElementById('hm-quick');
   if(!d||!d.artists||d.artists.length===0){
-    if(empty)empty.style.display='flex';secs.innerHTML='';return;
+    if(empty)empty.style.display='flex';secs.innerHTML='';if(quickEl)quickEl.style.display='none';return;
   }
   if(empty)empty.style.display='none';
   var pls=d.playlists||[];
-  if(pls.length===0){secs.innerHTML='';return;}
+  if(pls.length===0){secs.innerHTML='';if(quickEl)quickEl.style.display='none';return;}
+
+  /* Quick access grid — top 6 daily mixes for fast replay */
+  var quick=pls.filter(function(p){return p.type==='daily'||p.type==='artist';}).slice(0,6);
+  if(quickEl&&quick.length>0){
+    quickEl.innerHTML=quick.map(function(pl){
+      var key=pl.key||'';
+      var img=pl.picture
+        ?('<img class="hm-qi-img" src="'+escH(pl.picture)+'" onerror="this.outerHTML=\'<div class=hm-qi-ph>&#9835;</div>\'">')
+        :'<div class="hm-qi-ph">&#9835;</div>';
+      return '<div class="hm-qi" onclick="openHomeDetail(\''+escH(key)+'\')">'+img
+        +'<div class="hm-qi-name">'+escH(pl.name||'')+'</div></div>';
+    }).join('');
+    quickEl.style.display='grid';
+  }
+
+  /* Sections */
   var daily=pls.filter(function(p){return p.type==='daily';});
+  var station=pls.filter(function(p){return p.type==='station';});
   var artist=pls.filter(function(p){return p.type==='artist';});
   var genre=pls.filter(function(p){return p.type==='genre';});
   var news=pls.filter(function(p){return p.type==='news';});
   var html='';
-  if(daily.length){html+=mkHomeSection('Daily Mix',daily);}
-  if(news.length){html+=mkHomeSection('Nouveautés',news);}
-  if(artist.length){html+=mkHomeSection('Par artiste',artist);}
-  if(genre.length){html+=mkHomeSection('Par genre',genre);}
+  if(daily.length)  html+=_mkSec('Votre Daily Mix',daily,false);
+  if(station.length)html+=_mkSec('Stations recommandées',station,true);
+  if(artist.length) html+=_mkSec('Vos top mixes',artist,false);
+  if(genre.length)  html+=_mkSec('Par genre',genre,false);
+  if(news.length)   html+=_mkSec('Nouveautés',news,false);
   secs.innerHTML=html;
 }
 
-function mkHomeSection(title, pls){
-  var cards=pls.map(function(pl,i){return mkHomeCard(pl,i);}).join('');
-  return '<div class="home-section"><div class="home-sec-hd"><div class="home-sec-title">'+escH(title)+'</div></div><div class="home-cards">'+cards+'</div></div>';
+function _mkSec(title,pls,round){
+  var cards=pls.map(function(pl){return round?_mkArtCard(pl):_mkPlCard(pl);}).join('');
+  return '<div class="hm-sec"><div class="hm-sec-hd"><div class="hm-sec-title">'+escH(title)+'</div></div>'
+    +'<div class="hm-row">'+cards+'</div></div>';
 }
 
-function mkHomeCard(pl, idx){
-  var img=pl.picture?('<img src="'+escH(pl.picture)+'" onerror="this.style.display=\'none\'">'):''
-  var grad='linear-gradient(135deg,'+(pl.color||'#7c3aed')+',#06b6d4)';
-  var artists=(pl.artists||[]).slice(0,3).join(' · ');
+function _mkPlCard(pl){
   var key=pl.key||encodeURIComponent((pl.name||'').replace(/\s+/g,'_').toLowerCase());
-  return '<div class="home-card" onclick="openHomeDetail(\''+escH(key)+'\')" data-key="'+escH(key)+'">'
-    +'<div class="home-card-img">'+(img||'<div class="home-card-grad" style="background:'+escH(grad)+';opacity:1;position:absolute;inset:0;border-radius:0"></div>')
-    +'<div class="home-card-grad" style="background:linear-gradient(180deg,transparent 40%,rgba(0,0,0,.7))"></div>'
-    +'<div class="home-card-play"><svg width="13" height="13" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21"/></svg></div>'
+  var grad='linear-gradient(135deg,'+(pl.color||'#7c3aed')+',#06b6d4)';
+  var imgIn=pl.picture
+    ?('<img src="'+escH(pl.picture)+'" onerror="this.parentNode.style.background=\''+escH(grad)+'\';this.remove()">')
+    :('<div style="width:100%;height:100%;background:'+escH(grad)+'"></div>');
+  var badge=pl.type==='daily'?'<div class="hm-dm-badge">Daily Mix</div>':'';
+  var sub=(pl.artists||[]).slice(0,3).join(', ');
+  return '<div class="hm-card" onclick="openHomeDetail(\''+escH(key)+'\')" data-key="'+escH(key)+'">'
+    +'<div class="hm-card-img">'+imgIn+badge
+    +'<div class="hm-card-play"><svg width="16" height="16" viewBox="0 0 24 24" fill="#000"><polygon points="5,3 19,12 5,21"/></svg></div>'
     +'</div>'
-    +'<div class="home-card-body"><div class="home-card-name">'+escH(pl.name||'')+'</div><div class="home-card-sub">'+escH(artists)+'</div></div>'
+    +'<div class="hm-card-name">'+escH(pl.name||'')+'</div>'
+    +'<div class="hm-card-sub">'+escH(sub)+'</div>'
+    +'</div>';
+}
+
+function _mkArtCard(pl){
+  var key=pl.key||encodeURIComponent((pl.name||'').replace(/\s+/g,'_').toLowerCase());
+  var imgIn=pl.picture
+    ?('<img src="'+escH(pl.picture)+'" onerror="this.outerHTML=\'<div class=hm-art-ph>'+ico('note',36).replace(/'/g,'&apos;')+'</div>\'">')
+    :'<div class="hm-art-ph">'+ico('note',36)+'</div>';
+  var artistName=(pl.artists||[])[0]||pl.name||'';
+  return '<div class="hm-art" onclick="openHomeDetail(\''+escH(key)+'\')" data-key="'+escH(key)+'">'
+    +'<div class="hm-art-img">'+imgIn+'</div>'
+    +'<div class="hm-art-name">'+escH(artistName)+'</div>'
+    +'<div class="hm-art-type">Artiste</div>'
     +'</div>';
 }
 
@@ -2031,7 +2124,10 @@ function openHomeDetail(key){
   _homePl=pl;
   var det=document.getElementById('home-detail');
   var grad=pl.color||'#7c3aed';
-  document.getElementById('home-detail-cover').innerHTML=pl.picture
+  var isStation=pl.type==='station';
+  var covEl=document.getElementById('home-detail-cover');
+  covEl.style.borderRadius=isStation?'50%':'12px';
+  covEl.innerHTML=pl.picture
     ?'<img src="'+escH(pl.picture)+'" style="width:100%;height:100%;object-fit:cover">'
     :'<div style="width:100%;height:100%;background:linear-gradient(135deg,'+escH(grad)+',#06b6d4)"></div>';
   document.getElementById('home-detail-name').textContent=pl.name||'';
