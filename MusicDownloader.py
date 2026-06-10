@@ -126,7 +126,7 @@ def api_search():
         return jsonify([])
     try:
         with yt_dlp.YoutubeDL({"quiet":True,"no_warnings":True,"extract_flat":True}) as ydl:
-            info = ydl.extract_info(f"ytsearch{n}:{q}", download=False)
+            info = ydl.extract_info(f"ytmsearch{n}:{q}", download=False)
         entries = (info or {}).get("entries", [])
         results = []
         for e in entries:
@@ -512,40 +512,36 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 .mt p{font-size:13px;color:var(--text4);text-align:center;line-height:1.7;max-width:240px}
 
 /* ══ RESULT CARD ══ */
-.rc{flex-shrink:0;display:flex;align-items:center;gap:13px;min-height:86px;background:rgba(13,13,42,.6);border:1px solid rgba(124,58,237,.14);border-radius:14px;padding:12px 14px;position:relative;overflow:hidden;transition:border-color .25s,box-shadow .25s,transform .2s cubic-bezier(.4,0,.2,1),background .25s;animation:up .22s ease both}
-.rc::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--grad);border-radius:3px 0 0 3px;opacity:.7;transition:opacity .25s,width .25s}
-.rc:hover{border-color:rgba(124,58,237,.32);box-shadow:0 4px 28px rgba(124,58,237,.12),0 1px 0 rgba(255,255,255,.03);transform:translateX(3px);background:rgba(13,13,48,.8)}
-.rc:hover::before{opacity:1;width:4px}
-.rt{flex-shrink:0;width:108px;height:68px;border-radius:10px;overflow:hidden;background:var(--bg3);position:relative;border:1px solid rgba(124,58,237,.18);transition:box-shadow .25s}
-.rc:hover .rt{box-shadow:0 4px 18px rgba(124,58,237,.3)}
-.rt img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .35s cubic-bezier(.4,0,.2,1)}
-.rc:hover .rt img{transform:scale(1.08)}
-.rt-ph{width:108px;height:68px;flex-shrink:0;border-radius:10px;background:linear-gradient(135deg,#1e1e50,#0d0d28);display:flex;align-items:center;justify-content:center;font-size:26px;opacity:.4;border:1px solid rgba(124,58,237,.15)}
-.rt-dur{position:absolute;bottom:4px;right:4px;background:rgba(0,0,0,.88);color:var(--text);font-size:9px;font-weight:700;padding:2px 5px;border-radius:4px;letter-spacing:.3px}
-.ri{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px}
-.ri-title{font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.35;transition:color .2s}
-.rc:hover .ri-title{color:#e2d9ff}
-.ri-row{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
-.ri-ch{font-size:11px;color:var(--purple);font-weight:600;letter-spacing:.1px}
-.ri-dot{color:var(--text4);font-size:10px}
-.ri-dur{font-size:11px;color:var(--text3)}
-.ri-views{display:inline-flex;align-items:center;gap:3px;background:rgba(6,182,212,.08);border:1px solid rgba(6,182,212,.18);color:#22d3ee;padding:1px 7px;border-radius:6px;font-size:10px;font-weight:600;letter-spacing:.2px}
-.rp{display:none;margin-top:3px}
-.rp-track{height:3px;background:rgba(124,58,237,.1);border-radius:3px;overflow:hidden}
+.rc{flex-shrink:0;display:flex;align-items:center;gap:14px;background:rgba(12,12,32,.55);border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:13px 14px;position:relative;transition:border-color .22s,background .22s,transform .18s;animation:up .22s ease both;cursor:default}
+.rc:hover{border-color:rgba(124,58,237,.28);background:rgba(14,14,40,.85);transform:translateX(2px)}
+.rt-ico{flex-shrink:0;width:46px;height:46px;border-radius:11px;display:flex;align-items:center;justify-content:center;transition:transform .2s}
+.rc:hover .rt-ico{transform:scale(1.06)}
+.rt-ico svg{filter:drop-shadow(0 1px 4px rgba(0,0,0,.4))}
+.ri{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.ri-title{font-size:13.5px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3;transition:color .18s}
+.rc:hover .ri-title{color:#ddd6fe}
+.ri-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.ri-ch{font-size:11.5px;color:rgba(255,255,255,.5);font-weight:500}
+.ri-dot{color:rgba(255,255,255,.2);font-size:10px}
+.ri-dur{font-size:11.5px;color:rgba(255,255,255,.4)}
+.ri-views{font-size:11px;color:rgba(255,255,255,.35)}
+.rp{display:none;margin-top:5px}
+.rp-track{height:3px;background:rgba(124,58,237,.12);border-radius:3px;overflow:hidden}
 .rp-fill{height:100%;width:0;background:var(--grad);border-radius:3px;transition:width .3s;position:relative;overflow:hidden}
 .rp-fill::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.38),transparent);animation:sh 1.4s linear infinite}
 @keyframes sh{from{transform:translateX(-100%)}to{transform:translateX(200%)}}
 .rp-fill.done{background:linear-gradient(90deg,#059669,#06b6d4)}
 .rp-fill.done::after{display:none}
-.rp-lbl{font-size:10px;color:var(--text3);margin-top:2px;letter-spacing:.2px}
-.ra{flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:6px;padding-right:2px}
-.dl-btn{display:inline-flex;align-items:center;gap:6px;padding:10px 18px;border-radius:10px;border:none;cursor:pointer;font-size:12px;font-weight:700;font-family:inherit;background:var(--grad);color:#fff;box-shadow:0 3px 16px rgba(124,58,237,.38);transition:box-shadow .2s,transform .2s cubic-bezier(.4,0,.2,1);white-space:nowrap;letter-spacing:.2px}
-.dl-btn:hover{box-shadow:0 5px 26px rgba(124,58,237,.62);transform:translateY(-2px) scale(1.03)}
-.dl-btn:active{transform:scale(.95)}
-.dl-btn:disabled{opacity:.38;transform:none;box-shadow:none;cursor:not-allowed}
-.cancel-btn{display:none;align-items:center;gap:5px;padding:6px 12px;border-radius:8px;border:1px solid rgba(244,63,94,.3);cursor:pointer;font-size:11px;font-weight:700;font-family:inherit;background:rgba(244,63,94,.1);color:#fb7185;transition:background .2s,transform .2s}
-.cancel-btn:hover{background:rgba(244,63,94,.25);transform:scale(1.04)}
-.ok-badge{display:inline-flex;align-items:center;gap:5px;padding:9px 13px;border-radius:9px;font-size:11px;font-weight:700;background:rgba(5,150,105,.1);color:#34d399;border:1px solid rgba(5,150,105,.28);letter-spacing:.2px}
+.rp-lbl{font-size:10px;color:rgba(255,255,255,.35);margin-top:3px}
+.ra{flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:5px}
+.dl-btn{width:38px;height:38px;border-radius:10px;border:none;cursor:pointer;font-family:inherit;background:rgba(124,58,237,.15);border:1px solid rgba(124,58,237,.28);color:#a78bfa;display:flex;align-items:center;justify-content:center;transition:background .18s,transform .18s,box-shadow .18s;flex-shrink:0}
+.dl-btn:hover{background:var(--grad);color:#fff;border-color:transparent;box-shadow:0 3px 18px rgba(124,58,237,.5);transform:scale(1.08)}
+.dl-btn:active{transform:scale(.93)}
+.dl-btn:disabled{opacity:.3;transform:none;box-shadow:none;cursor:not-allowed}
+.dl-btn .spin{width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;display:inline-block}
+.cancel-btn{display:none;align-items:center;gap:5px;padding:5px 10px;border-radius:8px;border:1px solid rgba(244,63,94,.3);cursor:pointer;font-size:11px;font-weight:700;font-family:inherit;background:rgba(244,63,94,.08);color:#fb7185;transition:background .18s}
+.cancel-btn:hover{background:rgba(244,63,94,.22)}
+.ok-badge{display:inline-flex;align-items:center;gap:5px;padding:8px 12px;border-radius:9px;font-size:11px;font-weight:700;background:rgba(5,150,105,.1);color:#34d399;border:1px solid rgba(5,150,105,.28)}
 
 /* ══ LIBRARY ══ */
 .lhd{flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:12px 18px;background:rgba(9,9,26,.8);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-bottom:1px solid var(--border);gap:10px;flex-wrap:wrap}
@@ -1674,25 +1670,44 @@ function doSearch(){
   });
 }
 
+var _cardGrads=[
+  'linear-gradient(135deg,#7c3aed,#0ea5e9)',
+  'linear-gradient(135deg,#10b981,#0891b2)',
+  'linear-gradient(135deg,#dc2626,#7c3aed)',
+  'linear-gradient(135deg,#f59e0b,#ef4444)',
+  'linear-gradient(135deg,#8b5cf6,#ec4899)',
+  'linear-gradient(135deg,#06b6d4,#6366f1)',
+  'linear-gradient(135deg,#059669,#7c3aed)',
+  'linear-gradient(135deg,#e11d48,#f59e0b)',
+];
 function mkCard(item,i){
   var d=document.createElement('div');d.className='rc';d.style.animationDelay=(i*18)+'ms';
-  var th=item.thumb?'<div class="rt"><img src="'+item.thumb+'" loading="lazy" onerror="this.parentNode.className=\'rt-ph\';this.remove()">'+(item.duration?'<span class="rt-dur">'+item.duration+'</span>':'')+'</div>':'<div class="rt-ph">'+ico('note',28)+'</div>';
+  var grad=_cardGrads[i%_cardGrads.length];
+  var playIco='<svg width="16" height="16" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg>';
+  var th='<div class="rt-ico" style="background:'+grad+'">'+playIco+'</div>';
   var meta='';
   if(item.channel)meta+='<span class="ri-ch">'+esc(item.channel)+'</span>';
-  if(item.channel&&item.duration)meta+='<span class="ri-dot">&bull;</span>';
+  if(item.channel&&(item.duration||item.views))meta+='<span class="ri-dot">&middot;</span>';
   if(item.duration)meta+='<span class="ri-dur">'+item.duration+'</span>';
-  if(item.views)meta+='<span class="ri-dot">&bull;</span><span class="ri-views">'+ico('eye',12)+' '+item.views+'</span>';
-  d.innerHTML=th+'<div class="ri"><div class="ri-title" title="'+esc(item.title)+'">'+esc(item.title)+'</div><div class="ri-row">'+meta+'</div><div class="rp" id="pg-'+item.id+'"><div class="rp-track"><div class="rp-fill" id="pf-'+item.id+'"></div></div><div class="rp-lbl" id="pl-'+item.id+'"></div></div></div>'
-    +'<div class="ra"><button class="dl-btn" id="db-'+item.id+'" onclick="startDl(\''+item.id+'\',\''+esc(item.url)+'\',\''+esc(item.title)+'\')">&#8659; MP3</button><button class="cancel-btn" id="cb-'+item.id+'" onclick="cancelDl(\''+item.id+'\')">&#215; Annuler</button></div>';
+  if(item.duration&&item.views)meta+='<span class="ri-dot">&middot;</span>';
+  if(item.views)meta+='<span class="ri-views">'+item.views+'</span>';
+  var dlIco='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
+  d.innerHTML=th
+    +'<div class="ri"><div class="ri-title" title="'+esc(item.title)+'">'+esc(item.title)+'</div>'
+    +'<div class="ri-row">'+meta+'</div>'
+    +'<div class="rp" id="pg-'+item.id+'"><div class="rp-track"><div class="rp-fill" id="pf-'+item.id+'"></div></div><div class="rp-lbl" id="pl-'+item.id+'"></div></div></div>'
+    +'<div class="ra"><button class="dl-btn" id="db-'+item.id+'" title="Télécharger en MP3" onclick="startDl(\''+item.id+'\',\''+esc(item.url)+'\',\''+esc(item.title)+'\')">'+dlIco+'</button>'
+    +'<button class="cancel-btn" id="cb-'+item.id+'" onclick="cancelDl(\''+item.id+'\')">&#215;</button></div>';
   return d;
 }
 
 /* TELECHARGEMENT */
 function startDl(id,url,title){
+  var _dlIco='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
   var btn=document.getElementById('db-'+id),cbtn=document.getElementById('cb-'+id);
   var pg=document.getElementById('pg-'+id),fill=document.getElementById('pf-'+id),lbl=document.getElementById('pl-'+id);
   if(!btn||btn.dataset.go)return;
-  btn.dataset.go='1';btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
+  btn.dataset.go='1';btn.disabled=true;btn.innerHTML='<span class="spin"></span>';btn.style.background='rgba(124,58,237,.25)';
   cbtn.style.display='inline-flex';pg.style.display='block';
   var entry=null;for(var i=0;i<results.length;i++){if(results[i].id===id){entry=results[i];break;}}
   if(!entry)entry={id:id,url:url,title:title};
@@ -1701,7 +1716,7 @@ function startDl(id,url,title){
     .then(function(res){
       var jid=res.job_id;btn.dataset.jobid=jid;setStat('Téléchargement : '+title);
       var es=new EventSource('/api/progress/'+jid);
-      es.onerror=function(){es.close();btn.dataset.go='';btn.disabled=false;btn.innerHTML=ico('refresh',13)+' Réessayer';cbtn.style.display='none';setStat('Erreur réseau.');toast('Erreur réseau');};
+      es.onerror=function(){es.close();btn.dataset.go='';btn.disabled=false;btn.innerHTML=_dlIco;btn.style.background='';cbtn.style.display='none';setStat('Erreur réseau.');toast('Erreur réseau');};
       es.onmessage=function(e){
         var d=JSON.parse(e.data);fill.style.width=d.progress+'%';lbl.textContent=d.status;
         if(d.done){
@@ -1709,20 +1724,20 @@ function startDl(id,url,title){
           if(d.cancelled){
             fill.style.width='0%';fill.style.background='rgba(100,116,139,.3)';
             lbl.textContent='Annulé — cliquez pour réessayer';
-            btn.dataset.go='';btn.disabled=false;btn.innerHTML='&#8659; Réessayer';
+            btn.dataset.go='';btn.disabled=false;btn.innerHTML=_dlIco;btn.style.background='';
             setStat('Annulé : '+title);
           } else if(!d.error){
             fill.classList.add('done');btn.outerHTML='<div class="ok-badge">&#10003; Téléchargée</div>';
             setStat('OK : '+title);toast('&#10003; '+title);loadLib();
           } else {
-            btn.dataset.go='';btn.disabled=false;btn.innerHTML=ico('refresh',13)+' Réessayer';
+            btn.dataset.go='';btn.disabled=false;btn.innerHTML=_dlIco;btn.style.background='';
             setStat('Erreur.');toast('Echec : '+title);
           }
         }
       };
     })
     .catch(function(){
-      btn.dataset.go='';btn.disabled=false;btn.innerHTML='&#8659; MP3';
+      btn.dataset.go='';btn.disabled=false;btn.innerHTML=_dlIco;btn.style.background='';
       cbtn.style.display='none';pg.style.display='none';
       setStat('Erreur réseau.');toast('Impossible de lancer le téléchargement');
     });
