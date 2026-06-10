@@ -1,10 +1,8 @@
 # -*- mode: python ; coding: utf-8 -*-
-# PyInstaller spec — Music DL
-# Usage: pyinstaller musicdl.spec
+# PyInstaller spec — Music DL (compatible PyInstaller 5.x et 6.x)
 
 import sys, os
 _icon = 'icon.ico' if os.path.exists('icon.ico') else None
-block_cipher = None
 
 a = Analysis(
     ['MusicDownloader.py'],
@@ -23,13 +21,10 @@ a = Analysis(
     hooksconfig={},
     runtime_hooks=[],
     excludes=['tkinter', 'matplotlib', 'numpy', 'pandas', 'scipy'],
-    win_no_prefer_redirects=False,
-    win_private_assemblies=False,
-    cipher=block_cipher,
     noarchive=False,
 )
 
-pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
+pyz = PYZ(a.pure)
 
 exe = EXE(
     pyz,
@@ -41,13 +36,12 @@ exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    console=False,          # pas de fenetre console
+    console=False,
     disable_windowed_traceback=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
     icon=_icon,
-    version_file=None,
 )
 
 coll = COLLECT(
