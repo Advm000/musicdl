@@ -33,7 +33,7 @@ os.makedirs(OUT_DIR, exist_ok=True)
 FAV_FILE    = os.path.join(OUT_DIR, ".favorites.json")
 PL_FILE     = os.path.join(OUT_DIR, ".playlists.json")
 DEVICE_FILE = os.path.join(OUT_DIR, "device.json")
-APP_VERSION = "2.8.5"
+APP_VERSION = "2.8.6"
 
 # ── HOME / AUTO-PLAYLISTS ──────────────────────────────────────────────────────
 HOME_CACHE_FILE   = os.path.join(_appdata, "MusicDL", ".home_cache.json")
@@ -619,7 +619,8 @@ def _generate_home(artists):
     for a, info in artist_info.items():
         if info["genre"]: genre_groups.setdefault(info["genre"],[]).append(a)
     for i,(genre,g_artists) in enumerate(list(genre_groups.items())[:4]):
-        key = f"genre_{re.sub(r'[^\w]','_',genre.lower())}"
+        safe_genre = re.sub(r'[^\w]', '_', genre.lower())
+        key = "genre_" + safe_genre
         if not _needs(key, "genre"):
             result[key] = cache[key]; continue
         hint = artist_info.get(g_artists[0],{}).get("genre_hint","")
