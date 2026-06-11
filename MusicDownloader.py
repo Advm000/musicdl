@@ -32,7 +32,7 @@ os.makedirs(OUT_DIR, exist_ok=True)
 FAV_FILE    = os.path.join(OUT_DIR, ".favorites.json")
 PL_FILE     = os.path.join(OUT_DIR, ".playlists.json")
 DEVICE_FILE = os.path.join(OUT_DIR, "device.json")
-APP_VERSION = "1.0.0"
+APP_VERSION = "1.0.1"
 
 
 app  = Flask(__name__)
@@ -1314,7 +1314,7 @@ body.is-offline .dl-btn,body.is-offline #alldl{opacity:.3;pointer-events:none}
       </svg>
     </div>
     <div class="sp-name">Music <em>DL</em></div>
-    <div class="sp-tag">YouTube &middot; MP3 &middot; 320 kbps</div>
+    <div class="sp-tag">YouTube Music &middot; MP3 &middot; 320 kbps</div>
     <div class="sp-dots">
       <div class="sp-dot"></div>
       <div class="sp-dot"></div>
@@ -2320,7 +2320,7 @@ function plyLoad(fn,title,artist){
     aud.src='';
     fetch('/api/yt/url/'+encodeURIComponent(ytVid)).then(function(r){return r.json();}).then(function(d){
       if(!d.url)return;aud.src=d.url;aud.play();
-    }).catch(function(){setStat('Erreur lecture YouTube');});
+    }).catch(function(){setStat('Erreur lecture YouTube Music');});
   } else {
     aud.src='/api/stream/'+encodeURIComponent(fn);aud.play();
   }
