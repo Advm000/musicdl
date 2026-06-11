@@ -1,39 +1,33 @@
-# Build output
-dist/
-build/
-installer_output/
-__pycache__/
-*.pyc
-*.pyo
+# Logs & sorties
+*.log
+*.err
+out.txt
+err.txt
+_out.txt
+_err.txt
 
-# Electron build
-electron/node_modules/
-electron/dist-electron/
+# Scripts temporaires de build
+_build_android_html.py
+_gen_icons.py
+_html_temp.py
+_merge.py
 
-# Python env
-.env
-*.egg-info/
-venv/
-.venv/
+# Artefacts Android
+*.apk
+*.zip
+musicdl-apk-tmp/
 
-# Musique (fichiers personnels, volumineux)
-*.mp3
-*.m4a
-*.webm
-*.opus
-*.flac
+# Dossiers avec leur propre git
+android-app/
+android-backend/
 
-# Donnees personnelles
-.favorites.json
-.playlists.json
-device.json
-Music/
+# Netlify build cache
+.netlify/
 
 # OS
 .DS_Store
 Thumbs.db
-desktop.ini
 
-# Temp
-*.tmp
-*.bak
+# Python
+__pycache__/
+*.pyc

@@ -1,0 +1,1236 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Music DL — Mockup Windows v3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;color:#f0f2f7;font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased;overflow:hidden}
+
+:root{
+  --sb:196px;
+  --bg0:#06080f;--bg1:#090c16;--bg2:#0d1120;--bg3:#111828;
+  --blue:#4f88f8;--teal:#1dd3b0;--pink:#ff6b8a;
+  --t1:#f0f2f7;--t2:#6b7a99;--t3:#2d3a52;
+  --border:rgba(255,255,255,.06);
+}
+
+/* ── WINDOW ── */
+.win{width:940px;height:580px;margin:24px auto;border-radius:12px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 40px 120px rgba(0,0,0,.9),0 0 0 1px rgba(255,255,255,.07)}
+.win-bar{height:36px;flex-shrink:0;background:#060810;border-bottom:1px solid rgba(255,255,255,.05);display:flex;align-items:center;padding:0 16px;gap:8px;position:relative}
+.dot{width:12px;height:12px;border-radius:50%}
+.dot.r{background:#ff5f57}.dot.y{background:#febc2e}.dot.g{background:#28c840}
+.win-title{position:absolute;left:50%;transform:translateX(-50%);font-size:11.5px;font-weight:500;color:rgba(255,255,255,.28);letter-spacing:.2px}
+
+/* ── LAYOUT ── */
+.layout{flex:1;display:flex;overflow:hidden}
+
+/* ── SIDEBAR ── */
+.sb{width:var(--sb);flex-shrink:0;background:#060810;border-right:1px solid var(--border);display:flex;flex-direction:column}
+.brand{display:flex;align-items:center;gap:10px;padding:17px 14px 15px;border-bottom:1px solid var(--border);flex-shrink:0}
+.brand-ico{width:33px;height:33px;border-radius:9px;background:linear-gradient(135deg,#4f88f8,#1dd3b0);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 14px rgba(79,136,248,.28)}
+.brand-name{font-size:13px;font-weight:800;color:#f0f2f7;letter-spacing:-.3px}
+.brand-sub{font-size:9px;color:rgba(255,255,255,.18);margin-top:1px}
+
+.nav{padding:9px 8px;flex:1;display:flex;flex-direction:column;gap:1px;overflow:hidden}
+.nav-sec{font-size:8px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:rgba(255,255,255,.1);padding:12px 8px 4px}
+.ni{display:flex;align-items:center;gap:9px;padding:8.5px 10px;border-radius:7px;cursor:pointer;font-size:11.5px;font-weight:500;color:rgba(255,255,255,.26);transition:all .14s;position:relative;user-select:none;flex-shrink:0}
+.ni.on{background:rgba(79,136,248,.12);color:#93c5fd;font-weight:600}
+.ni.on::before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);width:2.5px;height:16px;background:#4f88f8;border-radius:0 2px 2px 0}
+.ni:not(.on):hover{background:rgba(255,255,255,.04);color:rgba(255,255,255,.52)}
+.ni svg{width:15px;height:15px;opacity:.55;flex-shrink:0}
+.ni.on svg{opacity:1}
+
+.nav-div{height:1px;background:var(--border);margin:7px 10px;flex-shrink:0}
+
+.qa{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:6px;cursor:pointer;color:rgba(255,255,255,.18);transition:all .14s;flex-shrink:0}
+.qa:hover{background:rgba(255,255,255,.03);color:rgba(255,255,255,.42)}
+.qa-dot{width:24px;height:24px;border-radius:6px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.qa span{font-size:10.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+.online{display:flex;align-items:center;gap:7px;padding:7px 10px;border-radius:7px;font-size:10px;font-weight:600;background:rgba(29,211,176,.06);border:1px solid rgba(29,211,176,.13);color:#1dd3b0}
+.online-dot{width:5px;height:5px;border-radius:50%;background:#1dd3b0;flex-shrink:0;animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.25;transform:scale(.5)}}
+
+/* ── CONTENT ZONE ── */
+.cz{flex:1;display:flex;flex-direction:column;overflow:hidden;background:var(--bg0);min-height:0}
+
+/* ── PAGES WRAPPER ── */
+.pw{flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0}
+.pg{display:none;flex-direction:column;flex:1;min-height:0}
+.pg.on{display:flex}
+
+/* ── COMMON PAGE HEADER ── */
+.ph{height:56px;flex-shrink:0;background:var(--bg1);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:10px}
+.ph-title-wrap{display:flex;flex-direction:column;min-width:0;flex-shrink:0}
+.ph-title{font-size:14px;font-weight:800;color:#f0f2f7;letter-spacing:-.3px}
+.ph-sub{font-size:9.5px;color:rgba(255,255,255,.22);margin-top:1px}
+.ph-sep{width:1px;height:22px;background:var(--border);flex-shrink:0;margin:0 2px}
+.ph-spacer{flex:1}
+
+/* Search input */
+.sinput-wrap{flex:1;position:relative;max-width:440px}
+.sinput{width:100%;height:36px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:0 12px 0 36px;color:#f0f2f7;font-size:12.5px;font-family:'Inter',sans-serif;outline:none;transition:border-color .18s,background .18s}
+.sinput:focus{border-color:rgba(79,136,248,.4);background:rgba(79,136,248,.04)}
+.sinput::placeholder{color:rgba(255,255,255,.18)}
+.sinput-ico{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:rgba(255,255,255,.2);pointer-events:none}
+
+/* Header buttons */
+.hbtn{height:36px;padding:0 16px;border-radius:8px;border:none;cursor:pointer;font-size:12px;font-weight:600;font-family:'Inter',sans-serif;background:#4f88f8;color:#fff;box-shadow:0 3px 10px rgba(79,136,248,.28);transition:all .16s;display:flex;align-items:center;gap:6px;white-space:nowrap}
+.hbtn:hover{background:#3a76f0;box-shadow:0 4px 16px rgba(79,136,248,.45);transform:translateY(-1px)}
+.hbtn.ghost{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);color:rgba(255,255,255,.4);box-shadow:none}
+.hbtn.ghost:hover{background:rgba(255,255,255,.08);color:rgba(255,255,255,.7);transform:translateY(-1px)}
+.hbtn.teal{background:rgba(29,211,176,.1);border:1px solid rgba(29,211,176,.2);color:#1dd3b0;box-shadow:none}
+.hbtn.teal:hover{background:rgba(29,211,176,.18);transform:translateY(-1px)}
+.hbtn.sq{width:36px;padding:0;justify-content:center}
+
+/* ── PAGE BODY (scrollable) ── */
+.pb{flex:1;overflow-y:auto;background:var(--bg0);min-height:0}
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(79,136,248,.2);border-radius:4px}
+
+/* ══════════════════════════════════
+   PAGE 0 — RECHERCHE
+══════════════════════════════════ */
+.rc-list{display:flex;flex-direction:column;gap:5px;padding:12px 14px}
+
+.rcard{display:flex;align-items:center;gap:11px;background:rgba(255,255,255,.028);border:1px solid rgba(255,255,255,.05);border-radius:9px;padding:8px 12px;transition:border-color .14s,background .14s;cursor:pointer;flex-shrink:0}
+.rcard:hover{border-color:rgba(79,136,248,.2);background:rgba(79,136,248,.035)}
+.rcard-thumb{width:52px;height:52px;border-radius:8px;overflow:hidden;flex-shrink:0;position:relative;background:#0d1120}
+.rcard-thumb-ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center}
+.rcard-dur{position:absolute;bottom:3px;right:3px;background:rgba(0,0,0,.82);color:#fff;font-size:9px;font-weight:700;padding:1px 4px;border-radius:3px}
+.rcard-info{flex:1;min-width:0}
+.rcard-title{font-size:12.5px;font-weight:600;color:#f0f2f7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px}
+.rcard-meta{display:flex;align-items:center;gap:5px;font-size:10.5px}
+.rcard-ch{color:rgba(255,255,255,.36);font-weight:500}
+.rcard-sep{color:rgba(255,255,255,.13)}
+.rcard-views{color:rgba(255,255,255,.18)}
+.rcard-acts{flex-shrink:0;display:flex;align-items:center;gap:6px}
+.dl-btn{width:32px;height:32px;border-radius:7px;border:none;cursor:pointer;background:rgba(79,136,248,.1);border:1px solid rgba(79,136,248,.2);color:#60a5fa;display:flex;align-items:center;justify-content:center;transition:all .16s}
+.dl-btn:hover{background:#4f88f8;color:#fff;border-color:transparent;box-shadow:0 3px 12px rgba(79,136,248,.35)}
+.done-badge{display:flex;align-items:center;gap:5px;padding:5px 10px;border-radius:7px;font-size:10px;font-weight:700;background:rgba(29,211,176,.07);color:#1dd3b0;border:1px solid rgba(29,211,176,.16);white-space:nowrap}
+
+.res-bar{display:flex;align-items:center;gap:6px;padding:10px 16px 4px;font-size:10.5px;color:rgba(255,255,255,.18)}
+.res-bar strong{color:rgba(255,255,255,.4);font-weight:600}
+
+/* ══════════════════════════════════
+   PAGE 1 — BIBLIOTHÈQUE
+══════════════════════════════════ */
+.lib-cols{display:flex;align-items:center;padding:0 14px 0 14px;height:30px;border-bottom:1px solid rgba(255,255,255,.04);flex-shrink:0;background:var(--bg1)}
+.lib-col-h{font-size:9.5px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:rgba(255,255,255,.16);cursor:pointer;display:flex;align-items:center;gap:3px;transition:color .12s;user-select:none}
+.lib-col-h:hover{color:rgba(255,255,255,.45)}
+.lib-col-h.sorted{color:rgba(79,136,248,.7)}
+
+/* Column proportions */
+.c-n{width:30px;flex-shrink:0;justify-content:center}
+.c-thumb{width:0;flex-shrink:0}/* no header for thumb */
+.c-gap{width:50px;flex-shrink:0}/* spacer for thumb area */
+.c-info{flex:1;min-width:0;padding-right:10px}
+.c-album{width:140px;flex-shrink:0;padding:0 10px}
+.c-year{width:52px;flex-shrink:0;justify-content:center}
+.c-dur{width:52px;flex-shrink:0;justify-content:flex-end}
+.c-acts{width:90px;flex-shrink:0}
+
+.lib-row{display:flex;align-items:center;height:54px;padding:0 14px;border-bottom:1px solid rgba(255,255,255,.035);cursor:pointer;transition:background .12s;position:relative;flex-shrink:0}
+.lib-row:hover{background:rgba(255,255,255,.022)}
+.lib-row.playing{background:rgba(79,136,248,.055)}
+.lib-row:hover .rc-n{display:none}
+.lib-row:hover .rc-play-ico{display:flex}
+.lib-row.playing .rc-n{display:none}
+.lib-row.playing .rc-play-ico{display:flex;color:#4f88f8}
+
+/* Row columns */
+.rc-n-wrap{width:30px;flex-shrink:0;display:flex;align-items:center;justify-content:center;position:relative}
+.rc-n{font-size:11px;color:rgba(255,255,255,.2);font-variant-numeric:tabular-nums}
+.rc-play-ico{display:none;width:100%;align-items:center;justify-content:center;color:rgba(255,255,255,.6)}
+.lib-row.playing .rc-n-wrap .rc-eq{display:flex}
+.lib-row:not(.playing) .rc-eq{display:none}
+.rc-eq{align-items:flex-end;gap:2px;height:12px}
+.rc-eq-b{width:2px;background:#4f88f8;border-radius:1px;animation:eq .85s ease-in-out infinite}
+.rc-eq-b:nth-child(1){animation-delay:0s}
+.rc-eq-b:nth-child(2){animation-delay:.18s}
+.rc-eq-b:nth-child(3){animation-delay:.1s}
+@keyframes eq{0%,100%{height:2px}50%{height:12px}}
+
+.rc-thumb{width:38px;height:38px;border-radius:6px;overflow:hidden;flex-shrink:0;margin:0 12px 0 4px;background:#111828}
+.rc-thumb-ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center}
+.rc-info{flex:1;min-width:0;padding-right:10px}
+.rc-title{font-size:12px;font-weight:600;color:#f0f2f7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px}
+.rc-artist{font-size:10px;color:rgba(255,255,255,.32);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lib-row.playing .rc-title{color:#93c5fd}
+.rc-album{width:140px;flex-shrink:0;font-size:10.5px;color:rgba(255,255,255,.28);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 10px}
+.rc-year{width:52px;flex-shrink:0;font-size:10.5px;color:rgba(255,255,255,.2);text-align:center}
+.rc-dur{width:52px;flex-shrink:0;font-size:10.5px;color:rgba(255,255,255,.26);text-align:right;font-variant-numeric:tabular-nums}
+.rc-acts{width:90px;flex-shrink:0;display:flex;align-items:center;justify-content:flex-end;gap:3px;opacity:0;transition:opacity .14s}
+.lib-row:hover .rc-acts{opacity:1}
+
+.act-btn{width:26px;height:26px;border-radius:6px;border:none;cursor:pointer;background:transparent;color:rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center;transition:all .14s}
+.act-btn:hover{background:rgba(255,255,255,.07);color:rgba(255,255,255,.8)}
+.act-btn.del:hover{background:rgba(255,80,80,.1);color:#ff6060}
+
+/* Lib stats bar */
+.lib-stats{display:flex;align-items:center;gap:16px;padding:8px 16px;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--bg1)}
+.lib-stat{display:flex;align-items:center;gap:6px;font-size:10px;color:rgba(255,255,255,.25)}
+.lib-stat strong{color:rgba(255,255,255,.5);font-weight:600}
+.lib-stat-sep{color:rgba(255,255,255,.1);font-size:12px}
+
+/* ══════════════════════════════════
+   PAGE 2 — PLAYLISTS
+══════════════════════════════════ */
+.pl-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:11px;padding:14px}
+.pl-card{background:rgba(255,255,255,.032);border:1px solid rgba(255,255,255,.06);border-radius:13px;overflow:hidden;cursor:pointer;transition:all .18s}
+.pl-card:hover{border-color:rgba(79,136,248,.25);background:rgba(79,136,248,.045);transform:translateY(-3px);box-shadow:0 12px 36px rgba(0,0,0,.45)}
+.pl-cover{padding:9px;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:5px;aspect-ratio:1}
+.pl-cover-cell{border-radius:8px;overflow:hidden;display:flex;align-items:center;justify-content:center;position:relative}
+.pl-cover-cell svg{opacity:.18}
+.pl-foot{padding:9px 11px 11px;display:flex;align-items:center;gap:8px;border-top:1px solid rgba(255,255,255,.05)}
+.pl-foot-info{flex:1;min-width:0}
+.pl-name{font-size:12px;font-weight:700;color:#f0f2f7;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pl-meta{font-size:10px;color:rgba(255,255,255,.25)}
+.pl-meta span{color:rgba(79,136,248,.65)}
+.pl-foot-acts{flex-shrink:0;display:flex;gap:4px;opacity:0;transition:opacity .15s}
+.pl-card:hover .pl-foot-acts{opacity:1}
+.pl-act{width:28px;height:28px;border-radius:7px;border:none;cursor:pointer;background:rgba(255,255,255,.06);color:rgba(255,255,255,.4);display:flex;align-items:center;justify-content:center;transition:all .14s}
+.pl-act:hover{background:rgba(79,136,248,.15);color:#60a5fa}
+.pl-act.del:hover{background:rgba(255,80,80,.1);color:#ff6060}
+
+/* New playlist card */
+.pl-card.new-card{display:flex;align-items:center;justify-content:center;flex-direction:column;gap:9px;height:120px;border-style:dashed;border-color:rgba(255,255,255,.09);background:transparent}
+.pl-card.new-card:hover{border-color:rgba(79,136,248,.3);background:rgba(79,136,248,.03);transform:translateY(-2px);box-shadow:none}
+.pl-new-ico{width:40px;height:40px;border-radius:11px;background:rgba(79,136,248,.1);border:1px solid rgba(79,136,248,.18);display:flex;align-items:center;justify-content:center;color:#60a5fa;transition:all .16s}
+.pl-card.new-card:hover .pl-new-ico{background:rgba(79,136,248,.18);border-color:rgba(79,136,248,.32)}
+.pl-new-lbl{font-size:11px;color:rgba(255,255,255,.3);font-weight:500}
+
+/* ── PLAYLIST VIEWS SYSTEM ── */
+.pl-views{flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.pl-view{display:none;flex-direction:column;flex:1;min-height:0}
+.pl-view.on{display:flex}
+
+/* Detail header */
+.pld-head{padding:16px 18px 14px;display:flex;gap:16px;align-items:flex-end;flex-shrink:0;border-bottom:1px solid var(--border);background:var(--bg0)}
+.pld-mosaic{width:106px;height:106px;flex-shrink:0;border-radius:13px;overflow:hidden;padding:7px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:5px;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.pld-mosaic-cell{border-radius:6px;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.pld-mosaic-cell svg{opacity:.18}
+.pld-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px;padding-bottom:2px}
+.pld-label{display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:5px;font-size:8.5px;font-weight:700;letter-spacing:.9px;text-transform:uppercase;background:rgba(79,136,248,.1);color:#60a5fa;border:1px solid rgba(79,136,248,.18);width:fit-content;margin-bottom:2px}
+.pld-name{font-size:17px;font-weight:800;color:#f0f2f7;letter-spacing:-.4px;line-height:1.15}
+.pld-sub{font-size:10.5px;color:rgba(255,255,255,.28);display:flex;align-items:center;gap:6px}
+.pld-dot{color:rgba(255,255,255,.12)}
+.pld-acts{display:flex;align-items:center;gap:7px;margin-top:6px}
+.pld-play{height:33px;padding:0 16px;border-radius:8px;border:none;cursor:pointer;background:#4f88f8;color:#fff;font-size:11.5px;font-weight:700;font-family:'Inter',sans-serif;display:flex;align-items:center;gap:7px;box-shadow:0 3px 10px rgba(79,136,248,.28);transition:all .15s}
+.pld-play:hover{background:#3a76f0;transform:translateY(-1px);box-shadow:0 5px 16px rgba(79,136,248,.42)}
+.pld-ghost{width:33px;height:33px;border-radius:8px;border:none;cursor:pointer;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);color:rgba(255,255,255,.38);display:flex;align-items:center;justify-content:center;transition:all .14s}
+.pld-ghost:hover{background:rgba(255,255,255,.09);color:rgba(255,255,255,.75)}
+.pld-back{height:26px;padding:0 10px;border-radius:6px;border:none;cursor:pointer;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.07);color:rgba(255,255,255,.32);font-size:10.5px;font-family:'Inter',sans-serif;display:flex;align-items:center;gap:5px;transition:all .14s;margin-bottom:2px}
+.pld-back:hover{background:rgba(255,255,255,.08);color:rgba(255,255,255,.7)}
+
+/* ── GRAND LECTEUR overlay ── */
+.gl{display:none;position:fixed;inset:0;z-index:100;align-items:center;justify-content:center}
+.gl.on{display:flex}
+.gl-backdrop{position:absolute;inset:0;background:rgba(4,6,12,.88);pointer-events:none}
+.gl.on .gl-backdrop{backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);pointer-events:auto}
+.gl-card{position:relative;z-index:1;width:290px;background:#090d1b;border:1px solid rgba(255,255,255,.09);border-radius:24px;padding:18px 18px 20px;display:flex;flex-direction:column;box-shadow:0 40px 90px rgba(0,0,0,.75),0 0 0 1px rgba(79,136,248,.07);overflow:hidden}
+.gl-card::before{content:'';position:absolute;top:-80px;left:50%;transform:translateX(-50%);width:260px;height:200px;background:radial-gradient(ellipse,rgba(79,136,248,.1),transparent 68%);pointer-events:none}
+.gl-topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.gl-now{display:flex;align-items:center;gap:6px;font-size:9.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:rgba(255,255,255,.28)}
+.gl-now-dot{width:5px;height:5px;border-radius:50%;background:#4f88f8;flex-shrink:0;animation:pulse 2s ease-in-out infinite}
+.gl-close{width:28px;height:28px;border-radius:8px;border:none;cursor:pointer;background:rgba(255,255,255,.07);color:rgba(255,255,255,.4);display:flex;align-items:center;justify-content:center;transition:all .14s}
+.gl-close:hover{background:rgba(255,255,255,.12);color:rgba(255,255,255,.85)}
+.gl-art{width:100%;aspect-ratio:1;border-radius:18px;overflow:hidden;margin-bottom:18px;position:relative;background:#111828;box-shadow:0 20px 48px rgba(0,0,0,.55)}
+.gl-art-ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center}
+.gl-art-glow{position:absolute;inset:0;border-radius:18px;background:linear-gradient(135deg,rgba(79,136,248,.12),transparent 60%,rgba(29,211,176,.08));pointer-events:none}
+.gl-inforow{display:flex;align-items:center;margin-bottom:14px;gap:4px}
+.gl-titles{flex:1;min-width:0}
+.gl-title{font-size:15px;font-weight:800;color:#f0f2f7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.35px;margin-bottom:4px}
+.gl-artist{font-size:11.5px;color:#60a5fa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gl-fav{width:34px;height:34px;border-radius:50%;border:none;cursor:pointer;background:transparent;color:#ff6b8a;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:transform .15s}
+.gl-fav:hover{transform:scale(1.22)}
+.gl-pbar{display:flex;align-items:center;gap:8px;margin-bottom:16px}
+.gl-time{font-size:9.5px;color:rgba(255,255,255,.2);min-width:24px;font-variant-numeric:tabular-nums}
+.gl-time:last-child{text-align:right}
+.gl-track{flex:1;height:3px;background:rgba(255,255,255,.07);border-radius:3px;cursor:pointer;transition:height .14s;position:relative}
+.gl-track:hover{height:5px}
+.gl-fill{height:100%;width:38%;background:linear-gradient(90deg,#4f88f8,#1dd3b0);border-radius:3px;position:relative}
+.gl-fill::after{content:'';position:absolute;right:-5px;top:50%;transform:translateY(-50%);width:10px;height:10px;border-radius:50%;background:#fff;box-shadow:0 0 8px rgba(79,136,248,.8);opacity:0;transition:opacity .14s}
+.gl-track:hover .gl-fill::after{opacity:1}
+.gl-ctrls{display:flex;align-items:center;justify-content:center;gap:4px}
+.glb{width:36px;height:36px;border-radius:50%;border:none;cursor:pointer;background:transparent;color:rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center;transition:all .14s}
+.glb:hover{color:rgba(255,255,255,.8);background:rgba(255,255,255,.06)}
+.glb.on{color:#4f88f8}
+.gl-playbtn{width:52px;height:52px;border-radius:50%;border:none;cursor:pointer;background:#4f88f8;color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 18px rgba(79,136,248,.4);transition:all .16s}
+.gl-playbtn:hover{background:#3a76f0;box-shadow:0 6px 24px rgba(79,136,248,.6);transform:scale(1.06)}
+
+/* ── PLAYER BAR ── */
+.player{height:72px;flex-shrink:0;background:#060810;border-top:1px solid var(--border);display:flex;align-items:center;padding:0 16px;position:relative}
+.ply-prog-line{position:absolute;top:0;left:0;right:0;height:2px;background:rgba(255,255,255,.04);cursor:pointer}
+.ply-prog-fill{height:100%;width:35%;background:linear-gradient(90deg,#4f88f8,#1dd3b0);border-radius:0 2px 2px 0}
+
+.ply-l{display:flex;align-items:center;gap:11px;flex:0 0 29%;min-width:0;cursor:pointer}
+.ply-art{width:44px;height:44px;border-radius:8px;overflow:hidden;background:#111828;border:1px solid rgba(255,255,255,.07);flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.ply-info{min-width:0;flex:1}
+.ply-title{font-size:11.5px;font-weight:600;color:#f0f2f7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px}
+.ply-artist{font-size:10px;color:#60a5fa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ply-fav{background:none;border:none;cursor:pointer;color:#ff6b8a;flex-shrink:0;display:flex}
+.eq{display:flex;align-items:flex-end;gap:2px;height:15px;flex-shrink:0}
+.eq-b{width:2.5px;background:linear-gradient(to top,#4f88f8,#1dd3b0);border-radius:2px;animation:eq .85s ease-in-out infinite}
+.eq-b:nth-child(2){animation-delay:.18s}.eq-b:nth-child(3){animation-delay:.08s}.eq-b:nth-child(4){animation-delay:.3s}
+
+.ply-c{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;padding:0 18px}
+.ply-btns{display:flex;align-items:center;gap:3px}
+.pb2{width:29px;height:29px;border-radius:50%;border:none;cursor:pointer;background:transparent;color:rgba(255,255,255,.28);display:flex;align-items:center;justify-content:center;transition:color .14s,background .14s}
+.pb2:hover{color:rgba(255,255,255,.75);background:rgba(255,255,255,.06)}
+.pb2.active{color:#4f88f8}
+.ply-play{width:36px;height:36px;border-radius:50%;border:none;cursor:pointer;background:#4f88f8;color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(79,136,248,.35);transition:all .16s}
+.ply-play:hover{background:#3a76f0;box-shadow:0 5px 16px rgba(79,136,248,.5);transform:scale(1.06)}
+.ply-pbar{display:flex;align-items:center;gap:8px;width:100%}
+.ply-time{font-size:9.5px;color:rgba(255,255,255,.22);min-width:26px;font-variant-numeric:tabular-nums}
+.ply-time:last-child{text-align:right}
+.ply-track{flex:1;height:3px;background:rgba(255,255,255,.07);border-radius:3px;cursor:pointer;position:relative;transition:height .14s}
+.ply-track:hover{height:5px}
+.ply-fill{height:100%;width:35%;background:linear-gradient(90deg,#4f88f8,#1dd3b0);border-radius:3px;position:relative}
+.ply-fill::after{content:'';position:absolute;right:-5px;top:50%;transform:translateY(-50%);width:10px;height:10px;border-radius:50%;background:#fff;box-shadow:0 0 6px rgba(79,136,248,.7);opacity:0;transition:opacity .14s}
+.ply-track:hover .ply-fill::after{opacity:1}
+
+.ply-r{flex:0 0 22%;display:flex;align-items:center;justify-content:flex-end;gap:7px}
+.vol-btn{background:none;border:none;cursor:pointer;color:rgba(255,255,255,.26);display:flex;transition:color .14s}
+.vol-btn:hover{color:rgba(255,255,255,.65)}
+.vol-bar{width:70px;height:3px;background:rgba(255,255,255,.07);border-radius:3px;cursor:pointer;transition:height .14s}
+.vol-bar:hover{height:5px}
+.vol-fill{height:100%;width:72%;background:rgba(255,255,255,.28);border-radius:3px}
+.exp-btn{width:29px;height:29px;border-radius:6px;border:none;cursor:pointer;background:transparent;color:rgba(255,255,255,.16);display:flex;align-items:center;justify-content:center;transition:all .14s;margin-left:3px}
+.exp-btn:hover{background:rgba(255,255,255,.05);color:rgba(255,255,255,.6)}
+
+/* Thumb color variants */
+.t1{background:linear-gradient(135deg,#1a3a6e,#0d2044)}
+.t2{background:linear-gradient(135deg,#1a5c3a,#0a3020)}
+.t3{background:linear-gradient(135deg,#5c1a1a,#3a0d0d)}
+.t4{background:linear-gradient(135deg,#4a1a5c,#2a0d3a)}
+.t5{background:linear-gradient(135deg,#1a4a5c,#0d2a3a)}
+.t6{background:linear-gradient(135deg,#5c3a1a,#3a2010)}
+.t7{background:linear-gradient(135deg,#1a5c4a,#0a3028)}
+.t8{background:linear-gradient(135deg,#3a1a5c,#200a3a)}
+
+/* Keyframes */
+@keyframes sh{from{transform:translateX(-100%)}to{transform:translateX(200%)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── SEARCH STATES ── */
+.ss-state{display:none}
+.ss-state.on{display:block}
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 32px;gap:12px;text-align:center}
+.empty-ico{width:52px;height:52px;border-radius:15px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);display:flex;align-items:center;justify-content:center;margin-bottom:4px}
+.empty-title{font-size:13px;font-weight:700;color:rgba(255,255,255,.5);letter-spacing:-.2px}
+.empty-sub{font-size:11px;color:rgba(255,255,255,.18);max-width:220px;line-height:1.55}
+.empty-hint{display:inline-flex;align-items:center;gap:7px;padding:7px 13px;border-radius:8px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);font-size:10.5px;color:rgba(255,255,255,.2);margin-top:4px}
+
+/* Skeleton loader */
+.skel-list{display:flex;flex-direction:column;gap:5px;padding:12px 14px}
+.skel-card{display:flex;align-items:center;gap:11px;background:rgba(255,255,255,.018);border:1px solid rgba(255,255,255,.04);border-radius:9px;padding:8px 12px}
+.skel-thumb{width:52px;height:52px;border-radius:8px;background:rgba(255,255,255,.055);flex-shrink:0;overflow:hidden;position:relative}
+.skel-info{flex:1;display:flex;flex-direction:column;gap:8px}
+.skel-line{height:8px;border-radius:4px;background:rgba(255,255,255,.055);overflow:hidden;position:relative}
+.skel-line.w70{width:70%}.skel-line.w45{width:45%}.skel-line.w30{width:30%}
+.skel-acts-wrap{width:36px;flex-shrink:0}
+.skel-btn{width:32px;height:32px;border-radius:7px;background:rgba(255,255,255,.04)}
+.skel-shine{position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.09),transparent);animation:sh 1.6s ease-in-out infinite}
+
+/* Toast */
+.toast-wrap{position:fixed;bottom:88px;right:18px;z-index:300;display:flex;flex-direction:column;gap:6px;pointer-events:none;align-items:flex-end}
+.toast{display:flex;align-items:center;gap:9px;padding:10px 14px;border-radius:10px;font-size:11.5px;font-weight:500;color:#f0f2f7;background:#0f172a;border:1px solid rgba(255,255,255,.09);box-shadow:0 8px 28px rgba(0,0,0,.55);pointer-events:auto;opacity:0;transform:translateX(14px);transition:all .22s;max-width:240px}
+.toast.show{opacity:1;transform:translateX(0)}
+.toast.success{border-color:rgba(29,211,176,.22);background:#06120e}
+.toast.error{border-color:rgba(255,80,80,.2);background:#130707}
+.toast.info{border-color:rgba(79,136,248,.22);background:#080e1c}
+.toast-ico{width:20px;height:20px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.toast.success .toast-ico{background:rgba(29,211,176,.14);color:#1dd3b0}
+.toast.error .toast-ico{background:rgba(255,80,80,.12);color:#ff6060}
+.toast.info .toast-ico{background:rgba(79,136,248,.12);color:#60a5fa}
+
+/* Offline banner */
+.offline-banner{display:none;align-items:center;gap:8px;padding:7px 16px;background:rgba(255,70,70,.07);border-bottom:1px solid rgba(255,80,80,.18);font-size:10.5px;color:rgba(255,120,120,.85);flex-shrink:0}
+.offline-banner.show{display:flex}
+.offline-banner button{margin-left:auto;background:rgba(255,80,80,.1);border:1px solid rgba(255,80,80,.2);border-radius:6px;color:rgba(255,120,120,.9);font-size:10px;font-weight:600;font-family:'Inter',sans-serif;padding:3px 9px;cursor:pointer;transition:all .14s}
+.offline-banner button:hover{background:rgba(255,80,80,.18)}
+/* Offline state — dim search input */
+.sinput:disabled{opacity:.38;cursor:not-allowed}
+
+/* Settings modal — use display:none so backdrop-filter is never on an invisible overlay
+   (Chrome/Edge ignore pointer-events:none on elements with backdrop-filter) */
+.modal-back{display:none;position:fixed;inset:0;z-index:250;background:rgba(4,6,12,.82);align-items:center;justify-content:center}
+.modal-back.on{display:flex;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.modal{background:#0b1022;border:1px solid rgba(255,255,255,.1);border-radius:18px;width:316px;box-shadow:0 30px 80px rgba(0,0,0,.7),0 0 0 1px rgba(79,136,248,.05)}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:16px 18px 14px;border-bottom:1px solid rgba(255,255,255,.06)}
+.modal-title{font-size:13.5px;font-weight:800;color:#f0f2f7;letter-spacing:-.25px}
+.modal-close{width:26px;height:26px;border-radius:7px;border:none;cursor:pointer;background:rgba(255,255,255,.06);color:rgba(255,255,255,.35);display:flex;align-items:center;justify-content:center;transition:all .14s}
+.modal-close:hover{background:rgba(255,255,255,.11);color:#f0f2f7}
+.modal-body{padding:16px 18px 4px}
+.modal-row{margin-bottom:16px}
+.modal-label{font-size:9.5px;font-weight:700;color:rgba(255,255,255,.3);letter-spacing:.7px;text-transform:uppercase;margin-bottom:7px}
+.modal-folder{display:flex;align-items:center;gap:7px;padding:8px 10px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:8px;font-size:11px;color:rgba(255,255,255,.45);cursor:pointer;transition:border-color .14s}
+.modal-folder:hover{border-color:rgba(79,136,248,.3);color:rgba(255,255,255,.65)}
+.modal-folder span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.opt-group{display:flex;gap:5px}
+.opt-btn{flex:1;padding:7px 4px;border-radius:7px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.03);color:rgba(255,255,255,.28);font-size:11px;font-weight:600;font-family:'Inter',sans-serif;cursor:pointer;transition:all .14s;text-align:center}
+.opt-btn:hover{border-color:rgba(79,136,248,.22);color:rgba(255,255,255,.55)}
+.opt-btn.on{background:rgba(79,136,248,.12);border-color:rgba(79,136,248,.28);color:#93c5fd}
+.modal-foot{padding:12px 18px 16px;display:flex;justify-content:flex-end;gap:7px;border-top:1px solid rgba(255,255,255,.06);margin-top:4px}
+.modal-save{height:32px;padding:0 18px;border-radius:8px;border:none;cursor:pointer;background:#4f88f8;color:#fff;font-size:12px;font-weight:700;font-family:'Inter',sans-serif;transition:background .15s}
+.modal-save:hover{background:#3a76f0}
+.modal-cancel{height:32px;padding:0 14px;border-radius:8px;border:none;cursor:pointer;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);color:rgba(255,255,255,.38);font-size:12px;font-family:'Inter',sans-serif;transition:all .14s}
+.modal-cancel:hover{background:rgba(255,255,255,.09);color:rgba(255,255,255,.65)}
+
+/* Download queue in sidebar */
+.sb-queue{padding:0 8px 4px;flex-shrink:0}
+.sb-queue-head{display:flex;align-items:center;justify-content:space-between;padding:4px 8px 6px}
+.sb-queue-title{font-size:8px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:rgba(255,255,255,.1)}
+.sb-queue-badge{min-width:16px;height:16px;border-radius:5px;background:rgba(79,136,248,.18);color:#60a5fa;font-size:8px;font-weight:800;display:flex;align-items:center;justify-content:center;padding:0 4px}
+.sq-item{display:flex;align-items:center;gap:7px;padding:4px 8px;border-radius:6px}
+.sq-thumb{width:26px;height:26px;border-radius:5px;flex-shrink:0}
+.sq-info{flex:1;min-width:0}
+.sq-name{font-size:9.5px;color:rgba(255,255,255,.42);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px}
+.sq-prog{height:2px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden}
+.sq-prog-fill{height:100%;background:linear-gradient(90deg,#4f88f8,#1dd3b0);border-radius:2px}
+.sq-pct{font-size:8.5px;color:rgba(79,136,248,.7);flex-shrink:0;font-variant-numeric:tabular-nums;font-weight:700}
+
+/* Settings gear in sidebar footer */
+.sb-foot{padding:10px 12px;border-top:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;gap:7px}
+.settings-btn{width:26px;height:26px;border-radius:7px;border:none;cursor:pointer;background:rgba(255,255,255,.04);color:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .14s;margin-left:auto}
+.settings-btn:hover{background:rgba(255,255,255,.08);color:rgba(255,255,255,.65)}
+/* Online offline badge variants */
+.online.offline{background:rgba(255,80,80,.06);border-color:rgba(255,80,80,.15);color:rgba(255,120,120,.9)}
+.online{flex:1;cursor:pointer}
+
+body{display:flex;align-items:center;justify-content:center;min-height:100vh;background:radial-gradient(ellipse at 38% 28%,rgba(79,136,248,.055) 0%,transparent 58%),#06080f}
+body::after{content:'Music DL — Mockup v3 · 3 pages';position:fixed;bottom:10px;left:50%;transform:translateX(-50%);font-size:10.5px;color:rgba(255,255,255,.1);pointer-events:none;letter-spacing:.3px}
+</style>
+</head>
+<body>
+
+<div class="win">
+  <!-- Title bar -->
+  <div class="win-bar">
+    <div class="dot r"></div><div class="dot y"></div><div class="dot g"></div>
+    <div class="win-title">Music DL &mdash; v1.0.0</div>
+  </div>
+
+  <div class="layout">
+
+    <!-- ═══ SIDEBAR ═══ -->
+    <aside class="sb">
+      <div class="brand">
+        <div class="brand-ico">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <rect x="1" y="15" width="4" height="8" rx="2" fill="white" opacity=".9"/>
+            <rect x="7" y="10" width="4" height="13" rx="2" fill="white"/>
+            <rect x="13" y="12" width="4" height="11" rx="2" fill="white" opacity=".9"/>
+            <path d="M20 4v9" stroke="white" stroke-width="2" stroke-linecap="round"/>
+            <path d="M18 10l2 3 2-3" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div>
+          <div class="brand-name">Music DL</div>
+          <div class="brand-sub">YouTube Music · MP3</div>
+        </div>
+      </div>
+
+      <nav class="nav">
+        <div class="nav-sec">Navigation</div>
+        <div class="ni on" onclick="goPage(0)" id="ni0">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          Recherche
+        </div>
+        <div class="ni" onclick="goPage(1)" id="ni1">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+          Bibliothèque
+        </div>
+        <div class="ni" onclick="goPage(2)" id="ni2">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+          Playlists
+        </div>
+
+        <div class="nav-div"></div>
+        <div class="nav-sec">Récents</div>
+        <div class="qa">
+          <div class="qa-dot t1"><svg width="10" height="10" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>
+          <span>Daft Punk — Get Lucky</span>
+        </div>
+        <div class="qa">
+          <div class="qa-dot t2"><svg width="10" height="10" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>
+          <span>The Weeknd</span>
+        </div>
+        <div class="qa">
+          <div class="qa-dot t3"><svg width="10" height="10" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>
+          <span>Drake — Hotline Bling</span>
+        </div>
+        <div class="qa">
+          <div class="qa-dot t6"><svg width="10" height="10" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>
+          <span>Kendrick Lamar</span>
+        </div>
+      </nav>
+
+      <!-- Download queue -->
+      <div class="sb-queue">
+        <div class="sb-queue-head">
+          <span class="sb-queue-title">Téléchargements</span>
+          <span class="sb-queue-badge">2</span>
+        </div>
+        <div class="sq-item">
+          <div class="sq-thumb t3"></div>
+          <div class="sq-info">
+            <div class="sq-name">Around the World</div>
+            <div class="sq-prog"><div class="sq-prog-fill" style="width:62%"></div></div>
+          </div>
+          <span class="sq-pct">62%</span>
+        </div>
+        <div class="sq-item">
+          <div class="sq-thumb t7"></div>
+          <div class="sq-info">
+            <div class="sq-name">Blinding Lights</div>
+            <div class="sq-prog"><div class="sq-prog-fill" style="width:18%"></div></div>
+          </div>
+          <span class="sq-pct">18%</span>
+        </div>
+      </div>
+
+      <div class="sb-foot">
+        <div class="online" id="online-badge" title="Cliquer pour simuler hors ligne"><div class="online-dot"></div>En ligne</div>
+        <button class="settings-btn" onclick="toggleSettings()" title="Paramètres">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/><path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+        </button>
+      </div>
+    </aside>
+
+    <!-- ═══ CONTENT ZONE ═══ -->
+    <div class="cz">
+      <div class="pw">
+
+        <!-- ━━━━━━━━━━━━━━━━━━
+             PAGE 0 · RECHERCHE
+        ━━━━━━━━━━━━━━━━━━ -->
+        <div class="pg on" id="pg0">
+          <div class="ph">
+            <div class="sinput-wrap">
+              <svg class="sinput-ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              <input class="sinput" type="text" placeholder="Artiste, titre, album…" value="Daft Punk">
+            </div>
+            <button class="hbtn" id="search-btn">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              Chercher
+            </button>
+            <button class="hbtn ghost sq" title="Tout télécharger">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </button>
+          </div>
+          <!-- Offline banner -->
+          <div class="offline-banner" id="offline-banner">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/><path d="M10.71 5.05A16 16 0 0 1 22.56 9"/><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+            Mode hors ligne — La recherche n'est pas disponible
+            <button onclick="toggleOffline()">Réessayer</button>
+          </div>
+          <div class="pb">
+            <!-- STATE: empty -->
+            <div class="ss-state" id="ss-empty">
+              <div class="empty-state">
+                <div class="empty-ico">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                </div>
+                <div class="empty-title">Recherche une musique</div>
+                <div class="empty-sub">Tape un titre, artiste ou album pour commencer</div>
+                <div class="empty-hint">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                  Essaie : "Daft Punk", "Blinding Lights"…
+                </div>
+              </div>
+            </div>
+            <!-- STATE: loading -->
+            <div class="ss-state" id="ss-loading">
+              <div class="skel-list">
+                <div class="skel-card"><div class="skel-thumb"><div class="skel-shine"></div></div><div class="skel-info"><div class="skel-line w70"><div class="skel-shine"></div></div><div class="skel-line w45"><div class="skel-shine"></div></div></div><div class="skel-acts-wrap"><div class="skel-btn"></div></div></div>
+                <div class="skel-card"><div class="skel-thumb"><div class="skel-shine"></div></div><div class="skel-info"><div class="skel-line w45"><div class="skel-shine"></div></div><div class="skel-line w30"><div class="skel-shine"></div></div></div><div class="skel-acts-wrap"><div class="skel-btn"></div></div></div>
+                <div class="skel-card"><div class="skel-thumb"><div class="skel-shine"></div></div><div class="skel-info"><div class="skel-line w70"><div class="skel-shine"></div></div><div class="skel-line w45"><div class="skel-shine"></div></div></div><div class="skel-acts-wrap"><div class="skel-btn"></div></div></div>
+                <div class="skel-card"><div class="skel-thumb"><div class="skel-shine"></div></div><div class="skel-info"><div class="skel-line w30"><div class="skel-shine"></div></div><div class="skel-line w45"><div class="skel-shine"></div></div></div><div class="skel-acts-wrap"><div class="skel-btn"></div></div></div>
+              </div>
+            </div>
+            <!-- STATE: results -->
+            <div class="ss-state on" id="ss-results">
+            <div class="res-bar"><strong>8 résultats</strong>&nbsp;pour "Daft Punk" &nbsp;·&nbsp; YouTube Music</div>
+            <div class="rc-list">
+
+              <div class="rcard">
+                <div class="rcard-thumb t1"><div class="rcard-thumb-ph"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="1.5" stroke-linecap="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div><div class="rcard-dur">4:34</div></div>
+                <div class="rcard-info"><div class="rcard-title">Get Lucky (feat. Pharrell Williams)</div><div class="rcard-meta"><span class="rcard-ch">Daft Punk</span><span class="rcard-sep">·</span><span class="rcard-views">1,3M vues</span></div></div>
+                <div class="rcard-acts"><div class="done-badge"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>Téléchargée</div></div>
+              </div>
+
+              <div class="rcard">
+                <div class="rcard-thumb t2"><div class="rcard-thumb-ph"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="1.5" stroke-linecap="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div><div class="rcard-dur">3:44</div></div>
+                <div class="rcard-info"><div class="rcard-title">Harder, Better, Faster, Stronger</div><div class="rcard-meta"><span class="rcard-ch">Daft Punk</span><span class="rcard-sep">·</span><span class="rcard-views">856K vues</span></div></div>
+                <div class="rcard-acts"><button class="dl-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button></div>
+              </div>
+
+              <!-- Card en cours de téléchargement -->
+              <div class="rcard">
+                <div class="rcard-thumb t3"><div class="rcard-thumb-ph"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="1.5" stroke-linecap="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div><div class="rcard-dur">7:09</div></div>
+                <div class="rcard-info">
+                  <div class="rcard-title">Around the World</div>
+                  <div class="rcard-meta"><span class="rcard-ch">Daft Punk</span><span class="rcard-sep">·</span><span class="rcard-views">621K vues</span></div>
+                  <div style="margin-top:6px"><div style="height:2.5px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden"><div style="height:100%;width:62%;background:linear-gradient(90deg,#4f88f8,#1dd3b0);border-radius:2px;position:relative;overflow:hidden"><div style="position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.3),transparent);animation:sh 1.4s linear infinite"></div></div></div><div style="font-size:9px;color:rgba(255,255,255,.25);margin-top:3px">Téléchargement... 62%</div></div>
+                </div>
+                <div class="rcard-acts"><button class="dl-btn" style="background:rgba(79,136,248,.22);border-color:rgba(79,136,248,.32)"><svg width="10" height="10" viewBox="0 0 24 24" style="border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite"></svg></button></div>
+              </div>
+
+              <div class="rcard">
+                <div class="rcard-thumb t4"><div class="rcard-thumb-ph"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="1.5" stroke-linecap="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div><div class="rcard-dur">5:21</div></div>
+                <div class="rcard-info"><div class="rcard-title">One More Time</div><div class="rcard-meta"><span class="rcard-ch">Daft Punk</span><span class="rcard-sep">·</span><span class="rcard-views">2,1M vues</span></div></div>
+                <div class="rcard-acts"><button class="dl-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button></div>
+              </div>
+
+              <div class="rcard">
+                <div class="rcard-thumb t5"><div class="rcard-thumb-ph"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="1.5" stroke-linecap="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div><div class="rcard-dur">6:08</div></div>
+                <div class="rcard-info"><div class="rcard-title">Instant Crush (feat. Julian Casablancas)</div><div class="rcard-meta"><span class="rcard-ch">Daft Punk</span><span class="rcard-sep">·</span><span class="rcard-views">488K vues</span></div></div>
+                <div class="rcard-acts"><button class="dl-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button></div>
+              </div>
+
+            </div>
+            </div><!-- /ss-results -->
+          </div>
+        </div><!-- /pg0 -->
+
+
+        <!-- ━━━━━━━━━━━━━━━━━━
+             PAGE 1 · BIBLIOTHÈQUE
+        ━━━━━━━━━━━━━━━━━━ -->
+        <div class="pg" id="pg1">
+          <!-- Header -->
+          <div class="ph">
+            <div class="ph-title-wrap">
+              <div class="ph-title">Bibliothèque</div>
+              <div class="ph-sub">24 titres · 1h 32min</div>
+            </div>
+            <div class="ph-sep"></div>
+            <div class="sinput-wrap" style="max-width:220px">
+              <svg class="sinput-ico" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              <input class="sinput" type="text" placeholder="Filtrer…">
+            </div>
+            <div class="ph-spacer"></div>
+            <button class="hbtn ghost" style="gap:6px;font-size:11px">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="20" y2="12"/><line x1="12" y1="18" x2="20" y2="18"/></svg>
+              Trier
+            </button>
+            <button class="hbtn ghost sq">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+            </button>
+            <button class="hbtn ghost" id="lib-empty-btn" onclick="toggleLibEmpty()" style="font-size:10px;height:28px;padding:0 10px;white-space:nowrap">État vide</button>
+          </div>
+
+          <!-- Stats bar -->
+          <div class="lib-stats" id="lib-stats">
+            <div class="lib-stat"><strong>24</strong> titres</div>
+            <div class="lib-stat-sep">·</div>
+            <div class="lib-stat"><strong>1h 32min</strong> de musique</div>
+            <div class="lib-stat-sep">·</div>
+            <div class="lib-stat"><strong>3</strong> artistes</div>
+          </div>
+
+          <!-- Column headers -->
+          <div class="lib-cols" id="lib-cols" style="padding-left:46px">
+            <div class="c-gap"></div><!-- thumb spacer -->
+            <div class="c-info lib-col-h sorted">
+              Titre
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg>
+            </div>
+            <div class="c-album lib-col-h">Album</div>
+            <div class="c-year lib-col-h">Année</div>
+            <div class="c-dur lib-col-h">Durée</div>
+            <div class="c-acts"></div>
+          </div>
+
+          <!-- Track list -->
+          <div class="pb" id="lib-pb">
+
+            <!-- Row playing -->
+            <div class="lib-row playing">
+              <div class="rc-n-wrap">
+                <div class="rc-eq" style="display:flex">
+                  <div class="rc-eq-b"></div><div class="rc-eq-b"></div><div class="rc-eq-b"></div>
+                </div>
+              </div>
+              <div class="rc-thumb t1"><div class="rc-thumb-ph"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="1.5" stroke-linecap="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div></div>
+              <div class="rc-info"><div class="rc-title">Get Lucky (feat. Pharrell Williams)</div><div class="rc-artist">Daft Punk</div></div>
+              <div class="rc-album">Random Access Memories</div>
+              <div class="rc-year">2013</div>
+              <div class="rc-dur">4:34</div>
+              <div class="rc-acts">
+                <button class="act-btn" title="Ajouter à une playlist"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+                <button class="act-btn" title="Informations"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></button>
+                <button class="act-btn del" title="Supprimer"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></button>
+              </div>
+            </div>
+
+            <div class="lib-row">
+              <div class="rc-n-wrap"><div class="rc-n">2</div><div class="rc-play-ico"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg></div></div>
+              <div class="rc-thumb t2"><div class="rc-thumb-ph"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="1.5" stroke-linecap="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div></div>
+              <div class="rc-info"><div class="rc-title">Harder, Better, Faster, Stronger</div><div class="rc-artist">Daft Punk</div></div>
+              <div class="rc-album">Discovery</div>
+              <div class="rc-year">2001</div>
+              <div class="rc-dur">3:44</div>
+              <div class="rc-acts">
+                <button class="act-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+                <button class="act-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></button>
+                <button class="act-btn del"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></button>
+              </div>
+            </div>
+
+            <div class="lib-row">
+              <div class="rc-n-wrap"><div class="rc-n">3</div><div class="rc-play-ico"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg></div></div>
+              <div class="rc-thumb t3"><div class="rc-thumb-ph"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="1.5" stroke-linecap="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div></div>
+              <div class="rc-info"><div class="rc-title">Around the World</div><div class="rc-artist">Daft Punk</div></div>
+              <div class="rc-album">Homework</div>
+              <div class="rc-year">1997</div>
+              <div class="rc-dur">7:09</div>
+              <div class="rc-acts">
+                <button class="act-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+                <button class="act-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></button>
+                <button class="act-btn del"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></button>
+              </div>
+            </div>
+
+            <div class="lib-row">
+              <div class="rc-n-wrap"><div class="rc-n">4</div><div class="rc-play-ico"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg></div></div>
+              <div class="rc-thumb t4"><div class="rc-thumb-ph"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="1.5" stroke-linecap="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div></div>
+              <div class="rc-info"><div class="rc-title">One More Time</div><div class="rc-artist">Daft Punk</div></div>
+              <div class="rc-album">Discovery</div>
+              <div class="rc-year">2001</div>
+              <div class="rc-dur">5:21</div>
+              <div class="rc-acts">
+                <button class="act-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+                <button class="act-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></button>
+                <button class="act-btn del"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></button>
+              </div>
+            </div>
+
+            <div class="lib-row">
+              <div class="rc-n-wrap"><div class="rc-n">5</div><div class="rc-play-ico"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg></div></div>
+              <div class="rc-thumb t5"><div class="rc-thumb-ph"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="1.5" stroke-linecap="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div></div>
+              <div class="rc-info"><div class="rc-title">Instant Crush (feat. Julian Casablancas)</div><div class="rc-artist">Daft Punk</div></div>
+              <div class="rc-album">Random Access Memories</div>
+              <div class="rc-year">2013</div>
+              <div class="rc-dur">6:08</div>
+              <div class="rc-acts">
+                <button class="act-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+                <button class="act-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></button>
+                <button class="act-btn del"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></button>
+              </div>
+            </div>
+
+            <div class="lib-row">
+              <div class="rc-n-wrap"><div class="rc-n">6</div><div class="rc-play-ico"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg></div></div>
+              <div class="rc-thumb t6"><div class="rc-thumb-ph"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="1.5" stroke-linecap="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div></div>
+              <div class="rc-info"><div class="rc-title">Starboy</div><div class="rc-artist">The Weeknd</div></div>
+              <div class="rc-album">Starboy</div>
+              <div class="rc-year">2016</div>
+              <div class="rc-dur">3:50</div>
+              <div class="rc-acts">
+                <button class="act-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+                <button class="act-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></button>
+                <button class="act-btn del"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></button>
+              </div>
+            </div>
+
+            <div class="lib-row">
+              <div class="rc-n-wrap"><div class="rc-n">7</div><div class="rc-play-ico"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg></div></div>
+              <div class="rc-thumb t7"><div class="rc-thumb-ph"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="1.5" stroke-linecap="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div></div>
+              <div class="rc-info"><div class="rc-title">Blinding Lights</div><div class="rc-artist">The Weeknd</div></div>
+              <div class="rc-album">After Hours</div>
+              <div class="rc-year">2020</div>
+              <div class="rc-dur">3:20</div>
+              <div class="rc-acts">
+                <button class="act-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+                <button class="act-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></button>
+                <button class="act-btn del"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></button>
+              </div>
+            </div>
+
+            <div class="lib-row">
+              <div class="rc-n-wrap"><div class="rc-n">8</div><div class="rc-play-ico"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg></div></div>
+              <div class="rc-thumb t8"><div class="rc-thumb-ph"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="1.5" stroke-linecap="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div></div>
+              <div class="rc-info"><div class="rc-title">Hotline Bling</div><div class="rc-artist">Drake</div></div>
+              <div class="rc-album">Views</div>
+              <div class="rc-year">2016</div>
+              <div class="rc-dur">4:27</div>
+              <div class="rc-acts">
+                <button class="act-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+                <button class="act-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></button>
+                <button class="act-btn del"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></button>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- État vide bibliothèque -->
+          <div id="lib-empty-state" style="display:none;flex:1;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:40px 32px;text-align:center">
+            <div class="empty-ico">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="1.8" stroke-linecap="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+            </div>
+            <div class="empty-title">Aucun titre téléchargé</div>
+            <div class="empty-sub">Télécharge des musiques depuis la recherche pour les retrouver ici</div>
+            <button class="hbtn" onclick="goPage(0)" style="margin-top:6px;font-size:11px;gap:6px">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              Aller à la recherche
+            </button>
+          </div>
+        </div><!-- /pg1 -->
+
+
+        <!-- ━━━━━━━━━━━━━━━━━━
+             PAGE 2 · PLAYLISTS
+        ━━━━━━━━━━━━━━━━━━ -->
+        <div class="pg" id="pg2">
+          <div class="pl-views">
+
+            <!-- ▸ VUE GRILLE (defaut) -->
+            <div class="pl-view on" id="pv-grid">
+              <div class="ph">
+                <div class="ph-title-wrap">
+                  <div class="ph-title">Playlists</div>
+                  <div class="ph-sub">3 playlists · 54 titres</div>
+                </div>
+                <div class="ph-spacer"></div>
+                <button class="hbtn teal" style="font-size:11px;gap:6px">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  Nouvelle playlist
+                </button>
+                <button class="hbtn ghost sq">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+                </button>
+                <button class="hbtn ghost" id="pl-empty-btn" onclick="togglePlEmpty()" style="font-size:10px;height:28px;padding:0 10px;white-space:nowrap">État vide</button>
+              </div>
+              <div class="pb" id="pl-grid-pb">
+                <div class="pl-grid">
+
+                  <div class="pl-card" onclick="openPlaylist()">
+                    <div class="pl-cover">
+                      <div class="pl-cover-cell t1"><svg width="15" height="15" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>
+                      <div class="pl-cover-cell t2"><svg width="15" height="15" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>
+                      <div class="pl-cover-cell t3"><svg width="15" height="15" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>
+                      <div class="pl-cover-cell t4"><svg width="15" height="15" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>
+                    </div>
+                    <div class="pl-foot">
+                      <div class="pl-foot-info"><div class="pl-name">Mes favoris</div><div class="pl-meta">24 titres · <span>1h 32min</span></div></div>
+                      <div class="pl-foot-acts">
+                        <button class="pl-act" onclick="event.stopPropagation()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M16 3h5v5"/><path d="m21 3-7 7"/><path d="M16 21h5v-5"/><path d="m21 21-7-7"/><path d="M3 3l4 4"/><path d="M3 21l4-4"/></svg></button>
+                        <button class="pl-act del" onclick="event.stopPropagation()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg></button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="pl-card">
+                    <div class="pl-cover">
+                      <div class="pl-cover-cell t5"><svg width="15" height="15" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>
+                      <div class="pl-cover-cell t6"><svg width="15" height="15" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>
+                      <div class="pl-cover-cell t7"><svg width="15" height="15" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>
+                      <div class="pl-cover-cell t8"><svg width="15" height="15" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>
+                    </div>
+                    <div class="pl-foot">
+                      <div class="pl-foot-info"><div class="pl-name">Road trip</div><div class="pl-meta">18 titres · <span>58min</span></div></div>
+                      <div class="pl-foot-acts">
+                        <button class="pl-act"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M16 3h5v5"/><path d="m21 3-7 7"/><path d="M16 21h5v-5"/><path d="m21 21-7-7"/><path d="M3 3l4 4"/><path d="M3 21l4-4"/></svg></button>
+                        <button class="pl-act del"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg></button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="pl-card">
+                    <div class="pl-cover">
+                      <div class="pl-cover-cell t2"><svg width="15" height="15" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>
+                      <div class="pl-cover-cell t4"><svg width="15" height="15" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>
+                      <div class="pl-cover-cell t1"><svg width="15" height="15" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>
+                      <div class="pl-cover-cell t6"><svg width="15" height="15" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>
+                    </div>
+                    <div class="pl-foot">
+                      <div class="pl-foot-info"><div class="pl-name">Daft Punk — Best of</div><div class="pl-meta">12 titres · <span>48min</span></div></div>
+                      <div class="pl-foot-acts">
+                        <button class="pl-act"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M16 3h5v5"/><path d="m21 3-7 7"/><path d="M16 21h5v-5"/><path d="m21 21-7-7"/><path d="M3 3l4 4"/><path d="M3 21l4-4"/></svg></button>
+                        <button class="pl-act del"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg></button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="pl-card new-card">
+                    <div class="pl-new-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+                    <div class="pl-new-lbl">Créer une playlist</div>
+                  </div>
+
+                </div>
+              </div>
+
+              <!-- État vide playlists -->
+              <div id="pl-empty-state" style="display:none;flex:1;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:40px 32px;text-align:center">
+                <div class="empty-ico">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="1.8" stroke-linecap="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                </div>
+                <div class="empty-title">Aucune playlist</div>
+                <div class="empty-sub">Crée ta première playlist pour organiser ta musique</div>
+                <button class="hbtn teal" onclick="togglePlEmpty()" style="margin-top:6px;font-size:11px;gap:6px">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  Nouvelle playlist
+                </button>
+              </div>
+            </div><!-- /pv-grid -->
+
+            <!-- ▸ VUE DETAIL playlist (clic sur une carte) -->
+            <div class="pl-view" id="pv-detail">
+              <!-- Detail header: grande cover + infos -->
+              <div class="pld-head">
+                <div class="pld-mosaic">
+                  <div class="pld-mosaic-cell t1"><svg width="13" height="13" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>
+                  <div class="pld-mosaic-cell t2"><svg width="13" height="13" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>
+                  <div class="pld-mosaic-cell t3"><svg width="13" height="13" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>
+                  <div class="pld-mosaic-cell t4"><svg width="13" height="13" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>
+                </div>
+                <div class="pld-info">
+                  <button class="pld-back" onclick="closePlaylist()">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M19 12H5"/><path d="M12 5l-7 7 7 7"/></svg>
+                    Retour
+                  </button>
+                  <div class="pld-label">
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                    Playlist
+                  </div>
+                  <div class="pld-name">Mes favoris</div>
+                  <div class="pld-sub">
+                    <span>24 titres</span>
+                    <span class="pld-dot">·</span>
+                    <span>1h 32min</span>
+                    <span class="pld-dot">·</span>
+                    <span style="color:rgba(79,136,248,.7)">Daft Punk, The Weeknd…</span>
+                  </div>
+                  <div class="pld-acts">
+                    <button class="pld-play">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                      Lire tout
+                    </button>
+                    <button class="pld-ghost" title="Aléatoire">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M16 3h5v5"/><path d="m21 3-7 7"/><path d="M16 21h5v-5"/><path d="m21 21-7-7"/><path d="M3 3l4 4"/><path d="M3 21l4-4"/></svg>
+                    </button>
+                    <button class="pld-ghost" title="Options">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Track list (même style que bibliothèque) -->
+              <div class="lib-cols" style="padding-left:46px">
+                <div class="c-gap"></div>
+                <div class="c-info lib-col-h sorted">Titre<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="margin-left:3px"><path d="m6 9 6 6 6-6"/></svg></div>
+                <div class="c-album lib-col-h">Album</div>
+                <div class="c-year lib-col-h">Année</div>
+                <div class="c-dur lib-col-h">Durée</div>
+                <div class="c-acts"></div>
+              </div>
+              <div class="pb">
+                <div class="lib-row playing">
+                  <div class="rc-n-wrap"><div class="rc-eq" style="display:flex"><div class="rc-eq-b"></div><div class="rc-eq-b"></div><div class="rc-eq-b"></div></div></div>
+                  <div class="rc-thumb t1"><div class="rc-thumb-ph"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="1.5" stroke-linecap="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div></div>
+                  <div class="rc-info"><div class="rc-title">Get Lucky (feat. Pharrell Williams)</div><div class="rc-artist">Daft Punk</div></div>
+                  <div class="rc-album">Random Access Memories</div><div class="rc-year">2013</div><div class="rc-dur">4:34</div>
+                  <div class="rc-acts"><button class="act-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button><button class="act-btn del"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg></button></div>
+                </div>
+                <div class="lib-row">
+                  <div class="rc-n-wrap"><div class="rc-n">2</div><div class="rc-play-ico"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg></div></div>
+                  <div class="rc-thumb t2"><div class="rc-thumb-ph"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="1.5" stroke-linecap="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div></div>
+                  <div class="rc-info"><div class="rc-title">One More Time</div><div class="rc-artist">Daft Punk</div></div>
+                  <div class="rc-album">Discovery</div><div class="rc-year">2001</div><div class="rc-dur">5:21</div>
+                  <div class="rc-acts"><button class="act-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button><button class="act-btn del"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg></button></div>
+                </div>
+                <div class="lib-row">
+                  <div class="rc-n-wrap"><div class="rc-n">3</div><div class="rc-play-ico"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg></div></div>
+                  <div class="rc-thumb t3"><div class="rc-thumb-ph"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="1.5" stroke-linecap="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div></div>
+                  <div class="rc-info"><div class="rc-title">Around the World</div><div class="rc-artist">Daft Punk</div></div>
+                  <div class="rc-album">Homework</div><div class="rc-year">1997</div><div class="rc-dur">7:09</div>
+                  <div class="rc-acts"><button class="act-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button><button class="act-btn del"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg></button></div>
+                </div>
+                <div class="lib-row">
+                  <div class="rc-n-wrap"><div class="rc-n">4</div><div class="rc-play-ico"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg></div></div>
+                  <div class="rc-thumb t6"><div class="rc-thumb-ph"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="1.5" stroke-linecap="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div></div>
+                  <div class="rc-info"><div class="rc-title">Starboy</div><div class="rc-artist">The Weeknd</div></div>
+                  <div class="rc-album">Starboy</div><div class="rc-year">2016</div><div class="rc-dur">3:50</div>
+                  <div class="rc-acts"><button class="act-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button><button class="act-btn del"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg></button></div>
+                </div>
+              </div>
+            </div><!-- /pv-detail -->
+
+          </div><!-- /pl-views -->
+        </div><!-- /pg2 -->
+
+      </div><!-- /pw -->
+
+      <!-- ═══ PLAYER BAR ═══ -->
+      <div class="player">
+        <div class="ply-prog-line"><div class="ply-prog-fill"></div></div>
+
+        <!-- Left -->
+        <div class="ply-l">
+          <div class="ply-art t1"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.22)" stroke-width="1.5" stroke-linecap="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>
+          <div class="eq"><div class="eq-b"></div><div class="eq-b"></div><div class="eq-b"></div><div class="eq-b"></div></div>
+          <div class="ply-info">
+            <div class="ply-title">Get Lucky (feat. Pharrell Williams)</div>
+            <div class="ply-artist">Daft Punk</div>
+          </div>
+          <button class="ply-fav"><svg width="13" height="13" viewBox="0 0 24 24" fill="#ff6b8a"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></button>
+        </div>
+
+        <!-- Center -->
+        <div class="ply-c">
+          <div class="ply-btns">
+            <button class="pb2"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M16 3h5v5"/><path d="m21 3-7 7"/><path d="M16 21h5v-5"/><path d="m21 21-7-7"/><path d="M3 3l4 4"/><path d="M3 21l4-4"/></svg></button>
+            <button class="pb2"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg></button>
+            <button class="ply-play"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg></button>
+            <button class="pb2"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zm9-12v12h2V6h-2z"/></svg></button>
+            <button class="pb2 active"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></button>
+          </div>
+          <div class="ply-pbar">
+            <span class="ply-time">1:47</span>
+            <div class="ply-track"><div class="ply-fill"></div></div>
+            <span class="ply-time">4:34</span>
+          </div>
+        </div>
+
+        <!-- Right -->
+        <div class="ply-r">
+          <button class="vol-btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 7.97v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/><path d="M14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg></button>
+          <div class="vol-bar"><div class="vol-fill"></div></div>
+          <button class="exp-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg></button>
+        </div>
+      </div>
+
+      <!-- ═══ GRAND LECTEUR overlay ═══ -->
+      <div class="gl" id="grand-lecteur">
+        <div class="gl-backdrop" onclick="closeGL()"></div>
+        <div class="gl-card">
+          <div class="gl-topbar">
+            <div class="gl-now"><div class="gl-now-dot"></div>En lecture</div>
+            <button class="gl-close" onclick="closeGL()">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+
+          <!-- Grande pochette -->
+          <div class="gl-art t1">
+            <div class="gl-art-ph">
+              <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.18)" stroke-width="1" stroke-linecap="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+            </div>
+            <div class="gl-art-glow"></div>
+          </div>
+
+          <!-- Titre + fav -->
+          <div class="gl-inforow">
+            <div class="gl-titles">
+              <div class="gl-title">Get Lucky (feat. Pharrell Williams)</div>
+              <div class="gl-artist">Daft Punk</div>
+            </div>
+            <button class="gl-fav">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="#ff6b8a"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+            </button>
+          </div>
+
+          <!-- Barre de progression -->
+          <div class="gl-pbar">
+            <span class="gl-time">1:47</span>
+            <div class="gl-track"><div class="gl-fill"></div></div>
+            <span class="gl-time">4:34</span>
+          </div>
+
+          <!-- Contrôles -->
+          <div class="gl-ctrls">
+            <button class="glb on"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M16 3h5v5"/><path d="m21 3-7 7"/><path d="M16 21h5v-5"/><path d="m21 21-7-7"/><path d="M3 3l4 4"/><path d="M3 21l4-4"/></svg></button>
+            <button class="glb"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg></button>
+            <button class="gl-playbtn">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
+            </button>
+            <button class="glb"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zm9-12v12h2V6h-2z"/></svg></button>
+            <button class="glb on"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></button>
+          </div>
+        </div>
+      </div><!-- /grand-lecteur -->
+
+      <!-- ═══ SETTINGS MODAL ═══ -->
+      <div class="modal-back" id="settings-modal">
+        <div class="modal" onclick="event.stopPropagation()">
+          <div class="modal-head">
+            <div class="modal-title">Paramètres</div>
+            <button class="modal-close" onclick="toggleSettings()">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+          <div class="modal-body">
+            <div class="modal-row">
+              <div class="modal-label">Dossier de téléchargement</div>
+              <div class="modal-folder">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                <span>C:\Users\Music\MusicDL</span>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+              </div>
+            </div>
+            <div class="modal-row">
+              <div class="modal-label">Qualité audio</div>
+              <div class="opt-group">
+                <button class="opt-btn" onclick="selectOpt(this)">128 kbps</button>
+                <button class="opt-btn on" onclick="selectOpt(this)">192 kbps</button>
+                <button class="opt-btn" onclick="selectOpt(this)">320 kbps</button>
+              </div>
+            </div>
+            <div class="modal-row" style="margin-bottom:4px">
+              <div class="modal-label">Format</div>
+              <div class="opt-group">
+                <button class="opt-btn on" onclick="selectOpt(this)">MP3</button>
+                <button class="opt-btn" onclick="selectOpt(this)">FLAC</button>
+                <button class="opt-btn" onclick="selectOpt(this)">M4A</button>
+              </div>
+            </div>
+          </div>
+          <div class="modal-foot">
+            <button class="modal-cancel" onclick="toggleSettings()">Annuler</button>
+            <button class="modal-save" onclick="toggleSettings();showToast('Paramètres sauvegardés','success')">Enregistrer</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ TOASTS ═══ -->
+      <div class="toast-wrap" id="toast-wrap"></div>
+
+    </div><!-- /cz -->
+  </div><!-- /layout -->
+</div><!-- /win -->
+
+<script>
+/* ── PAGE NAVIGATION ── */
+function goPage(n){
+  [0,1,2].forEach(function(i){
+    document.getElementById('ni'+i).classList.toggle('on',i===n);
+    document.getElementById('pg'+i).classList.toggle('on',i===n);
+  });
+}
+
+/* ── PLAYLIST DETAIL ── */
+function openPlaylist(){
+  document.getElementById('pv-grid').classList.remove('on');
+  document.getElementById('pv-detail').classList.add('on');
+}
+function closePlaylist(){
+  document.getElementById('pv-detail').classList.remove('on');
+  document.getElementById('pv-grid').classList.add('on');
+}
+
+/* ── GRAND LECTEUR ── */
+function openGL(){ document.getElementById('grand-lecteur').classList.add('on'); }
+function closeGL(){ document.getElementById('grand-lecteur').classList.remove('on'); }
+document.querySelector('.exp-btn').addEventListener('click', openGL);
+document.querySelector('.ply-l').addEventListener('click', openGL);
+
+/* ── SEARCH STATES ── */
+var _searchTimer = null;
+function setSearchState(state){
+  ['empty','loading','results'].forEach(function(s){
+    document.getElementById('ss-'+s).classList.toggle('on', s===state);
+  });
+}
+
+document.getElementById('search-btn').addEventListener('click', function(){
+  if(isOffline){ showToast('Hors ligne — connexion requise','error'); return; }
+  var val = document.querySelector('.sinput').value.trim();
+  if(!val){ setSearchState('empty'); return; }
+  setSearchState('loading');
+  clearTimeout(_searchTimer);
+  _searchTimer = setTimeout(function(){
+    setSearchState('results');
+    showToast('8 résultats trouvés','info');
+  }, 1400);
+});
+
+/* ── TOAST SYSTEM ── */
+function showToast(msg, type){
+  var wrap = document.getElementById('toast-wrap');
+  var t = document.createElement('div');
+  t.className = 'toast '+(type||'info');
+  var icons = {
+    success:'<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>',
+    error:  '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+    info:   '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>'
+  };
+  t.innerHTML = '<div class="toast-ico">'+(icons[type]||icons.info)+'</div><span>'+msg+'</span>';
+  wrap.appendChild(t);
+  requestAnimationFrame(function(){ t.classList.add('show'); });
+  setTimeout(function(){ t.classList.remove('show'); setTimeout(function(){ t.remove(); },280); }, 3000);
+}
+
+/* Download button → toast demo */
+document.querySelectorAll('.dl-btn').forEach(function(btn){
+  btn.addEventListener('click', function(e){
+    e.stopPropagation();
+    showToast('Téléchargement démarré','info');
+  });
+});
+
+/* ── OFFLINE MODE ── */
+var isOffline = false;
+function toggleOffline(){
+  isOffline = !isOffline;
+  var banner = document.getElementById('offline-banner');
+  var badge  = document.getElementById('online-badge');
+  var sinput = document.querySelector('.sinput');
+  banner.classList.toggle('show', isOffline);
+  badge.className = 'online'+(isOffline?' offline':'');
+  badge.innerHTML = isOffline
+    ? '<div class="online-dot" style="background:#ff6060;animation:none"></div>Hors ligne'
+    : '<div class="online-dot"></div>En ligne';
+  if(isOffline) sinput.setAttribute('disabled','disabled');
+  else sinput.removeAttribute('disabled');
+}
+document.getElementById('online-badge').addEventListener('click', toggleOffline);
+
+/* ── SETTINGS MODAL ── */
+function toggleSettings(){
+  document.getElementById('settings-modal').classList.toggle('on');
+}
+document.getElementById('settings-modal').addEventListener('click', function(e){
+  if(e.target===this) toggleSettings();
+});
+
+/* ── ÉTATS VIDES ── */
+var libEmpty = false;
+function toggleLibEmpty(){
+  libEmpty = !libEmpty;
+  var show = libEmpty;
+  document.getElementById('lib-stats').style.display = show ? 'none' : '';
+  document.getElementById('lib-cols').style.display  = show ? 'none' : '';
+  document.getElementById('lib-pb').style.display    = show ? 'none' : '';
+  var es = document.getElementById('lib-empty-state');
+  es.style.display = show ? 'flex' : 'none';
+  document.getElementById('lib-empty-btn').textContent = show ? 'Avec titres' : 'État vide';
+}
+
+var plEmpty = false;
+function togglePlEmpty(){
+  plEmpty = !plEmpty;
+  var show = plEmpty;
+  document.getElementById('pl-grid-pb').style.display   = show ? 'none' : '';
+  var es = document.getElementById('pl-empty-state');
+  es.style.display = show ? 'flex' : 'none';
+  document.getElementById('pl-empty-btn').textContent = show ? 'Avec playlists' : 'État vide';
+}
+
+/* Option buttons toggle (quality / format) */
+function selectOpt(btn){
+  var siblings = btn.parentElement.querySelectorAll('.opt-btn');
+  siblings.forEach(function(s){ s.classList.remove('on'); });
+  btn.classList.add('on');
+}
+</script>
+</body>
+</html>
