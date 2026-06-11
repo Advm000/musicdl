@@ -9,6 +9,8 @@ dist/
 
 # Tests / captures
 shots/
+shots-packaged/
+shots-update/
 
 # Divers
 *.log
