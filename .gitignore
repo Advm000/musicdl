@@ -1,33 +1,15 @@
-# Logs & sorties
+# Dépendances
+node_modules/
+
+# Binaires embarqués (téléchargés par tools/fetch-bins.ps1)
+bin/
+
+# Sorties de build
+dist/
+
+# Tests / captures
+shots/
+
+# Divers
 *.log
-*.err
-out.txt
-err.txt
-_out.txt
-_err.txt
-
-# Scripts temporaires de build
-_build_android_html.py
-_gen_icons.py
-_html_temp.py
-_merge.py
-
-# Artefacts Android
-*.apk
-*.zip
-musicdl-apk-tmp/
-
-# Dossiers avec leur propre git
-android-app/
-android-backend/
-
-# Netlify build cache
-.netlify/
-
-# OS
-.DS_Store
 Thumbs.db
-
-# Python
-__pycache__/
-*.pyc

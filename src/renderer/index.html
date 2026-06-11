@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' mdl:; img-src 'self' mdl: https://*.ytimg.com https://*.googleusercontent.com data:; style-src 'self' 'unsafe-inline'; media-src 'self' mdl:; script-src 'self'; connect-src 'self' https://www.gstatic.com">
+<title>Music DL</title>
+<link rel="stylesheet" href="fonts/inter.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="win">
+  <!-- ═══ TITLE BAR ═══ -->
+  <div class="win-bar">
+    <div class="dot r" id="dot-close" title="Fermer">
+      <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="rgba(80,10,10,.85)" stroke-width="3.4" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </div>
+    <div class="dot y" id="dot-min" title="Réduire">
+      <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="rgba(110,70,5,.85)" stroke-width="3.4" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </div>
+    <div class="dot g" id="dot-max" title="Agrandir">
+      <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="rgba(10,70,20,.85)" stroke-width="3.2" stroke-linecap="round"><polyline points="9 5 5 5 5 9"/><polyline points="15 19 19 19 19 15"/></svg>
+    </div>
+    <div class="win-title" id="win-title">Music DL</div>
+  </div>
+
+  <div class="layout">
+
+    <!-- ═══ SIDEBAR ═══ -->
+    <aside class="sb">
+      <div class="brand">
+        <div class="brand-ico">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <rect x="1" y="15" width="4" height="8" rx="2" fill="white" opacity=".9"/>
+            <rect x="7" y="10" width="4" height="13" rx="2" fill="white"/>
+            <rect x="13" y="12" width="4" height="11" rx="2" fill="white" opacity=".9"/>
+            <path d="M20 4v9" stroke="white" stroke-width="2" stroke-linecap="round"/>
+            <path d="M18 10l2 3 2-3" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div>
+          <div class="brand-name">Music DL</div>
+          <div class="brand-sub">YouTube Music · MP3</div>
+        </div>
+      </div>
+
+      <nav class="nav">
+        <div class="nav-sec">Navigation</div>
+        <div class="ni on" data-page="0" id="ni0">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          Recherche
+        </div>
+        <div class="ni" data-page="1" id="ni1">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+          Bibliothèque
+        </div>
+        <div class="ni" data-page="2" id="ni2">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+          Playlists
+        </div>
+
+        <div id="recents-wrap" style="display:none">
+          <div class="nav-div"></div>
+          <div class="nav-sec">Récents</div>
+          <div id="recents"></div>
+        </div>
+      </nav>
+
+      <!-- File de téléchargements -->
+      <div class="sb-queue" id="sb-queue">
+        <div class="sb-queue-head">
+          <span class="sb-queue-title">Téléchargements</span>
+          <span class="sb-queue-badge" id="sb-queue-badge">0</span>
+        </div>
+        <div id="sb-queue-list"></div>
+      </div>
+
+      <!-- Mise à jour disponible -->
+      <div class="sb-update" id="sb-update">
+        <div class="sb-update-head">
+          <div class="sb-update-ico">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          </div>
+          <div class="sb-update-title">Mise à jour disponible</div>
+        </div>
+        <div class="sb-update-sub" id="sb-update-sub">Nouvelle version</div>
+        <button class="sb-update-btn" id="sb-update-btn">Télécharger</button>
+        <div class="sb-update-prog" id="sb-update-prog" style="display:none"><div class="sb-update-prog-fill" id="sb-update-prog-fill"></div></div>
+      </div>
+
+      <div class="sb-foot">
+        <div class="online" id="online-badge"><div class="online-dot"></div>En ligne</div>
+        <button class="settings-btn" id="settings-btn" title="Paramètres">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/><circle cx="12" cy="12" r="8.5" opacity=".35"/></svg>
+        </button>
+      </div>
+    </aside>
+
+    <!-- ═══ CONTENT ZONE ═══ -->
+    <div class="cz">
+      <div class="pw">
+
+        <!-- ━━━ PAGE 0 · RECHERCHE ━━━ -->
+        <div class="pg on" id="pg0">
+          <div class="ph">
+            <div class="sinput-wrap">
+              <svg class="sinput-ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              <input class="sinput" id="search-input" type="text" placeholder="Artiste, titre, album ou lien YouTube…" spellcheck="false">
+            </div>
+            <button class="hbtn" id="search-btn">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              Chercher
+            </button>
+            <button class="hbtn ghost sq" id="dl-all-btn" title="Tout télécharger" style="display:none">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </button>
+          </div>
+
+          <!-- Bannière hors ligne -->
+          <div class="offline-banner" id="offline-banner">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/><path d="M10.71 5.05A16 16 0 0 1 22.56 9"/><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+            Mode hors ligne — La recherche n'est pas disponible
+            <button id="retry-online">Réessayer</button>
+          </div>
+
+          <div class="pb">
+            <!-- STATE: empty -->
+            <div class="ss-state on" id="ss-empty">
+              <div class="empty-state">
+                <div class="empty-ico">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                </div>
+                <div class="empty-title">Recherche une musique</div>
+                <div class="empty-sub">Tape un titre, un artiste, un album ou colle un lien YouTube pour commencer</div>
+                <div class="empty-hint">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                  Essaie : "Daft Punk", "Blinding Lights"…
+                </div>
+              </div>
+            </div>
+
+            <!-- STATE: loading -->
+            <div class="ss-state" id="ss-loading">
+              <div class="skel-list">
+                <div class="skel-card"><div class="skel-thumb"><div class="skel-shine"></div></div><div class="skel-info"><div class="skel-line w70"><div class="skel-shine"></div></div><div class="skel-line w45"><div class="skel-shine"></div></div></div><div class="skel-acts-wrap"><div class="skel-btn"></div></div></div>
+                <div class="skel-card"><div class="skel-thumb"><div class="skel-shine"></div></div><div class="skel-info"><div class="skel-line w45"><div class="skel-shine"></div></div><div class="skel-line w30"><div class="skel-shine"></div></div></div><div class="skel-acts-wrap"><div class="skel-btn"></div></div></div>
+                <div class="skel-card"><div class="skel-thumb"><div class="skel-shine"></div></div><div class="skel-info"><div class="skel-line w70"><div class="skel-shine"></div></div><div class="skel-line w45"><div class="skel-shine"></div></div></div><div class="skel-acts-wrap"><div class="skel-btn"></div></div></div>
+                <div class="skel-card"><div class="skel-thumb"><div class="skel-shine"></div></div><div class="skel-info"><div class="skel-line w30"><div class="skel-shine"></div></div><div class="skel-line w45"><div class="skel-shine"></div></div></div><div class="skel-acts-wrap"><div class="skel-btn"></div></div></div>
+              </div>
+            </div>
+
+            <!-- STATE: error -->
+            <div class="ss-state" id="ss-error">
+              <div class="empty-state">
+                <div class="empty-ico">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,100,100,.5)" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                </div>
+                <div class="empty-title">La recherche a échoué</div>
+                <div class="empty-sub" id="ss-error-msg">Erreur inconnue</div>
+              </div>
+            </div>
+
+            <!-- STATE: results -->
+            <div class="ss-state" id="ss-results">
+              <div class="res-bar" id="res-bar"></div>
+              <div class="rc-list" id="rc-list"></div>
+            </div>
+          </div>
+        </div><!-- /pg0 -->
+
+        <!-- ━━━ PAGE 1 · BIBLIOTHÈQUE ━━━ -->
+        <div class="pg" id="pg1">
+          <div class="ph">
+            <div class="ph-title-wrap">
+              <div class="ph-title">Bibliothèque</div>
+              <div class="ph-sub" id="lib-sub">0 titre</div>
+            </div>
+            <div class="ph-sep"></div>
+            <div class="sinput-wrap" style="max-width:220px">
+              <svg class="sinput-ico" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              <input class="sinput" id="lib-filter" type="text" placeholder="Filtrer…" spellcheck="false">
+            </div>
+            <div class="ph-spacer"></div>
+            <button class="hbtn ghost" id="open-folder-btn" style="gap:6px;font-size:11px">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+              Ouvrir le dossier
+            </button>
+          </div>
+
+          <div class="lib-stats" id="lib-stats">
+            <div class="lib-stat"><strong id="st-count">0</strong> titres</div>
+            <div class="lib-stat-sep">·</div>
+            <div class="lib-stat"><strong id="st-dur">0min</strong> de musique</div>
+            <div class="lib-stat-sep">·</div>
+            <div class="lib-stat"><strong id="st-artists">0</strong> artistes</div>
+          </div>
+
+          <div class="lib-cols" id="lib-cols" style="padding-left:46px">
+            <div class="c-gap"></div>
+            <div class="c-info lib-col-h sorted" data-sort="title">Titre
+              <svg class="sort-arrow" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg>
+            </div>
+            <div class="c-album lib-col-h" data-sort="album">Album</div>
+            <div class="c-year lib-col-h" data-sort="year">Année</div>
+            <div class="c-dur lib-col-h" data-sort="duration">Durée</div>
+            <div class="c-acts"></div>
+          </div>
+
+          <div class="pb" id="lib-pb"></div>
+
+          <div id="lib-empty-state" style="display:none;flex:1;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:40px 32px;text-align:center">
+            <div class="empty-ico">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="1.8" stroke-linecap="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+            </div>
+            <div class="empty-title">Aucun titre téléchargé</div>
+            <div class="empty-sub">Télécharge des musiques depuis la recherche pour les retrouver ici</div>
+            <button class="hbtn" id="goto-search-btn" style="margin-top:6px;font-size:11px;gap:6px">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              Aller à la recherche
+            </button>
+          </div>
+        </div><!-- /pg1 -->
+
+        <!-- ━━━ PAGE 2 · PLAYLISTS ━━━ -->
+        <div class="pg" id="pg2">
+          <div class="pl-views">
+
+            <!-- Vue grille -->
+            <div class="pl-view on" id="pv-grid">
+              <div class="ph">
+                <div class="ph-title-wrap">
+                  <div class="ph-title">Playlists</div>
+                  <div class="ph-sub" id="pl-sub">0 playlist</div>
+                </div>
+                <div class="ph-spacer"></div>
+                <button class="hbtn teal" id="new-pl-btn" style="font-size:11px;gap:6px">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  Nouvelle playlist
+                </button>
+              </div>
+              <div class="pb" id="pl-grid-pb">
+                <div class="pl-grid" id="pl-grid"></div>
+              </div>
+            </div>
+
+            <!-- Vue détail -->
+            <div class="pl-view" id="pv-detail">
+              <div class="pld-head">
+                <div class="pld-mosaic" id="pld-mosaic"></div>
+                <div class="pld-info">
+                  <button class="pld-back" id="pld-back">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M19 12H5"/><path d="M12 5l-7 7 7 7"/></svg>
+                    Retour
+                  </button>
+                  <div class="pld-label">
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                    Playlist
+                  </div>
+                  <div class="pld-name" id="pld-name">—</div>
+                  <div class="pld-sub" id="pld-sub"></div>
+                  <div class="pld-acts">
+                    <button class="pld-play" id="pld-play">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                      Lire tout
+                    </button>
+                    <button class="pld-ghost" id="pld-shuffle" title="Lecture aléatoire">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M16 3h5v5"/><path d="m21 3-7 7"/><path d="M16 21h5v-5"/><path d="m21 21-7-7"/><path d="M3 3l4 4"/><path d="M3 21l4-4"/></svg>
+                    </button>
+                    <button class="pld-ghost" id="pld-rename" title="Renommer">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div class="lib-cols" style="padding-left:46px">
+                <div class="c-gap"></div>
+                <div class="c-info lib-col-h">Titre</div>
+                <div class="c-album lib-col-h">Album</div>
+                <div class="c-year lib-col-h">Année</div>
+                <div class="c-dur lib-col-h">Durée</div>
+                <div class="c-acts"></div>
+              </div>
+              <div class="pb" id="pld-tracks"></div>
+            </div>
+
+          </div>
+        </div><!-- /pg2 -->
+
+      </div><!-- /pw -->
+
+      <!-- ═══ PLAYER BAR ═══ -->
+      <div class="player">
+        <div class="ply-prog-line"><div class="ply-prog-fill" id="ply-prog-mini"></div></div>
+
+        <div class="ply-l" id="ply-left">
+          <div class="ply-art" id="ply-art">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.22)" stroke-width="1.5" stroke-linecap="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+          </div>
+          <div class="eq paused" id="ply-eq" style="display:none"><div class="eq-b"></div><div class="eq-b"></div><div class="eq-b"></div><div class="eq-b"></div></div>
+          <div class="ply-info">
+            <div class="ply-title" id="ply-title">Aucune lecture</div>
+            <div class="ply-artist" id="ply-artist">—</div>
+          </div>
+          <button class="ply-fav" id="ply-fav" title="Favori">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          </button>
+        </div>
+
+        <div class="ply-c">
+          <div class="ply-btns">
+            <button class="pb2" id="btn-shuffle" title="Aléatoire"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M16 3h5v5"/><path d="m21 3-7 7"/><path d="M16 21h5v-5"/><path d="m21 21-7-7"/><path d="M3 3l4 4"/><path d="M3 21l4-4"/></svg></button>
+            <button class="pb2" id="btn-prev" title="Précédent"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg></button>
+            <button class="ply-play" id="btn-play" title="Lecture / pause">
+              <svg id="ico-play" width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"/></svg>
+              <svg id="ico-pause" width="15" height="15" viewBox="0 0 24 24" fill="currentColor" style="display:none"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
+            </button>
+            <button class="pb2" id="btn-next" title="Suivant"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zm9-12v12h2V6h-2z"/></svg></button>
+            <button class="pb2" id="btn-repeat" title="Répéter"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></button>
+          </div>
+          <div class="ply-pbar">
+            <span class="ply-time" id="time-cur">0:00</span>
+            <div class="ply-track" id="ply-track"><div class="ply-fill" id="ply-fill"></div></div>
+            <span class="ply-time" id="time-tot">0:00</span>
+          </div>
+        </div>
+
+        <div class="ply-r">
+          <button class="vol-btn" id="vol-btn" title="Muet">
+            <svg id="ico-vol" width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 7.97v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/><path d="M14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+            <svg id="ico-mute" width="15" height="15" viewBox="0 0 24 24" fill="currentColor" style="display:none"><path d="M3 9v6h4l5 5V4L7 9H3z"/><line x1="16" y1="9" x2="22" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="22" y1="9" x2="16" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </button>
+          <div class="vol-bar" id="vol-bar"><div class="vol-fill" id="vol-fill"></div></div>
+          <button class="exp-btn" id="exp-btn" title="Grand lecteur"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg></button>
+        </div>
+      </div>
+
+      <!-- ═══ GRAND LECTEUR ═══ -->
+      <div class="gl" id="grand-lecteur">
+        <div class="gl-backdrop" id="gl-backdrop"></div>
+        <div class="gl-card">
+          <div class="gl-topbar">
+            <div class="gl-now"><div class="gl-now-dot"></div>En lecture</div>
+            <button class="gl-close" id="gl-close">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+          <div class="gl-art" id="gl-art">
+            <div class="gl-art-ph">
+              <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.18)" stroke-width="1" stroke-linecap="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+            </div>
+            <div class="gl-art-glow"></div>
+          </div>
+          <div class="gl-inforow">
+            <div class="gl-titles">
+              <div class="gl-title" id="gl-title">—</div>
+              <div class="gl-artist" id="gl-artist">—</div>
+            </div>
+            <button class="gl-fav" id="gl-fav">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+            </button>
+          </div>
+          <div class="gl-pbar">
+            <span class="gl-time" id="gl-time-cur">0:00</span>
+            <div class="gl-track" id="gl-track"><div class="gl-fill" id="gl-fill"></div></div>
+            <span class="gl-time" id="gl-time-tot">0:00</span>
+          </div>
+          <div class="gl-ctrls">
+            <button class="glb" id="gl-shuffle"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M16 3h5v5"/><path d="m21 3-7 7"/><path d="M16 21h5v-5"/><path d="m21 21-7-7"/><path d="M3 3l4 4"/><path d="M3 21l4-4"/></svg></button>
+            <button class="glb" id="gl-prev"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg></button>
+            <button class="gl-playbtn" id="gl-play">
+              <svg id="gl-ico-play" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"/></svg>
+              <svg id="gl-ico-pause" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="display:none"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
+            </button>
+            <button class="glb" id="gl-next"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zm9-12v12h2V6h-2z"/></svg></button>
+            <button class="glb" id="gl-repeat"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ MODAL PARAMÈTRES ═══ -->
+      <div class="modal-back" id="settings-modal">
+        <div class="modal">
+          <div class="modal-head">
+            <div class="modal-title">Paramètres</div>
+            <button class="modal-close" data-close="settings-modal">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+          <div class="modal-body">
+            <div class="modal-row">
+              <div class="modal-label">Dossier de téléchargement</div>
+              <div class="modal-folder" id="folder-pick">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                <span id="folder-display">…</span>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+              </div>
+            </div>
+            <div class="modal-row">
+              <div class="modal-label">Qualité audio</div>
+              <div class="opt-group" id="opt-quality">
+                <button class="opt-btn" data-v="128">128 kbps</button>
+                <button class="opt-btn" data-v="192">192 kbps</button>
+                <button class="opt-btn" data-v="320">320 kbps</button>
+              </div>
+            </div>
+            <div class="modal-row" style="margin-bottom:4px">
+              <div class="modal-label">Format</div>
+              <div class="opt-group" id="opt-format">
+                <button class="opt-btn" data-v="mp3">MP3</button>
+                <button class="opt-btn" data-v="m4a">M4A</button>
+              </div>
+            </div>
+          </div>
+          <div class="modal-foot">
+            <button class="modal-cancel" data-close="settings-modal">Annuler</button>
+            <button class="modal-save" id="settings-save">Enregistrer</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ MODAL SAISIE (playlist) ═══ -->
+      <div class="modal-back" id="input-modal">
+        <div class="modal">
+          <div class="modal-head">
+            <div class="modal-title" id="input-modal-title">Nouvelle playlist</div>
+            <button class="modal-close" data-close="input-modal">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+          <div class="modal-body">
+            <div class="modal-row">
+              <div class="modal-label" id="input-modal-label">Nom de la playlist</div>
+              <input class="modal-input" id="input-modal-field" type="text" maxlength="60" spellcheck="false">
+            </div>
+          </div>
+          <div class="modal-foot">
+            <button class="modal-cancel" data-close="input-modal">Annuler</button>
+            <button class="modal-save" id="input-modal-ok">Créer</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ MODAL CONFIRMATION ═══ -->
+      <div class="modal-back" id="confirm-modal">
+        <div class="modal">
+          <div class="modal-head">
+            <div class="modal-title" id="confirm-title">Confirmer</div>
+            <button class="modal-close" data-close="confirm-modal">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+          <div class="modal-body">
+            <div class="modal-text" id="confirm-text">—</div>
+          </div>
+          <div class="modal-foot">
+            <button class="modal-cancel" data-close="confirm-modal">Annuler</button>
+            <button class="modal-save danger" id="confirm-ok">Supprimer</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ MENU CONTEXTUEL ═══ -->
+      <div class="ctx-menu" id="ctx-menu"></div>
+
+      <!-- ═══ TOASTS ═══ -->
+      <div class="toast-wrap" id="toast-wrap"></div>
+
+    </div><!-- /cz -->
+  </div><!-- /layout -->
+</div><!-- /win -->
+
+<audio id="audio"></audio>
+<script src="app.js"></script>
+</body>
+</html>

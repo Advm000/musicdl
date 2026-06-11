@@ -1,0 +1,68 @@
+{
+  "name": "music-dl",
+  "productName": "Music DL",
+  "version": "1.0.0",
+  "description": "Téléchargeur et lecteur de musique — YouTube Music, MP3, pochettes officielles",
+  "author": "Advm000",
+  "license": "MIT",
+  "main": "src/main.js",
+  "homepage": "https://github.com/Advm000/musicdl",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Advm000/musicdl.git"
+  },
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win --publish never"
+  },
+  "build": {
+    "appId": "com.advm.musicdl",
+    "productName": "Music DL",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "bin",
+        "to": "bin",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.ico",
+      "artifactName": "Music-DL-Setup.exe"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "runAfterFinish": true,
+      "shortcutName": "Music DL"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Advm000",
+        "repo": "musicdl"
+      }
+    ]
+  },
+  "devDependencies": {
+    "electron": "^42.4.0",
+    "electron-builder": "^26.15.2",
+    "png-to-ico": "^3.0.1",
+    "sharp": "^0.35.1"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.9"
+  }
+}
