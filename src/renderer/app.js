@@ -929,8 +929,10 @@ $('#settings-save').addEventListener('click', async () => {
 
 /* ════════ MISES À JOUR ════════ */
 let updateState = 'idle';
+let updateVersion = '';
 window.mdl.on('update:available', ({ version }) => {
   updateState = 'available';
+  updateVersion = version;
   $('#sb-update').classList.add('show');
   $('#sb-update-sub').textContent = `Version ${version} — prête à installer`;
   $('#sb-update-btn').textContent = 'Télécharger';
@@ -987,7 +989,11 @@ window.MDL_TEST = {
   },
   openGL: () => openGL(),
   closeGL: () => closeGL(),
+  clickUpdate: () => $('#sb-update-btn').click(),
   state: () => JSON.stringify({
+    updateState,
+    updateVersion,
+    updatePct: parseInt($('#sb-update-prog-fill').style.width) || 0,
     page: currentPage,
     results: searchResults.length,
     searchError: lastSearchError,

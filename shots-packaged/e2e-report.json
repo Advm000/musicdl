@@ -1,0 +1,20 @@
+{
+  "ok": true,
+  "steps": [
+    "shot accueil",
+    "recherche ok: 12 résultats",
+    "téléchargement ok",
+    "lecture audio ok"
+  ],
+  "fileExists": true,
+  "fileSizeMB": 8.49,
+  "coverExists": true,
+  "track": {
+    "title": "Get Lucky (feat. Pharrell Williams and Nile Rodgers)",
+    "artist": "Daft Punk, Pharrell Williams, Nile Rodgers",
+    "album": "Random Access Memories",
+    "year": 2013,
+    "duration": 370,
+    "file": "C:\\Users\\Dell\\Music\\Music DL\\Daft Punk - Get Lucky (feat. Pharrell Williams and Nile Rodgers).mp3"
+  }
+}
