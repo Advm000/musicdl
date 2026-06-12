@@ -21,23 +21,28 @@ for ($try = 1; $try -le 3; $try++) {
     Write-Host "Ancien asset supprime (state=$($old.state))"
     Start-Sleep 3
   }
-  # 2. Upload en HTTP/1.1
-  & "$env:SystemRoot\System32\curl.exe" --http1.1 -sS -X POST `
-    -H "Authorization: token $tok" -H "Content-Type: application/octet-stream" `
-    --data-binary "@$File" --max-time 1500 `
-    "https://uploads.github.com/repos/$Repo/releases/$ReleaseId/assets?name=$Name" `
-    -o "$env:TEMP\gh-upload-out.json" -w "curl: HTTP %{http_code}, %{size_upload} octets, %{time_total}s"
-  Write-Host ""
-  # 3. Verifier l'etat final cote API
-  Start-Sleep 4
-  $assets = Invoke-RestMethod -Uri "https://api.github.com/repos/$Repo/releases/$ReleaseId/assets" -Headers $h
-  $a = $assets | Where-Object { $_.name -eq $Name }
-  if ($a -and $a.state -eq 'uploaded') {
-    Write-Host "SUCCES: $Name state=uploaded, $([math]::Round($a.size/1MB,1)) MB"
-    exit 0
+  # 2. Upload en HTTP/1.1 (curl en processus enfant + sortie periodique anti-timeout)
+  $curlArgs = "--http1.1 -sS -X POST -H ""Authorization: token $tok"" -H ""Content-Type: application/octet-stream"" --data-binary ""@$File"" --max-time 1500 ""https://uploads.github.com/repos/$Repo/releases/$ReleaseId/assets?name=$Name"" -o ""$env:TEMP\gh-upload-out.json"" -w ""curl: HTTP %{http_code} en %{time_total}s"""
+  $p = Start-Process -FilePath "$env:SystemRoot\System32\curl.exe" -ArgumentList $curlArgs -NoNewWindow -PassThru
+  $t0 = Get-Date
+  while (-not $p.HasExited) {
+    Start-Sleep 15
+    Write-Host ("upload en cours... {0}s" -f [int]((Get-Date) - $t0).TotalSeconds)
   }
-  $st = 'absent'; if ($a) { $st = $a.state }
-  Write-Host "Etat apres tentative: $st - on reessaie"
+  Write-Host "curl exit code: $($p.ExitCode)"
+  # 3. Verifier l'etat final cote API (la finalisation GitHub peut prendre du temps)
+  for ($w = 1; $w -le 12; $w++) {
+    Start-Sleep 15
+    $assets = Invoke-RestMethod -Uri "https://api.github.com/repos/$Repo/releases/$ReleaseId/assets" -Headers $h
+    $a = $assets | Where-Object { $_.name -eq $Name }
+    $st = 'absent'; if ($a) { $st = $a.state }
+    Write-Host "verif $w : state=$st"
+    if ($st -eq 'uploaded') {
+      Write-Host "SUCCES: $Name state=uploaded, $([math]::Round($a.size/1MB,1)) MB"
+      exit 0
+    }
+  }
+  Write-Host "Etat apres tentative: pas finalise - on reessaie"
 }
 Write-Host "ECHEC apres 3 tentatives"
 exit 1
