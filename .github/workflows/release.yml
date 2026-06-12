@@ -1,0 +1,40 @@
+name: release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag de la release existante (ex: v1.0.0)"
+        required: true
+        default: "v1.0.0"
+
+permissions:
+  contents: write
+
+jobs:
+  build-upload:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Dependances
+        run: npm ci
+
+      - name: Binaires yt-dlp + ffmpeg
+        run: powershell -ExecutionPolicy Bypass -File tools/fetch-bins.ps1
+
+      - name: Icone
+        run: node tools/gen-icon.js
+
+      - name: Build installateur
+        run: npm run dist
+
+      - name: Upload vers la release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload ${{ inputs.tag }} dist/Music-DL-Setup.exe dist/Music-DL-Setup.exe.blockmap dist/latest.yml --clobber
