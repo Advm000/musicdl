@@ -22,6 +22,18 @@
       <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="rgba(10,70,20,.85)" stroke-width="3.2" stroke-linecap="round"><polyline points="9 5 5 5 5 9"/><polyline points="15 19 19 19 19 15"/></svg>
     </div>
     <div class="win-title" id="win-title">Music DL</div>
+    <div class="win-ctrls">
+      <button class="wc" id="wc-min" title="Réduire">
+        <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.1"><line x1="1" y1="6" x2="11" y2="6"/></svg>
+      </button>
+      <button class="wc" id="wc-max" title="Agrandir">
+        <svg id="wc-ico-max" width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.1"><rect x="1.5" y="1.5" width="9" height="9" rx="1"/></svg>
+        <svg id="wc-ico-restore" width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.1" style="display:none"><rect x="1.5" y="3.5" width="7" height="7" rx="1"/><path d="M4 3.5V2.5a1 1 0 0 1 1-1h4.5a1 1 0 0 1 1 1V7a1 1 0 0 1-1 1H8.5"/></svg>
+      </button>
+      <button class="wc wc-close" id="wc-close" title="Fermer">
+        <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.1"><line x1="1.5" y1="1.5" x2="10.5" y2="10.5"/><line x1="10.5" y1="1.5" x2="1.5" y2="10.5"/></svg>
+      </button>
+    </div>
   </div>
 
   <div class="layout">
@@ -116,6 +128,13 @@
             </button>
           </div>
 
+          <!-- Onglets de recherche -->
+          <div class="stabs" id="stabs">
+            <button class="stab on" data-tab="songs">Titres</button>
+            <button class="stab" data-tab="albums">Albums</button>
+            <button class="stab" data-tab="playlists">Playlists</button>
+          </div>
+
           <!-- Bannière hors ligne -->
           <div class="offline-banner" id="offline-banner">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/><path d="M10.71 5.05A16 16 0 0 1 22.56 9"/><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
@@ -160,10 +179,42 @@
               </div>
             </div>
 
-            <!-- STATE: results -->
+            <!-- STATE: results (titres) -->
             <div class="ss-state" id="ss-results">
               <div class="res-bar" id="res-bar"></div>
               <div class="rc-list" id="rc-list"></div>
+            </div>
+
+            <!-- STATE: collections (albums / playlists) -->
+            <div class="ss-state" id="ss-collections">
+              <div class="res-bar" id="col-res-bar"></div>
+              <div class="col-grid" id="col-grid"></div>
+            </div>
+
+            <!-- STATE: détail d'une collection -->
+            <div class="ss-state" id="ss-collection">
+              <div class="pld-head" style="border-bottom:1px solid var(--border)">
+                <div class="col-cover" id="col-cover"></div>
+                <div class="pld-info">
+                  <button class="pld-back" id="col-back">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M19 12H5"/><path d="M12 5l-7 7 7 7"/></svg>
+                    Retour
+                  </button>
+                  <div class="pld-label" id="col-label">
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                    Album
+                  </div>
+                  <div class="pld-name" id="col-title">—</div>
+                  <div class="pld-sub" id="col-sub"></div>
+                  <div class="pld-acts">
+                    <button class="pld-play" id="col-dl-all">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                      Tout télécharger
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div class="rc-list" id="col-tracks" style="padding-top:10px"></div>
             </div>
           </div>
         </div><!-- /pg0 -->

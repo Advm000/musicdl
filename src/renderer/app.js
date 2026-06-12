@@ -69,6 +69,14 @@ function showToast(msg, type) {
 $('#dot-close').addEventListener('click', () => window.mdl.close());
 $('#dot-min').addEventListener('click', () => window.mdl.minimize());
 $('#dot-max').addEventListener('click', () => window.mdl.maximize());
+$('#wc-close').addEventListener('click', () => window.mdl.close());
+$('#wc-min').addEventListener('click', () => window.mdl.minimize());
+$('#wc-max').addEventListener('click', () => window.mdl.maximize());
+window.mdl.on('win:maximized', (isMax) => {
+  $('#wc-ico-max').style.display = isMax ? 'none' : '';
+  $('#wc-ico-restore').style.display = isMax ? '' : 'none';
+  $('#wc-max').title = isMax ? 'Restaurer' : 'Agrandir';
+});
 
 /* ── Navigation ── */
 function goPage(n) {
@@ -175,8 +183,13 @@ document.addEventListener('click', (e) => { if (!ctxMenu.contains(e.target) && !
 window.addEventListener('blur', closeCtx);
 
 /* ════════ RECHERCHE ════════ */
+let searchTab = 'songs';                 // 'songs' | 'albums' | 'playlists'
+let collectionResults = [];              // cartes albums/playlists du dernier onglet
+let currentCollection = null;            // collection ouverte (vue détail)
+let lastQuery = '';
+
 function setSearchState(state) {
-  ['empty', 'loading', 'error', 'results'].forEach((s) => $('#ss-' + s).classList.toggle('on', s === state));
+  ['empty', 'loading', 'error', 'results', 'collections', 'collection'].forEach((s) => $('#ss-' + s).classList.toggle('on', s === state));
 }
 
 async function runSearch(q) {
@@ -186,23 +199,197 @@ async function runSearch(q) {
   if (!online) { showToast('Hors ligne — connexion requise', 'error'); return; }
   lastSearchError = null;
   searchResults = [];
+  collectionResults = [];
+  lastQuery = query;
   setSearchState('loading');
   $('#dl-all-btn').style.display = 'none';
-  const r = await window.mdl.search(query);
+  const r = await window.mdl.search(query, searchTab);
   if (!r.ok) {
     lastSearchError = r.error || 'Erreur inconnue';
     $('#ss-error-msg').textContent = lastSearchError;
     setSearchState('error');
     return;
   }
-  searchResults = r.results;
+  // Lien d'album/playlist collé → ouvrir directement la vue détail
+  if (r.collectionRef) {
+    openCollectionRef(r.collectionRef);
+    return;
+  }
   appState.recents = [query, ...appState.recents.filter((x) => x.toLowerCase() !== query.toLowerCase())].slice(0, 6);
   renderRecents();
-  renderResults(query);
-  setSearchState('results');
+  if (r.kind === 'songs') {
+    searchResults = r.results;
+    renderResults(query);
+    setSearchState('results');
+  } else {
+    collectionResults = r.results;
+    renderCollections(query, r.kind);
+    setSearchState('collections');
+  }
 }
 $('#search-btn').addEventListener('click', () => runSearch());
 $('#search-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') runSearch(); });
+
+/* Onglets Titres / Albums / Playlists */
+$$('#stabs .stab').forEach((b) => b.addEventListener('click', () => {
+  if (searchTab === b.dataset.tab) return;
+  searchTab = b.dataset.tab;
+  $$('#stabs .stab').forEach((x) => x.classList.toggle('on', x === b));
+  if (lastQuery) runSearch(lastQuery);
+}));
+
+/* ── Grille albums / playlists ── */
+function renderCollections(query, kind) {
+  const label = kind === 'albums' ? 'album' : 'playlist';
+  $('#col-res-bar').innerHTML = `<strong>${collectionResults.length} ${label}${collectionResults.length > 1 ? 's' : ''}</strong>&nbsp;pour "${esc(query)}" &nbsp;·&nbsp; YouTube Music`;
+  const grid = $('#col-grid');
+  grid.innerHTML = '';
+  collectionResults.forEach((c) => {
+    const card = document.createElement('div');
+    card.className = 'col-card';
+    card.innerHTML = `
+      <div class="col-card-cover">
+        <div class="ph">${SVG_NOTE(26, '.18')}</div>
+        ${c.thumb ? `<img src="${esc(c.thumb)}" loading="lazy" onerror="this.remove()">` : ''}
+      </div>
+      <div class="col-card-foot">
+        <div class="col-card-name">${esc(c.title)}</div>
+        <div class="col-card-meta">${c.kind === 'album' ? 'Album' : 'Playlist'}${c.artist ? ` · <span>${esc(c.artist)}</span>` : ''}${c.year ? ` · ${c.year}` : ''}${c.info ? ` · ${esc(c.info)}` : ''}</div>
+      </div>`;
+    card.addEventListener('click', () => openCollectionRef({ browseId: c.browseId, kind: c.kind, fallback: c }));
+    grid.appendChild(card);
+  });
+}
+
+/* ── Vue détail album / playlist ── */
+async function openCollectionRef(ref) {
+  setSearchState('loading');
+  const r = await window.mdl.getCollection({ browseId: ref.browseId, kind: ref.kind });
+  if (!r.ok) {
+    lastSearchError = r.error || 'Impossible de charger ce contenu';
+    $('#ss-error-msg').textContent = lastSearchError;
+    setSearchState('error');
+    return;
+  }
+  currentCollection = r.collection;
+  if (ref.fallback) {
+    if (!currentCollection.title) currentCollection.title = ref.fallback.title;
+    if (!currentCollection.artist) currentCollection.artist = ref.fallback.artist;
+    if (!currentCollection.year) currentCollection.year = ref.fallback.year;
+    if (!currentCollection.cover) currentCollection.cover = ref.fallback.thumb;
+  }
+  renderCollectionDetail();
+  setSearchState('collection');
+}
+
+$('#col-back').addEventListener('click', () => {
+  currentCollection = null;
+  if (collectionResults.length) setSearchState('collections');
+  else if (searchResults.length) setSearchState('results');
+  else setSearchState('empty');
+});
+
+function colTrackPayload(t) {
+  const c = currentCollection;
+  return {
+    id: t.id,
+    title: t.title,
+    artist: t.artist,
+    thumb: t.thumb || (c && c.cover) || null,
+    duration: t.duration,
+    album: c && c.kind === 'album' ? c.title : undefined,
+    year: c && c.kind === 'album' ? c.year : undefined
+  };
+}
+
+function renderCollectionDetail() {
+  const c = currentCollection;
+  if (!c) return;
+  $('#col-cover').innerHTML = c.cover ? `<img src="${esc(c.cover)}">` : SVG_NOTE(30, '.18');
+  $('#col-label').innerHTML = `<svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg> ${c.kind === 'album' ? 'Album' : 'Playlist'}`;
+  $('#col-title').textContent = c.title || '—';
+  const dur = c.tracks.reduce((s, t) => s + (t.duration || 0), 0);
+  $('#col-sub').innerHTML = `
+    ${c.artist ? `<span style="color:rgba(79,136,248,.7)">${esc(c.artist)}</span><span class="pld-dot">·</span>` : ''}
+    ${c.year ? `<span>${c.year}</span><span class="pld-dot">·</span>` : ''}
+    <span>${c.tracks.length} titre${c.tracks.length > 1 ? 's' : ''}</span>
+    ${dur ? `<span class="pld-dot">·</span><span>${fmtDurLong(dur)}</span>` : ''}`;
+  const box = $('#col-tracks');
+  box.innerHTML = '';
+  c.tracks.forEach((t, i) => {
+    const card = document.createElement('div');
+    card.className = 'rcard';
+    card.dataset.colId = t.id;
+    card.innerHTML = `
+      <div class="rcard-thumb ${tClass(i)}">
+        ${(t.thumb || c.cover) ? `<img src="${esc(t.thumb || c.cover)}" loading="lazy" onerror="this.remove()">` : ''}
+        ${t.duration ? `<div class="rcard-dur">${fmtDur(t.duration)}</div>` : ''}
+      </div>
+      <div class="rcard-info">
+        <div class="rcard-title">${i + 1}. ${esc(t.title)}</div>
+        <div class="rcard-meta"><span class="rcard-ch">${esc(t.artist || 'Inconnu')}</span></div>
+        <div class="rcard-prog-wrap" style="display:none">
+          <div class="rcard-prog"><div class="rcard-prog-fill" style="width:0%"></div></div>
+          <div class="rcard-prog-lbl">Téléchargement… 0%</div>
+        </div>
+      </div>
+      <div class="rcard-acts"></div>`;
+    box.appendChild(card);
+    refreshColRow(t.id);
+  });
+  syncColDlAll();
+}
+
+function refreshColRow(id) {
+  if (!currentCollection) return;
+  const card = document.querySelector(`.rcard[data-col-id="${CSS.escape(id)}"]`);
+  if (!card) return;
+  const st = trackStatus(id);
+  const acts = card.querySelector('.rcard-acts');
+  const progWrap = card.querySelector('.rcard-prog-wrap');
+  if (st === 'done') {
+    progWrap.style.display = 'none';
+    acts.innerHTML = `<div class="done-badge"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>Téléchargée</div>`;
+  } else if (st === 'downloading' || st === 'queued') {
+    const q = queueSnap.find((x) => x.id === id);
+    progWrap.style.display = '';
+    progWrap.querySelector('.rcard-prog-fill').style.width = (q ? q.pct : 0) + '%';
+    progWrap.querySelector('.rcard-prog-lbl').textContent = st === 'queued' ? 'En attente…' : `${q.phase} ${q.pct}%`;
+    acts.innerHTML = `<button class="dl-btn busy"><span class="spinner"></span></button>`;
+  } else {
+    progWrap.style.display = 'none';
+    acts.innerHTML = `<button class="dl-btn" title="Télécharger">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    </button>`;
+    acts.querySelector('.dl-btn').addEventListener('click', async () => {
+      const t = currentCollection.tracks.find((x) => x.id === id);
+      if (!t) return;
+      if (!online) { showToast('Hors ligne — connexion requise', 'error'); return; }
+      const r = await window.mdl.download(colTrackPayload(t));
+      if (r.ok) showToast('Téléchargement démarré', 'info');
+      else showToast(r.error || 'Impossible de télécharger', 'error');
+    });
+  }
+}
+
+function syncColDlAll() {
+  if (!currentCollection) return;
+  const todo = currentCollection.tracks.filter((t) => trackStatus(t.id) === 'none');
+  const btn = $('#col-dl-all');
+  btn.disabled = !todo.length;
+  btn.innerHTML = `
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    ${todo.length ? `Tout télécharger (${todo.length})` : 'Tout est téléchargé'}`;
+}
+
+$('#col-dl-all').addEventListener('click', () => {
+  if (!currentCollection) return;
+  if (!online) { showToast('Hors ligne — connexion requise', 'error'); return; }
+  const todo = currentCollection.tracks.filter((t) => trackStatus(t.id) === 'none');
+  if (!todo.length) { showToast('Tout est déjà téléchargé', 'info'); return; }
+  todo.forEach((t) => window.mdl.download(colTrackPayload(t)));
+  showToast(`${todo.length} téléchargement${todo.length > 1 ? 's' : ''} lancé${todo.length > 1 ? 's' : ''}`, 'info');
+});
 
 function trackStatus(id) {
   if (trackById(id)) return 'done';
@@ -272,7 +459,7 @@ async function startDownload(id) {
   const t = searchResults.find((x) => x.id === id) || trackById(id);
   if (!t) return;
   if (!online) { showToast('Hors ligne — connexion requise', 'error'); return; }
-  const r = await window.mdl.download({ id: t.id, title: t.title, artist: t.artist, thumb: t.thumb, duration: t.duration });
+  const r = await window.mdl.download({ id: t.id, title: t.title, artist: t.artist, thumb: t.thumb, duration: t.duration, album: t.album });
   if (r.ok) showToast('Téléchargement démarré', 'info');
   else showToast(r.error || 'Impossible de télécharger', 'error');
 }
@@ -304,6 +491,7 @@ window.mdl.on('dl:queue', (snap) => {
   queueSnap = snap;
   renderQueue();
   searchResults.forEach((t) => refreshCard(t.id));
+  if (currentCollection) { currentCollection.tracks.forEach((t) => refreshColRow(t.id)); syncColDlAll(); }
 });
 window.mdl.on('dl:done', ({ track }) => {
   lastDlError = null;
@@ -313,11 +501,13 @@ window.mdl.on('dl:done', ({ track }) => {
   renderLibrary();
   renderPlaylists();
   refreshCard(track.id);
+  if (currentCollection) { refreshColRow(track.id); syncColDlAll(); }
 });
 window.mdl.on('dl:error', ({ id, title, error }) => {
   lastDlError = error;
   showToast(`Échec : ${title} — ${error}`, 'error');
   refreshCard(id);
+  if (currentCollection) { refreshColRow(id); syncColDlAll(); }
 });
 
 function renderQueue() {
@@ -337,6 +527,12 @@ function renderQueue() {
       <span class="sq-pct">${q.status === 'waiting' ? '…' : q.pct + '%'}</span>`;
     list.appendChild(el);
   });
+  if (queueSnap.length > 4) {
+    const more = document.createElement('div');
+    more.className = 'sq-more';
+    more.textContent = `+ ${queueSnap.length - 4} autre${queueSnap.length - 4 > 1 ? 's' : ''} en attente`;
+    list.appendChild(more);
+  }
 }
 
 /* ════════ BIBLIOTHÈQUE ════════ */
@@ -474,6 +670,7 @@ async function toggleFavorite(id) {
   renderLibrary();
   if (currentPlId) renderPlaylistDetail();
   syncPlayerUI();
+  showToast(t.favorite ? '❤ Ajouté aux favoris' : 'Retiré des favoris', t.favorite ? 'success' : 'info');
 }
 
 /* ════════ PLAYLISTS ════════ */
@@ -980,6 +1177,11 @@ init();
 /* ════════ HOOKS DE TEST (E2E) ════════ */
 window.MDL_TEST = {
   search: (q) => runSearch(q),
+  setTab: (t) => { searchTab = t; $$('#stabs .stab').forEach((x) => x.classList.toggle('on', x.dataset.tab === t)); },
+  openFirstCollection: () => { if (collectionResults[0]) openCollectionRef({ browseId: collectionResults[0].browseId, kind: collectionResults[0].kind, fallback: collectionResults[0] }); },
+  downloadCollection: () => $('#col-dl-all').click(),
+  seekTo: (ratio) => { if (audio.duration) audio.currentTime = ratio * audio.duration; },
+  toggleFav: () => { if (currentTrack) toggleFavorite(currentTrack.id); },
   downloadFirst: () => { if (searchResults[0]) startDownload(searchResults[0].id); },
   goLibrary: () => goPage(1),
   goPlaylists: () => goPage(2),
@@ -995,7 +1197,15 @@ window.MDL_TEST = {
     updateVersion,
     updatePct: parseInt($('#sb-update-prog-fill').style.width) || 0,
     page: currentPage,
+    tab: searchTab,
     results: searchResults.length,
+    collections: collectionResults.length,
+    colTracks: currentCollection ? currentCollection.tracks.length : 0,
+    colTitle: currentCollection ? currentCollection.title : null,
+    colDone: currentCollection ? currentCollection.tracks.filter((t) => trackById(t.id)).length : 0,
+    seekable: audio.seekable && audio.seekable.length ? Math.round(audio.seekable.end(audio.seekable.length - 1)) : 0,
+    position: Math.round(audio.currentTime || 0),
+    favOn: !!(currentTrack && currentTrack.favorite),
     searchError: lastSearchError,
     queue: queueSnap.length,
     queuePct: queueSnap.reduce((m, q) => Math.max(m, q.pct), 0),

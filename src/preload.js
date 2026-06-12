@@ -16,7 +16,8 @@ contextBridge.exposeInMainWorld('mdl', {
   getState: () => ipcRenderer.invoke('state:get'),
 
   // Recherche + téléchargement
-  search: (query) => ipcRenderer.invoke('search:run', query),
+  search: (query, kind) => ipcRenderer.invoke('search:run', query, kind),
+  getCollection: (ref) => ipcRenderer.invoke('collection:get', ref),
   download: (track) => ipcRenderer.invoke('dl:start', track),
 
   // Bibliothèque
