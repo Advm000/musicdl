@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self' mdl:; img-src 'self' mdl: https://*.ytimg.com https://*.googleusercontent.com data:; style-src 'self' 'unsafe-inline'; media-src 'self' mdl:; script-src 'self'; connect-src 'self' https://www.gstatic.com">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' mdl:; img-src 'self' mdl: https://*.ytimg.com https://*.googleusercontent.com data:; style-src 'self' 'unsafe-inline'; media-src 'self' mdl: https://*.googlevideo.com; script-src 'self'; connect-src 'self' https://www.gstatic.com">
 <title>Music DL</title>
 <link rel="stylesheet" href="fonts/inter.css">
 <link rel="stylesheet" href="styles.css">
@@ -117,7 +117,8 @@
           <div class="ph">
             <div class="sinput-wrap">
               <svg class="sinput-ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-              <input class="sinput" id="search-input" type="text" placeholder="Artiste, titre, album ou lien YouTube…" spellcheck="false">
+              <input class="sinput" id="search-input" type="text" placeholder="Artiste, titre, album ou lien YouTube…" spellcheck="false" autocomplete="off">
+              <div class="suggest-box" id="suggest-box"></div>
             </div>
             <button class="hbtn" id="search-btn">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
@@ -142,7 +143,7 @@
             <button id="retry-online">Réessayer</button>
           </div>
 
-          <div class="pb">
+          <div class="pb" id="search-pb">
             <!-- STATE: empty -->
             <div class="ss-state on" id="ss-empty">
               <div class="empty-state">
@@ -381,6 +382,9 @@
             <svg id="ico-mute" width="15" height="15" viewBox="0 0 24 24" fill="currentColor" style="display:none"><path d="M3 9v6h4l5 5V4L7 9H3z"/><line x1="16" y1="9" x2="22" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="22" y1="9" x2="16" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
           </button>
           <div class="vol-bar" id="vol-bar"><div class="vol-fill" id="vol-fill"></div></div>
+          <button class="exp-btn" id="mini-btn" title="Mini-lecteur flottant">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><rect x="12" y="12" width="7" height="5" rx="1" fill="currentColor" stroke="none"/></svg>
+          </button>
           <button class="exp-btn" id="exp-btn" title="Grand lecteur"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg></button>
         </div>
       </div>
@@ -391,6 +395,10 @@
         <div class="gl-card">
           <div class="gl-topbar">
             <div class="gl-now"><div class="gl-now-dot"></div>En lecture</div>
+            <button class="gl-close" id="sleep-btn" title="Minuteur de sommeil" style="margin-left:auto;margin-right:6px;position:relative">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+              <span class="sleep-badge" id="sleep-badge" style="display:none">15</span>
+            </button>
             <button class="gl-close" id="gl-close">
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
@@ -454,11 +462,18 @@
                 <button class="opt-btn" data-v="320">320 kbps</button>
               </div>
             </div>
-            <div class="modal-row" style="margin-bottom:4px">
+            <div class="modal-row">
               <div class="modal-label">Format</div>
               <div class="opt-group" id="opt-format">
                 <button class="opt-btn" data-v="mp3">MP3</button>
                 <button class="opt-btn" data-v="m4a">M4A</button>
+              </div>
+            </div>
+            <div class="modal-row" style="margin-bottom:4px">
+              <div class="modal-label">Bouton fermer</div>
+              <div class="opt-group" id="opt-close">
+                <button class="opt-btn" data-v="tray">Réduire dans la barre</button>
+                <button class="opt-btn" data-v="quit">Quitter l'app</button>
               </div>
             </div>
           </div>

@@ -3,7 +3,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 const EVENTS = [
   'dl:queue', 'dl:done', 'dl:error',
   'update:available', 'update:progress', 'update:ready', 'update:error',
-  'win:maximized'
+  'win:maximized', 'remote:cmd', 'mini:state'
 ];
 
 contextBridge.exposeInMainWorld('mdl', {
@@ -17,7 +17,10 @@ contextBridge.exposeInMainWorld('mdl', {
 
   // Recherche + téléchargement
   search: (query, kind) => ipcRenderer.invoke('search:run', query, kind),
+  searchMore: (token, kind) => ipcRenderer.invoke('search:more', token, kind),
+  suggest: (input) => ipcRenderer.invoke('search:suggest', input),
   getCollection: (ref) => ipcRenderer.invoke('collection:get', ref),
+  previewUrl: (id) => ipcRenderer.invoke('preview:get', id),
   download: (track) => ipcRenderer.invoke('dl:start', track),
 
   // Bibliothèque
@@ -40,6 +43,12 @@ contextBridge.exposeInMainWorld('mdl', {
   // Mises à jour
   downloadUpdate: () => ipcRenderer.invoke('update:download'),
   installUpdate: () => ipcRenderer.invoke('update:install'),
+
+  // Mini-lecteur
+  openMini: () => ipcRenderer.send('mini:open'),
+  closeMini: () => ipcRenderer.send('mini:close'),
+  miniCmd: (payload) => ipcRenderer.send('mini:cmd', payload),
+  sendMiniState: (s) => ipcRenderer.send('mini:state', s),
 
   // Événements
   on: (channel, cb) => {

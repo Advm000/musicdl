@@ -250,6 +250,9 @@ img{-webkit-user-drag:none;user-select:none}
 .gl-now-dot{width:5px;height:5px;border-radius:50%;background:#4f88f8;flex-shrink:0;animation:pulse 2s ease-in-out infinite}
 .gl-close{width:28px;height:28px;border-radius:8px;border:none;cursor:pointer;background:rgba(255,255,255,.07);color:rgba(255,255,255,.4);display:flex;align-items:center;justify-content:center;transition:all .14s}
 .gl-close:hover{background:rgba(255,255,255,.12);color:rgba(255,255,255,.85)}
+.gl-topbar .gl-now{margin-right:auto}
+#sleep-btn.armed{color:#1dd3b0;background:rgba(29,211,176,.1)}
+.sleep-badge{position:absolute;top:-5px;right:-5px;min-width:15px;height:15px;border-radius:8px;background:#1dd3b0;color:#06231c;font-size:8px;font-weight:800;display:flex;align-items:center;justify-content:center;padding:0 3px;font-variant-numeric:tabular-nums}
 .gl-art{width:100%;aspect-ratio:1;border-radius:18px;overflow:hidden;margin-bottom:18px;position:relative;background:#111828;box-shadow:0 20px 48px rgba(0,0,0,.55)}
 .gl-art img{width:100%;height:100%;object-fit:cover;display:block}
 .gl-art-ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center;position:absolute;inset:0}
@@ -349,8 +352,29 @@ img{-webkit-user-drag:none;user-select:none}
 .col-card{background:rgba(255,255,255,.032);border:1px solid rgba(255,255,255,.06);border-radius:13px;overflow:hidden;cursor:pointer;transition:all .18s}
 .col-card:hover{border-color:rgba(79,136,248,.25);background:rgba(79,136,248,.045);transform:translateY(-3px);box-shadow:0 12px 36px rgba(0,0,0,.45)}
 .col-card-cover{aspect-ratio:1;background:#0d1120;position:relative;overflow:hidden}
-.col-card-cover img{width:100%;height:100%;object-fit:cover;display:block}
-.col-card-cover .ph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+.col-card-cover img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.col-card-cover .cph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+
+/* Bandeau artiste (mode albums intelligent) */
+.artist-band{grid-column:1/-1;display:flex;align-items:center;gap:12px;background:rgba(79,136,248,.06);border:1px solid rgba(79,136,248,.16);border-radius:13px;padding:12px 14px}
+.artist-band img{width:52px;height:52px;border-radius:50%;object-fit:cover;flex-shrink:0}
+.artist-band-ph{width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#1a3a6e,#0d2044);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ab-label{font-size:8.5px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#60a5fa;margin-bottom:3px}
+.ab-name{font-size:14px;font-weight:800;color:#f0f2f7}
+.ab-info{font-size:10.5px;color:rgba(255,255,255,.3);margin-top:2px}
+
+/* Suggestions de frappe */
+.suggest-box{position:absolute;top:42px;left:0;right:0;background:#0d1326;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:5px;box-shadow:0 16px 48px rgba(0,0,0,.6);z-index:220;display:none}
+.suggest-box.on{display:block}
+.suggest-item{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:7px;cursor:pointer;font-size:12px;color:rgba(255,255,255,.55);transition:all .12s}
+.suggest-item:hover{background:rgba(79,136,248,.12);color:#93c5fd}
+.suggest-item svg{flex-shrink:0;opacity:.45}
+
+/* Préécoute (overlay sur miniature) */
+.pv-btn{position:absolute;inset:0;border:none;cursor:pointer;background:rgba(4,6,12,.55);color:#fff;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .14s;z-index:2}
+.rcard-thumb:hover .pv-btn{opacity:1}
+.pv-btn.active{opacity:1;background:rgba(4,6,12,.62)}
+.res-more{display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;font-size:11px;color:rgba(255,255,255,.3)}
 .col-card-foot{padding:9px 11px 11px}
 .col-card-name{font-size:12px;font-weight:700;color:#f0f2f7;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .col-card-meta{font-size:10px;color:rgba(255,255,255,.25);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}

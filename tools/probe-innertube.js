@@ -40,12 +40,69 @@ function describe(r) {
   return { vid: vid || null, browseId: (browse && browse.browseId) || null, pageType: pageType || null, cols, fixed: fixedTxt || null };
 }
 
+function findToken(data) {
+  let token = null;
+  walk(data, (n) => {
+    if (token) return;
+    if (n.nextContinuationData && n.nextContinuationData.continuation) token = n.nextContinuationData.continuation;
+    if (n.continuationCommand && n.continuationCommand.token) token = n.continuationCommand.token;
+  });
+  return token;
+}
+
 (async () => {
   const PARAMS = {
     songs: 'EgWKAQIIAWoQEAMQBBAJEAoQBRAREBAQFQ%3D%3D',
     albums: 'EgWKAQIYAWoQEAMQBBAJEAoQBRAREBAQFQ%3D%3D',
+    artists: 'EgWKAQIgAWoQEAMQBBAJEAoQBRAREBAQFQ%3D%3D',
     playlists: 'Eg-KAQwIABAAGAAgACgBMABqChAEEAMQCRAFEAo%3D'
   };
+
+  // ── Artistes : recherche + page artiste ──
+  try {
+    const data = await api('search', { query: 'stormy', params: PARAMS.artists });
+    const arts = items(data).slice(0, 3).map(describe);
+    console.log('=== ARTISTES "stormy" ===');
+    arts.forEach((d) => console.log(JSON.stringify(d)));
+    const artistId = arts[0] && arts[0].browseId;
+    if (artistId) {
+      const page = await api('browse', { browseId: artistId });
+      console.log('=== PAGE ARTISTE', artistId, '— musicTwoRowItemRenderer (albums) ===');
+      const rows = [];
+      walk(page, (n) => { if (n.musicTwoRowItemRenderer) rows.push(n.musicTwoRowItemRenderer); });
+      rows.slice(0, 8).forEach((r) => {
+        const t = r.title && r.title.runs && r.title.runs[0].text;
+        const sub = (r.subtitle && r.subtitle.runs || []).map((x) => x.text).join('');
+        const be = r.navigationEndpoint && r.navigationEndpoint.browseEndpoint;
+        console.log(JSON.stringify({ title: t, sub, browseId: be && be.browseId }));
+      });
+    }
+  } catch (e) { console.log('ARTISTES ERREUR:', e.message); }
+
+  // ── Continuation (pagination titres) ──
+  try {
+    const d1 = await api('search', { query: 'stormy', params: PARAMS.songs });
+    const tok = findToken(d1);
+    console.log('=== CONTINUATION page1:', items(d1).length, 'items, token:', tok ? tok.slice(0, 40) + '…' : 'AUCUN');
+    if (tok) {
+      const d2 = await api(`search?ctoken=${encodeURIComponent(tok)}&continuation=${encodeURIComponent(tok)}`, {});
+      console.log('=== CONTINUATION page2:', items(d2).length, 'items, token2:', findToken(d2) ? 'oui' : 'non');
+      const sample = items(d2).slice(0, 2).map(describe);
+      sample.forEach((d) => console.log(JSON.stringify(d)));
+    }
+  } catch (e) { console.log('CONTINUATION ERREUR:', e.message); }
+
+  // ── Suggestions de frappe ──
+  try {
+    const s = await api('music/get_search_suggestions', { input: 'storm' });
+    const sugg = [];
+    walk(s, (n) => {
+      if (n.searchSuggestionRenderer && n.searchSuggestionRenderer.suggestion) {
+        sugg.push((n.searchSuggestionRenderer.suggestion.runs || []).map((r) => r.text).join(''));
+      }
+    });
+    console.log('=== SUGGESTIONS "storm":', JSON.stringify(sugg));
+  } catch (e) { console.log('SUGGESTIONS ERREUR:', e.message); }
   for (const [name, params] of Object.entries(PARAMS)) {
     try {
       const data = await api('search', { query: 'daft punk', params });

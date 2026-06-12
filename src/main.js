@@ -3,7 +3,7 @@
    Recherche + téléchargement YouTube Music (yt-dlp/ffmpeg),
    bibliothèque locale, playlists, auto-update GitHub.
 ═══════════════════════════════════════════════ */
-const { app, BrowserWindow, ipcMain, dialog, shell, protocol } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, protocol, Tray, Menu } = require('electron');
 const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
@@ -20,7 +20,7 @@ const STORE_FILE = path.join(app.getPath('userData'), 'store.json');
 
 /* ── Store (bibliothèque, playlists, paramètres, récents) ── */
 const DEFAULT_STORE = {
-  settings: { folder: path.join(app.getPath('music'), 'Music DL'), quality: '192', format: 'mp3' },
+  settings: { folder: path.join(app.getPath('music'), 'Music DL'), quality: '192', format: 'mp3', closeToTray: true },
   library: [],
   playlists: [],
   recents: []
@@ -50,6 +50,27 @@ function ensureDirs() {
 
 /* ── Fenêtre ── */
 let win = null;
+let tray = null;
+let quitting = false;
+
+const ICON_PATH = path.join(__dirname, '..', 'build', 'icon.ico');
+
+/* Barre système : fermer = réduire, la musique continue */
+function createTray() {
+  if (tray || !fs.existsSync(ICON_PATH)) return;
+  tray = new Tray(ICON_PATH);
+  tray.setToolTip('Music DL');
+  tray.setContextMenu(Menu.buildFromTemplate([
+    { label: 'Ouvrir Music DL', click: () => { if (win) { win.show(); win.focus(); } } },
+    { type: 'separator' },
+    { label: 'Lecture / Pause', click: () => send('remote:cmd', { action: 'toggle' }) },
+    { label: 'Titre suivant', click: () => send('remote:cmd', { action: 'next' }) },
+    { label: 'Titre précédent', click: () => send('remote:cmd', { action: 'prev' }) },
+    { type: 'separator' },
+    { label: 'Quitter', click: () => { quitting = true; app.quit(); } }
+  ]));
+  tray.on('click', () => { if (win) { win.show(); win.focus(); } });
+}
 
 function createWindow() {
   win = new BrowserWindow({
@@ -70,6 +91,13 @@ function createWindow() {
   win.once('ready-to-show', () => win.show());
   win.on('maximize', () => send('win:maximized', true));
   win.on('unmaximize', () => send('win:maximized', false));
+  win.on('close', (e) => {
+    const e2e = process.env.MUSICDL_E2E || process.env.MUSICDL_E2E_UPDATE;
+    if (store.settings.closeToTray !== false && !quitting && !e2e && tray) {
+      e.preventDefault();
+      win.hide();
+    }
+  });
   win.on('closed', () => { win = null; });
 }
 
@@ -122,6 +150,7 @@ function runYtdlp(args, { onLine } = {}) {
 const INNERTUBE_PARAMS = {
   songs: 'EgWKAQIIAWoQEAMQBBAJEAoQBRAREBAQFQ%3D%3D',
   albums: 'EgWKAQIYAWoQEAMQBBAJEAoQBRAREBAQFQ%3D%3D',
+  artists: 'EgWKAQIgAWoQEAMQBBAJEAoQBRAREBAQFQ%3D%3D',
   playlists: 'Eg-KAQwIABAAGAAgACgBMABqChAEEAMQCRAFEAo%3D'
 };
 
@@ -156,8 +185,7 @@ function walkJson(node, fn) {
   for (const k of Object.keys(node)) walkJson(node[k], fn);
 }
 
-async function ytMusicSearch(query, kind) {
-  const data = await innertube('search', { query, params: INNERTUBE_PARAMS[kind] || INNERTUBE_PARAMS.songs });
+function parseSearchResponse(data, kind) {
   const items = [];
   walkJson(data, (n) => {
     if (!n.musicResponsiveListItemRenderer) return;
@@ -173,9 +201,67 @@ async function ytMusicSearch(query, kind) {
     if (!key || seen.has(key)) continue;
     seen.add(key);
     results.push(it);
-    if (results.length >= 12) break;
   }
-  return results;
+  let token = null;
+  walkJson(data, (n) => {
+    if (token) return;
+    if (n.nextContinuationData && n.nextContinuationData.continuation) token = n.nextContinuationData.continuation;
+    else if (n.continuationCommand && n.continuationCommand.token) token = n.continuationCommand.token;
+  });
+  return { results, token };
+}
+
+async function ytMusicSearch(query, kind) {
+  const data = await innertube('search', { query, params: INNERTUBE_PARAMS[kind] || INNERTUBE_PARAMS.songs });
+  return parseSearchResponse(data, kind);
+}
+
+/* Page suivante de résultats (scroll infini, max ~200 côté interface) */
+async function ytMusicMore(token, kind) {
+  const data = await innertube('search', { continuation: token });
+  return parseSearchResponse(data, kind);
+}
+
+/* Suggestions de frappe (comme sur le site officiel) */
+async function ytMusicSuggest(input) {
+  const data = await innertube('music/get_search_suggestions', { input });
+  const out = [];
+  walkJson(data, (n) => {
+    if (n.searchSuggestionRenderer && n.searchSuggestionRenderer.suggestion) {
+      const txt = (n.searchSuggestionRenderer.suggestion.runs || []).map((r) => r.text).join('');
+      if (txt && !out.includes(txt)) out.push(txt);
+    }
+  });
+  return out.slice(0, 7);
+}
+
+/* Discographie officielle d'un artiste (albums + singles de sa page) */
+async function getArtistAlbums(artistBrowseId, artistName) {
+  const data = await innertube('browse', { browseId: artistBrowseId });
+  const albums = [];
+  const seen = new Set();
+  walkJson(data, (n) => {
+    const r = n.musicTwoRowItemRenderer;
+    if (!r) return;
+    const be = r.navigationEndpoint && r.navigationEndpoint.browseEndpoint;
+    if (!be || !/^MPREb/.test(be.browseId || '') || seen.has(be.browseId)) return;
+    const title = r.title && r.title.runs && r.title.runs[0] && r.title.runs[0].text;
+    if (!title) return;
+    const subRuns = ((r.subtitle && r.subtitle.runs) || []).map((x) => (x.text || '').trim()).filter((x) => x && x !== '•');
+    let year = null, type = 'Album';
+    for (const txt of subRuns) {
+      if (/^\d{4}$/.test(txt)) year = Number(txt);
+      else if (/single/i.test(txt)) type = 'Single';
+      else if (/^EP$/i.test(txt)) type = 'EP';
+    }
+    const thumbs = ((((r.thumbnailRenderer || {}).musicThumbnailRenderer || {}).thumbnail || {}).thumbnails) || [];
+    const thumb = thumbs.length ? thumbs[thumbs.length - 1].url.replace(/=w\d+-h\d+/, '=w232-h232') : null;
+    seen.add(be.browseId);
+    albums.push({ browseId: be.browseId, kind: 'album', title, artist: artistName, year, info: type, thumb, fromArtist: true });
+  });
+  // Albums d'abord, puis EPs/singles, du plus récent au plus ancien
+  albums.sort((a, b) => (a.info === 'Single') - (b.info === 'Single') || (b.year || 0) - (a.year || 0));
+  return albums.slice(0, 40);
 }
 
 function itemThumb(r, fallbackId) {
@@ -191,6 +277,7 @@ function parseCollectionItem(r, kind) {
     const browseId = be && be.browseId;
     if (!browseId) return null;
     if (kind === 'albums' && !/^MPREb/.test(browseId)) return null;
+    if (kind === 'artists' && !/^UC/.test(browseId)) return null;
     if (kind === 'playlists' && !/^VL/.test(browseId)) return null;
     const cols = (r.flexColumns || []).map((c) => {
       const t = c.musicResponsiveListItemFlexColumnRenderer;
@@ -204,14 +291,19 @@ function parseCollectionItem(r, kind) {
       // "Album • Artiste • 2013"
       for (const txt of metaRuns) {
         if (/^\d{4}$/.test(txt)) year = Number(txt);
-        else if (!/^(Album|EP|Single)$/i.test(txt) && !artist) artist = txt;
+        else if (/^(EP|Single)$/i.test(txt)) info = txt;
+        else if (!/^Album$/i.test(txt) && !artist) artist = txt;
       }
+    } else if (kind === 'artists') {
+      // "Artiste • 5,29 M auditeurs/mois"
+      info = metaRuns.filter((t) => !/^Artiste$/i.test(t)).join(' · ');
     } else {
       // "Auteur • N vues"
       artist = metaRuns[0] || '';
       info = metaRuns.slice(1).join(' · ');
     }
-    return { browseId, kind: kind === 'albums' ? 'album' : 'playlist', title, artist, year, info, thumb: itemThumb(r) };
+    const kindOut = kind === 'albums' ? 'album' : (kind === 'artists' ? 'artist' : 'playlist');
+    return { browseId, kind: kindOut, title, artist, year, info, thumb: itemThumb(r) };
   } catch (_) {
     return null;
   }
@@ -387,13 +479,44 @@ async function searchMusic(query, kind) {
     return { ok: true, results, kind: 'songs' };
   }
 
+  // ── Albums : mode intelligent — discographie officielle de l'artiste d'abord ──
+  if (kind === 'albums') {
+    const [artistRes, albumRes] = await Promise.all([
+      ytMusicSearch(query, 'artists').catch(() => ({ results: [], token: null })),
+      ytMusicSearch(query, 'albums').catch(() => ({ results: [], token: null }))
+    ]);
+    let artist = null;
+    let artistAlbums = [];
+    const top = artistRes.results[0];
+    if (top) {
+      const qn = query.toLowerCase(), an = (top.title || '').toLowerCase();
+      // On n'affiche la discographie que si la recherche ressemble au nom de l'artiste
+      if (qn.includes(an) || an.includes(qn)) {
+        try {
+          artistAlbums = await getArtistAlbums(top.browseId, top.title);
+          if (artistAlbums.length) artist = { name: top.title, info: top.info, thumb: top.thumb };
+        } catch (_) {}
+      }
+    }
+    const seenIds = new Set(artistAlbums.map((a) => a.browseId));
+    const rest = albumRes.results.filter((a) => !seenIds.has(a.browseId));
+    const results = [...artistAlbums, ...rest];
+    if (!results.length) return { ok: false, error: 'Aucun résultat' };
+    store.recents = [query, ...store.recents.filter((r) => r.toLowerCase() !== query.toLowerCase())].slice(0, 6);
+    saveStore();
+    return { ok: true, results, kind, artist, continuation: albumRes.token };
+  }
+
   // 1) API YouTube Music
   let results = [];
+  let token = null;
   try {
-    results = await ytMusicSearch(query, kind);
+    const r = await ytMusicSearch(query, kind);
+    results = r.results;
+    token = r.token;
   } catch (_) { /* repli ci-dessous */ }
 
-  // Albums/playlists : pas de repli équivalent côté yt-dlp
+  // Playlists : pas de repli équivalent côté yt-dlp
   if (!results.length && kind !== 'songs') {
     return { ok: false, error: 'Aucun résultat' };
   }
@@ -423,7 +546,7 @@ async function searchMusic(query, kind) {
   if (!results.length) return { ok: false, error: 'Aucun résultat' };
   store.recents = [query, ...store.recents.filter((r) => r.toLowerCase() !== query.toLowerCase())].slice(0, 6);
   saveStore();
-  return { ok: true, results, kind };
+  return { ok: true, results, kind, continuation: token };
 }
 function cleanErr(err) {
   const line = String(err).split(/\r?\n/).find((l) => l.includes('ERROR')) || 'Erreur réseau ou service indisponible';
@@ -563,6 +686,51 @@ ipcMain.on('win:minimize', () => win && win.minimize());
 ipcMain.on('win:maximize', () => { if (!win) return; win.isMaximized() ? win.unmaximize() : win.maximize(); });
 ipcMain.on('win:close', () => win && win.close());
 
+/* ── Mini-lecteur flottant (remplace la fenêtre principale) ── */
+let miniWin = null;
+let lastMiniState = null;
+function createMiniWindow() {
+  if (miniWin && !miniWin.isDestroyed()) { miniWin.show(); miniWin.focus(); return; }
+  miniWin = new BrowserWindow({
+    width: 332, height: 102,
+    frame: false, alwaysOnTop: true, resizable: false,
+    skipTaskbar: true, show: false, backgroundColor: '#060810',
+    icon: fs.existsSync(ICON_PATH) ? ICON_PATH : undefined,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false
+    }
+  });
+  miniWin.loadFile(path.join(__dirname, 'renderer', 'mini.html'));
+  miniWin.once('ready-to-show', () => miniWin.show());
+  miniWin.webContents.once('did-finish-load', () => {
+    if (lastMiniState && miniWin && !miniWin.isDestroyed()) miniWin.webContents.send('mini:state', lastMiniState);
+  });
+  miniWin.on('closed', () => {
+    miniWin = null;
+    // Si le mini se ferme, on ne laisse pas l'app invisible
+    if (win && !win.isDestroyed() && !win.isVisible() && !quitting) win.show();
+  });
+}
+ipcMain.on('mini:open', () => {
+  createMiniWindow();
+  if (win && !win.isDestroyed()) win.hide(); // l'app SE TRANSFORME en mini-lecteur
+});
+ipcMain.on('mini:close', () => { if (miniWin && !miniWin.isDestroyed()) miniWin.close(); });
+ipcMain.on('mini:cmd', (_e, payload) => {
+  if (payload && payload.action === 'expand') {
+    if (win) { win.show(); win.focus(); }
+    if (miniWin && !miniWin.isDestroyed()) miniWin.close();
+    return;
+  }
+  send('remote:cmd', payload);
+});
+ipcMain.on('mini:state', (_e, s) => {
+  lastMiniState = s;
+  if (miniWin && !miniWin.isDestroyed()) miniWin.webContents.send('mini:state', s);
+});
+
 ipcMain.handle('state:get', () => ({
   version: app.getVersion(),
   packaged: app.isPackaged,
@@ -573,8 +741,31 @@ ipcMain.handle('state:get', () => ({
 }));
 
 ipcMain.handle('search:run', (_e, query, kind) => searchMusic(query, kind));
+ipcMain.handle('search:more', async (_e, token, kind) => {
+  try {
+    const r = await ytMusicMore(token, kind === 'albums' ? 'albums' : kind === 'playlists' ? 'playlists' : 'songs');
+    return { ok: true, results: r.results, continuation: r.token };
+  } catch (_) {
+    return { ok: false, results: [] };
+  }
+});
+ipcMain.handle('search:suggest', async (_e, input) => {
+  try { return await ytMusicSuggest(String(input || '').slice(0, 80)); } catch (_) { return []; }
+});
 ipcMain.handle('collection:get', (_e, ref) => getCollection(ref));
 ipcMain.handle('dl:start', (_e, track) => enqueueDownload(track));
+
+/* ── Préécoute (streaming avant téléchargement) ── */
+const previewCache = new Map();
+ipcMain.handle('preview:get', async (_e, id) => {
+  if (previewCache.has(id)) return { ok: true, url: previewCache.get(id) };
+  const { code, out, err } = await runYtdlp([trackUrl(id), '-f', 'bestaudio[ext=m4a]/bestaudio/best', '-g', '--no-playlist', '--no-warnings']);
+  const url = out.split(/\r?\n/).find((l) => /^https?:\/\//.test(l.trim()));
+  if (code !== 0 || !url) return { ok: false, error: cleanErr(err) };
+  previewCache.set(id, url.trim());
+  if (previewCache.size > 60) previewCache.delete(previewCache.keys().next().value);
+  return { ok: true, url: url.trim() };
+});
 
 ipcMain.handle('library:delete', (_e, id) => {
   const t = store.library.find((x) => x.id === id);
@@ -640,6 +831,7 @@ ipcMain.handle('settings:save', (_e, s) => {
   if (s && typeof s.folder === 'string' && s.folder.trim()) store.settings.folder = s.folder.trim();
   if (s && ['128', '192', '320'].includes(s.quality)) store.settings.quality = s.quality;
   if (s && ['mp3', 'm4a'].includes(s.format)) store.settings.format = s.format;
+  if (s && typeof s.closeToTray === 'boolean') store.settings.closeToTray = s.closeToTray;
   ensureDirs();
   saveStore();
   return { ok: true, settings: store.settings };
@@ -701,9 +893,72 @@ async function runE2E() {
     await sleep(800);
     await shot('06-grand-lecteur');
 
-    await js('MDL_TEST.closeGL(); MDL_TEST.goPlaylists();');
+    // ── Seek (Range requests) ──
+    await js('MDL_TEST.seekTo(0.5)');
+    await sleep(1200);
+    st = JSON.parse(await js('MDL_TEST.state()'));
+    if (!st.seekable || st.position < 5) throw new Error('Seek inopérant: ' + JSON.stringify({ seekable: st.seekable, position: st.position }));
+    report.steps.push('seek ok (position ' + st.position + 's, seekable ' + st.seekable + 's)');
+
+    // ── Favori ──
+    await js('MDL_TEST.toggleFav()');
+    await sleep(500);
+    st = JSON.parse(await js('MDL_TEST.state()'));
+    if (!st.favOn) throw new Error('Favori inopérant');
+    report.steps.push('favori ok');
+
+    // ── Minuteur de sommeil ──
+    await js('MDL_TEST.setSleep(15); MDL_TEST.openGL();');
+    await sleep(900);
+    st = JSON.parse(await js('MDL_TEST.state()'));
+    if (!st.sleepArmed) throw new Error('Minuteur inopérant');
+    report.steps.push('minuteur de sommeil ok');
+    await shot('07-minuteur');
+    await js('MDL_TEST.closeGL()');
+
+    // ── Mini-lecteur ──
+    createMiniWindow();
+    await sleep(1800);
+    if (miniWin && !miniWin.isDestroyed()) {
+      const mimg = await miniWin.webContents.capturePage();
+      const mdir = process.env.MUSICDL_SHOT_DIR || path.join(__dirname, '..', 'shots');
+      fs.writeFileSync(path.join(mdir, '08-mini-lecteur.png'), mimg.toPNG());
+      miniWin.close();
+      report.steps.push('mini-lecteur ok');
+    } else {
+      throw new Error('Mini-lecteur non créé');
+    }
+
+    // ── Album entier ──
+    await js(`MDL_TEST.setTab('albums'); MDL_TEST.search(${JSON.stringify(process.env.MUSICDL_E2E_ALBUM || 'daft punk get lucky')})`);
+    for (let i = 0; i < 40; i++) { await sleep(1000); st = JSON.parse(await js('MDL_TEST.state()')); if (st.collections > 0 || st.searchError) break; }
+    if (!st.collections) throw new Error('Recherche albums sans résultat: ' + JSON.stringify(st));
+    report.steps.push('recherche albums ok: ' + st.collections);
+    await sleep(500);
+    await shot('09-albums');
+
+    await js('MDL_TEST.openFirstCollection()');
+    for (let i = 0; i < 30; i++) { await sleep(1000); st = JSON.parse(await js('MDL_TEST.state()')); if (st.colTracks > 0) break; }
+    if (!st.colTracks) throw new Error('Détail album vide');
+    report.steps.push('album ouvert: "' + st.colTitle + '" (' + st.colTracks + ' titres)');
+    await sleep(500);
+    await shot('10-album-detail');
+
+    const libBefore = st.library;
+    await js('MDL_TEST.downloadCollection()');
+    let shotAlb = false;
+    for (let i = 0; i < 600; i++) {
+      await sleep(1000);
+      st = JSON.parse(await js('MDL_TEST.state()'));
+      if (!shotAlb && st.queue > 0) { await sleep(1500); await shot('11-album-telechargement'); shotAlb = true; }
+      if (st.colDone >= st.colTracks && st.queue === 0) break;
+    }
+    if (st.colDone < st.colTracks) throw new Error('Album incomplet: ' + st.colDone + '/' + st.colTracks);
+    report.steps.push('album téléchargé en entier: ' + st.colDone + '/' + st.colTracks + ' titres (bibliothèque ' + libBefore + ' → ' + st.library + ')');
+    await shot('12-album-telecharge');
+
+    await js('MDL_TEST.goPlaylists();');
     await sleep(700);
-    await shot('07-playlists');
 
     const t = store.library[0];
     report.fileExists = t && fs.existsSync(t.file);
@@ -810,7 +1065,9 @@ if (!gotLock) {
     });
     ensureDirs();
     createWindow();
+    createTray();
     setupUpdater();
+    app.on('before-quit', () => { quitting = true; });
     if (process.env.MUSICDL_E2E) {
       win.webContents.once('did-finish-load', () => runE2E());
     } else if (process.env.MUSICDL_E2E_UPDATE) {
