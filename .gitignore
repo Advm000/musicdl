@@ -14,4 +14,7 @@ shots-update/
 
 # Divers
 *.log
+upload-log.txt
+upload-err.txt
+dist-backup/
 Thumbs.db
