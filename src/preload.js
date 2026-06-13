@@ -3,7 +3,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 const EVENTS = [
   'dl:queue', 'dl:done', 'dl:error',
   'update:available', 'update:progress', 'update:ready', 'update:error',
-  'win:maximized', 'remote:cmd', 'mini:state'
+  'win:maximized', 'remote:cmd', 'mini:state', 'lyrics:ready'
 ];
 
 contextBridge.exposeInMainWorld('mdl', {
@@ -21,6 +21,8 @@ contextBridge.exposeInMainWorld('mdl', {
   suggest: (input) => ipcRenderer.invoke('search:suggest', input),
   getCollection: (ref) => ipcRenderer.invoke('collection:get', ref),
   previewUrl: (id) => ipcRenderer.invoke('preview:get', id),
+  getLyrics: (id) => ipcRenderer.invoke('lyrics:get', id),
+  refetchLyrics: (id) => ipcRenderer.invoke('lyrics:refetch', id),
   download: (track) => ipcRenderer.invoke('dl:start', track),
 
   // Bibliothèque

@@ -16,6 +16,7 @@ const BIN = app.isPackaged
   : path.join(__dirname, '..', 'bin');
 const YTDLP = path.join(BIN, 'yt-dlp.exe');
 const COVERS = path.join(app.getPath('userData'), 'covers');
+const LYRICS = path.join(app.getPath('userData'), 'lyrics');
 const STORE_FILE = path.join(app.getPath('userData'), 'store.json');
 
 /* ── Store (bibliothèque, playlists, paramètres, récents) ── */
@@ -46,6 +47,7 @@ function saveStore() {
 function ensureDirs() {
   try { fs.mkdirSync(store.settings.folder, { recursive: true }); } catch (_) {}
   try { fs.mkdirSync(COVERS, { recursive: true }); } catch (_) {}
+  try { fs.mkdirSync(LYRICS, { recursive: true }); } catch (_) {}
 }
 
 /* ── Fenêtre ── */
@@ -665,7 +667,83 @@ async function processDownload(item) {
   store.library.push(entry);
   saveStore();
   send('dl:done', { track: entry });
+  // Paroles en arrière-plan (n'échoue jamais le téléchargement)
+  ensureLyrics(entry, false).then((ly) => {
+    if (ly && ly.found) { entry.hasLyrics = true; saveStore(); send('lyrics:ready', { id: entry.id }); }
+  }).catch(() => {});
 }
+
+/* ══ PAROLES (LRCLIB — gratuit, sans clé, stockées hors ligne) ══ */
+const LRC_UA = 'MusicDL/1.2 (https://github.com/Advm000/musicdl)';
+
+async function lrclibFetch(url) {
+  const ctl = new AbortController();
+  const to = setTimeout(() => ctl.abort(), 8000);
+  try {
+    const res = await fetch(url, { signal: ctl.signal, headers: { 'User-Agent': LRC_UA } });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (_) {
+    return null;
+  } finally {
+    clearTimeout(to);
+  }
+}
+
+async function fetchLyrics(track) {
+  const q = (s) => encodeURIComponent(String(s || '').trim());
+  let data = null;
+  // 1) get exact (artiste + titre + durée)
+  if (track.artist && track.title) {
+    let url = `https://lrclib.net/api/get?artist_name=${q(track.artist)}&track_name=${q(track.title)}`;
+    if (track.album) url += `&album_name=${q(track.album)}`;
+    if (track.duration) url += `&duration=${Math.round(track.duration)}`;
+    data = await lrclibFetch(url);
+  }
+  // 2) repli : recherche
+  if (!data || (!data.syncedLyrics && !data.plainLyrics)) {
+    const arr = await lrclibFetch(`https://lrclib.net/api/search?q=${q((track.artist || '') + ' ' + track.title)}`);
+    if (Array.isArray(arr) && arr.length) {
+      // meilleure correspondance de durée si connue
+      data = track.duration
+        ? arr.reduce((best, c) => Math.abs((c.duration || 0) - track.duration) < Math.abs((best.duration || 0) - track.duration) ? c : best, arr[0])
+        : arr[0];
+    }
+  }
+  if (!data || (!data.syncedLyrics && !data.plainLyrics)) return { ok: false };
+  return { ok: true, synced: data.syncedLyrics || '', plain: data.plainLyrics || '' };
+}
+
+function lyricsPath(id) { return path.join(LYRICS, id + '.json'); }
+
+async function ensureLyrics(track, force) {
+  ensureDirs();
+  const p = lyricsPath(track.id);
+  if (!force && fs.existsSync(p)) {
+    try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch (_) {}
+  }
+  const r = await fetchLyrics(track);
+  const payload = r.ok
+    ? { id: track.id, synced: r.synced, plain: r.plain, found: true }
+    : { id: track.id, synced: '', plain: '', found: false };
+  try { fs.writeFileSync(p, JSON.stringify(payload)); } catch (_) {}
+  return payload;
+}
+
+ipcMain.handle('lyrics:get', async (_e, id) => {
+  const p = lyricsPath(id);
+  if (fs.existsSync(p)) {
+    try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch (_) {}
+  }
+  const t = store.library.find((x) => x.id === id);
+  if (!t) return { id, synced: '', plain: '', found: false };
+  return ensureLyrics(t, false);
+});
+ipcMain.handle('lyrics:refetch', async (_e, id) => {
+  const t = store.library.find((x) => x.id === id);
+  if (!t) return { id, synced: '', plain: '', found: false };
+  return ensureLyrics(t, true);
+});
 
 /* ══ AUTO-UPDATE (GitHub Releases) ══ */
 function setupUpdater() {
@@ -1017,6 +1095,34 @@ async function runUpdateE2E() {
   app.exit(report.ok ? 0 : 1);
 }
 
+/* ══ E2E PAROLES : joue un titre connu, affiche le karaoké, capture ══ */
+async function runLyricsE2E() {
+  const js = (code) => win.webContents.executeJavaScript(code, true);
+  const shotDir = process.env.MUSICDL_SHOT_DIR || path.join(__dirname, '..', 'shots');
+  const report = { ok: false, steps: [] };
+  const st = async () => JSON.parse(await js('MDL_TEST.state()'));
+  try {
+    await sleep(2500);
+    const found = await js(`MDL_TEST.playByTitle('blinding')`);
+    if (!found) { await js('MDL_TEST.goLibrary(); MDL_TEST.playFirst();'); }
+    await sleep(2500);
+    await js('MDL_TEST.openGL(); MDL_TEST.showLyrics();');
+    let s = null;
+    for (let i = 0; i < 20; i++) { await sleep(800); s = await st(); if (s.lyricsLines > 0) break; }
+    report.steps.push('paroles: ' + (s ? s.lyricsLines : 0) + ' lignes, trouvées=' + (s && s.lyricsFound));
+    // avancer dans le morceau pour activer une ligne
+    await js('MDL_TEST.seekTo(0.45)');
+    await sleep(2000);
+    await shot('lyrics-karaoke');
+    s = await st();
+    report.lyricsLines = s.lyricsLines;
+    report.ok = s.lyricsLines > 0;
+  } catch (e) { report.error = String(e && e.message || e); }
+  fs.mkdirSync(shotDir, { recursive: true });
+  fs.writeFileSync(path.join(shotDir, 'lyrics-report.json'), JSON.stringify(report, null, 2));
+  app.exit(report.ok ? 0 : 1);
+}
+
 /* ══ E2E MINI : joue un titre, ouvre le mini vertical, capture ══ */
 async function runMiniE2E() {
   const js = (code) => win.webContents.executeJavaScript(code, true);
@@ -1199,6 +1305,8 @@ if (!gotLock) {
       win.webContents.once('did-finish-load', () => runTortureE2E());
     } else if (process.env.MUSICDL_E2E_MINI) {
       win.webContents.once('did-finish-load', () => runMiniE2E());
+    } else if (process.env.MUSICDL_E2E_LYRICS) {
+      win.webContents.once('did-finish-load', () => runLyricsE2E());
     }
   });
 

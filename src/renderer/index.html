@@ -395,7 +395,10 @@
         <div class="gl-card">
           <div class="gl-topbar">
             <div class="gl-now"><div class="gl-now-dot"></div>En lecture</div>
-            <button class="gl-close" id="sleep-btn" title="Minuteur de sommeil" style="margin-left:auto;margin-right:6px;position:relative">
+            <button class="gl-close" id="lyrics-btn" title="Paroles" style="margin-left:auto;margin-right:6px">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/><line x1="9" y1="9" x2="21" y2="7" opacity=".5"/></svg>
+            </button>
+            <button class="gl-close" id="sleep-btn" title="Minuteur de sommeil" style="margin-right:6px;position:relative">
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
               <span class="sleep-badge" id="sleep-badge" style="display:none">15</span>
             </button>
@@ -408,6 +411,10 @@
               <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.18)" stroke-width="1" stroke-linecap="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
             </div>
             <div class="gl-art-glow"></div>
+          </div>
+          <!-- Paroles synchronisées (karaoké) -->
+          <div class="gl-lyrics" id="gl-lyrics">
+            <div class="gl-lyrics-inner" id="gl-lyrics-inner"></div>
           </div>
           <div class="gl-inforow">
             <div class="gl-titles">

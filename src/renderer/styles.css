@@ -257,6 +257,20 @@ img{-webkit-user-drag:none;user-select:none}
 .gl-art img{width:100%;height:100%;object-fit:cover;display:block}
 .gl-art-ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center;position:absolute;inset:0}
 .gl-art-glow{position:absolute;inset:0;border-radius:18px;background:linear-gradient(135deg,rgba(79,136,248,.12),transparent 60%,rgba(29,211,176,.08));pointer-events:none}
+/* Paroles karaoké */
+.gl-art{transition:height .3s ease,margin-bottom .3s ease}
+.gl-card.lyrics-on .gl-art{height:120px;margin-bottom:12px}
+.gl-lyrics{display:none;flex:1;min-height:0;overflow:hidden;position:relative;margin-bottom:14px;-webkit-mask-image:linear-gradient(to bottom,transparent,#000 16%,#000 84%,transparent)}
+.gl-card.lyrics-on .gl-lyrics{display:block}
+.gl-lyrics-inner{position:absolute;left:0;right:0;top:0;padding:40px 4px;transition:transform .35s cubic-bezier(.4,0,.2,1)}
+.gl-ly-line{font-size:14px;font-weight:700;line-height:1.35;color:rgba(255,255,255,.28);padding:7px 6px;border-radius:7px;cursor:pointer;transition:color .25s,background .15s;text-align:center}
+.gl-ly-line:hover{background:rgba(255,255,255,.04)}
+.gl-ly-line.active{color:#4f88f8;font-size:15.5px}
+.gl-ly-line.passed{color:rgba(255,255,255,.42)}
+.gl-ly-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:10px;color:rgba(255,255,255,.3);text-align:center;padding:20px}
+.gl-ly-plain{font-size:12px;line-height:1.7;color:rgba(255,255,255,.5);white-space:pre-wrap;text-align:center;padding:10px 4px}
+#lyrics-btn.on{color:#4f88f8;background:rgba(79,136,248,.12)}
+
 .gl-inforow{display:flex;align-items:center;margin-bottom:14px;gap:4px}
 .gl-titles{flex:1;min-width:0}
 .gl-title{font-size:15px;font-weight:800;color:#f0f2f7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.35px;margin-bottom:4px}
