@@ -261,7 +261,7 @@ img{-webkit-user-drag:none;user-select:none}
 .gl-art{transition:height .3s ease,margin-bottom .3s ease}
 .gl-card.lyrics-on .gl-art{height:120px;margin-bottom:12px}
 .gl-lyrics{display:none;flex:1;min-height:0;overflow:hidden;position:relative;margin-bottom:14px;-webkit-mask-image:linear-gradient(to bottom,transparent,#000 16%,#000 84%,transparent)}
-.gl-card.lyrics-on .gl-lyrics{display:block}
+.gl-card.lyrics-on .gl-lyrics{display:block;height:220px;flex:none}
 .gl-lyrics-inner{position:absolute;left:0;right:0;top:0;padding:40px 4px;transition:transform .35s cubic-bezier(.4,0,.2,1)}
 .gl-ly-line{font-size:14px;font-weight:700;line-height:1.35;color:rgba(255,255,255,.28);padding:7px 6px;border-radius:7px;cursor:pointer;transition:color .25s,background .15s;text-align:center}
 .gl-ly-line:hover{background:rgba(255,255,255,.04)}
