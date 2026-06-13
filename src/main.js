@@ -857,7 +857,7 @@ let lastMiniState = null;
 function createMiniWindow() {
   if (miniWin && !miniWin.isDestroyed()) { miniWin.show(); miniWin.focus(); return; }
   miniWin = new BrowserWindow({
-    width: 252, height: 396,
+    width: 252, height: 420,
     frame: false, alwaysOnTop: true, resizable: false,
     skipTaskbar: true, show: false, backgroundColor: '#00000000', transparent: true,
     icon: fs.existsSync(ICON_PATH) ? ICON_PATH : undefined,
@@ -1231,9 +1231,11 @@ async function runMiniE2E() {
     await js("document.getElementById('mini-btn').click()"); // vrai flux (ouvre + envoie l'état)
     await sleep(2500);
     if (miniWin && !miniWin.isDestroyed()) {
+      const measure = await miniWin.webContents.executeJavaScript("(()=>{const m=document.querySelector('.mini');const c=document.querySelector('.ctr');const r=c.getBoundingClientRect();return {winH:window.innerHeight,contentH:m.scrollHeight,ctrBottom:Math.round(r.bottom),gapBelowControls:Math.round(window.innerHeight-r.bottom)};})()", true);
       const img = await miniWin.webContents.capturePage();
       fs.mkdirSync(shotDir, { recursive: true });
       fs.writeFileSync(path.join(shotDir, 'mini-vertical.png'), img.toPNG());
+      fs.writeFileSync(path.join(shotDir, 'mini-report.json'), JSON.stringify(measure, null, 2));
     }
   } catch (_) {}
   app.exit(0);
@@ -1248,6 +1250,10 @@ async function runArtistE2E() {
   try {
     await sleep(2500);
     const name = process.env.MUSICDL_E2E_ARTIST_NAME || 'stormy';
+    // Reproduire le bug A : une recherche en titres remplit #rc-list de cartes dont
+    // certains ids se retrouvent aussi dans les top titres de la page artiste (collision).
+    await js(`MDL_TEST.setTab('songs'); MDL_TEST.search(${JSON.stringify(name)})`);
+    for (let i = 0; i < 20; i++) { await sleep(1000); const ss = await st(); if (ss.results > 0 || ss.searchError) break; }
     await js(`MDL_TEST.openArtist(${JSON.stringify(name)})`);
     let s = null;
     for (let i = 0; i < 30; i++) { await sleep(1000); s = await st(); if (s.artistOpen && (s.artistTop > 0 || s.artistAlbums > 0)) break; if (s.searchError) break; }
@@ -1260,6 +1266,10 @@ async function runArtistE2E() {
     await sleep(2500); // laisser charger les images reseau (photo + pochettes)
     report.photoLoaded = await js("(()=>{const i=document.querySelector('#art-photo img');return i?i.naturalWidth:-1})()");
     report.steps.push('photo artiste: ' + (report.photoLoaded > 0 ? 'chargee (' + report.photoLoaded + 'px)' : (report.photoLoaded === 0 ? 'presente mais non chargee' : 'img absente (photo nulle)')));
+    // Bug A : chaque top titre doit avoir un bouton (telecharger / Telechargee), meme en cas de collision d'id
+    report.topActsEmpty = await js("[...document.querySelectorAll('#art-top .rcard')].filter(c=>!c.querySelector('.rcard-acts').innerHTML.trim()).length");
+    report.steps.push('boutons top titres: ' + (report.topActsEmpty === 0 ? 'tous presents' : report.topActsEmpty + ' ligne(s) SANS bouton'));
+    if (report.topActsEmpty > 0) throw new Error('Bug A: ' + report.topActsEmpty + ' top titres sans bouton');
     await shot('artist-1-page');
     // Ouvrir le 1er album de la discographie -> vue album
     await js('MDL_TEST.openArtistAlbum(0)');

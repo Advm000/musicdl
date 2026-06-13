@@ -551,29 +551,31 @@ function appendResults(items) {
 }
 
 function refreshCard(id) {
-  const card = document.querySelector(`.rcard[data-id="${CSS.escape(id)}"]`);
-  if (!card) return;
   const st = trackStatus(id);
-  const acts = card.querySelector('.rcard-acts');
-  const progWrap = card.querySelector('.rcard-prog-wrap');
-  if (st === 'done') {
-    progWrap.style.display = 'none';
-    acts.innerHTML = `<div class="done-badge"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>Téléchargée</div>`;
-  } else if (st === 'downloading' || st === 'queued') {
-    const q = queueSnap.find((x) => x.id === id);
-    const pct = q ? q.pct : 0;
-    const phase = q ? q.phase : 'En attente…';
-    progWrap.style.display = '';
-    progWrap.querySelector('.rcard-prog-fill').style.width = pct + '%';
-    progWrap.querySelector('.rcard-prog-lbl').textContent = st === 'queued' ? 'En attente…' : `${phase} ${pct}%`;
-    acts.innerHTML = `<button class="dl-btn busy"><span class="spinner"></span></button>`;
-  } else {
-    progWrap.style.display = 'none';
-    acts.innerHTML = `<button class="dl-btn" title="Télécharger">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-    </button>`;
-    acts.querySelector('.dl-btn').addEventListener('click', () => startDownload(id));
-  }
+  const q = queueSnap.find((x) => x.id === id);
+  // Un meme titre peut etre present dans plusieurs panneaux (resultats + page artiste) :
+  // on met a jour TOUTES les cartes portant cet id, pas seulement la premiere.
+  document.querySelectorAll(`.rcard[data-id="${CSS.escape(id)}"]`).forEach((card) => {
+    const acts = card.querySelector('.rcard-acts');
+    const progWrap = card.querySelector('.rcard-prog-wrap');
+    if (st === 'done') {
+      progWrap.style.display = 'none';
+      acts.innerHTML = `<div class="done-badge"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>Téléchargée</div>`;
+    } else if (st === 'downloading' || st === 'queued') {
+      const pct = q ? q.pct : 0;
+      const phase = q ? q.phase : 'En attente…';
+      progWrap.style.display = '';
+      progWrap.querySelector('.rcard-prog-fill').style.width = pct + '%';
+      progWrap.querySelector('.rcard-prog-lbl').textContent = st === 'queued' ? 'En attente…' : `${phase} ${pct}%`;
+      acts.innerHTML = `<button class="dl-btn busy"><span class="spinner"></span></button>`;
+    } else {
+      progWrap.style.display = 'none';
+      acts.innerHTML = `<button class="dl-btn" title="Télécharger">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      </button>`;
+      acts.querySelector('.dl-btn').addEventListener('click', () => startDownload(id));
+    }
+  });
 }
 
 /* ════════ PAGE ARTISTE ════════ */
