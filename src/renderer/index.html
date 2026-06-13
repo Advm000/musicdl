@@ -406,11 +406,27 @@
             <svg id="ico-mute" width="15" height="15" viewBox="0 0 24 24" fill="currentColor" style="display:none"><path d="M3 9v6h4l5 5V4L7 9H3z"/><line x1="16" y1="9" x2="22" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="22" y1="9" x2="16" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
           </button>
           <div class="vol-bar" id="vol-bar"><div class="vol-fill" id="vol-fill"></div></div>
+          <button class="exp-btn" id="queue-btn" title="File d'attente">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="14" y2="6"/><line x1="3" y1="12" x2="14" y2="12"/><line x1="3" y1="18" x2="10" y2="18"/><polyline points="17 8 21 12 17 16"/></svg>
+          </button>
           <button class="exp-btn" id="mini-btn" title="Mini-lecteur flottant">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><rect x="12" y="12" width="7" height="5" rx="1" fill="currentColor" stroke="none"/></svg>
           </button>
           <button class="exp-btn" id="exp-btn" title="Grand lecteur"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg></button>
         </div>
+      </div>
+
+      <!-- ═══ FILE D'ATTENTE ═══ -->
+      <div class="qpanel-backdrop" id="qpanel-backdrop"></div>
+      <div class="qpanel" id="qpanel">
+        <div class="qpanel-head">
+          <div class="qpanel-title">File d'attente</div>
+          <button class="qpanel-clear" id="qpanel-clear" title="Vider la file (garde le titre en cours)">Vider</button>
+          <button class="qpanel-close" id="qpanel-close" title="Fermer">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="qpanel-body" id="qpanel-body"></div>
       </div>
 
       <!-- ═══ GRAND LECTEUR ═══ -->

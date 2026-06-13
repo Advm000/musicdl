@@ -1282,6 +1282,55 @@ async function runArtistE2E() {
   app.exit(report.ok ? 0 : 1);
 }
 
+/* ══ E2E FILE D'ATTENTE : remplit la file, ouvre le panneau, reordonne, supprime ══ */
+async function runQueueE2E() {
+  const js = (code) => win.webContents.executeJavaScript(code, true);
+  const shotDir = process.env.MUSICDL_SHOT_DIR || path.join(__dirname, '..', 'shots');
+  const report = { ok: false, steps: [] };
+  const st = async () => JSON.parse(await js('MDL_TEST.state()'));
+  const order = async () => JSON.parse(await js('JSON.stringify(MDL_TEST.queueOrder())'));
+  try {
+    await sleep(2500);
+    await js('MDL_TEST.goLibrary(); MDL_TEST.playFirst();');
+    await sleep(2200);
+    let s = await st();
+    if (s.queueLen < 1) throw new Error('File vide apres lecture (bibliotheque vide ?)');
+    // Grossir la file via "Ajouter a la file" pour pouvoir reordonner
+    const q0 = await order();
+    await js(`MDL_TEST.addQueueId(${JSON.stringify(q0[0])})`);
+    await js(`MDL_TEST.addQueueId(${JSON.stringify(q0[q0.length - 1])})`);
+    await sleep(400);
+    await js('MDL_TEST.openQueue()');
+    await sleep(700);
+    s = await st();
+    if (!s.queuePanelOpen) throw new Error('Panneau file non ouvert');
+    report.steps.push('file ouverte: ' + s.queueLen + ' titres');
+    await shot('queue-1-panel');
+    const before = await order();
+    if (before.length < 3) throw new Error('File trop courte pour reordonner: ' + before.length);
+    // Reordonner : deplacer le dernier en 2e position (equivalent du drag&drop)
+    await js(`MDL_TEST.moveQueue(${before.length - 1}, 1)`);
+    await sleep(500);
+    const after = await order();
+    report.before = before;
+    report.after = after;
+    if (JSON.stringify(before) === JSON.stringify(after) || after[1] !== before[before.length - 1]) throw new Error('Reordonnancement KO');
+    report.steps.push('reordonnancement ok (dernier -> position 2)');
+    await shot('queue-2-reordered');
+    // Retirer un element
+    const lenBefore = after.length;
+    await js(`MDL_TEST.removeQueueAt(${after.length - 1})`);
+    await sleep(400);
+    const afterRm = await order();
+    if (afterRm.length !== lenBefore - 1) throw new Error('Suppression KO: ' + afterRm.length + ' au lieu de ' + (lenBefore - 1));
+    report.steps.push('suppression file ok (' + lenBefore + ' -> ' + afterRm.length + ')');
+    report.ok = true;
+  } catch (e) { report.error = String(e && e.message || e); try { await shot('queue-9-erreur'); } catch (_) {} }
+  fs.mkdirSync(shotDir, { recursive: true });
+  fs.writeFileSync(path.join(shotDir, 'queue-report.json'), JSON.stringify(report, null, 2));
+  app.exit(report.ok ? 0 : 1);
+}
+
 /* ══ E2E TORTURE : clique tout dans tous les états, traque les erreurs JS ══ */
 async function runTortureE2E() {
   const js = (code) => win.webContents.executeJavaScript(code, true);
@@ -1449,6 +1498,8 @@ if (!gotLock) {
       win.webContents.once('did-finish-load', () => runLyricsE2E());
     } else if (process.env.MUSICDL_E2E_ARTIST) {
       win.webContents.once('did-finish-load', () => runArtistE2E());
+    } else if (process.env.MUSICDL_E2E_QUEUE) {
+      win.webContents.once('did-finish-load', () => runQueueE2E());
     }
   });
 

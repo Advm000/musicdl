@@ -1132,6 +1132,7 @@ function loadTrack(id) {
   syncPlayerUI();
   renderLibrary();
   if (currentPlId) renderPlaylistDetail();
+  refreshQueueIfOpen();
   updateMediaSession();
   loadLyrics(t);
 }
@@ -1164,6 +1165,7 @@ function stopPlayback() {
   if (lyricsVisible) renderLyrics();
   syncPlayerUI();
   renderLibrary();
+  refreshQueueIfOpen();
 }
 
 function prevTrack() {
@@ -1305,6 +1307,123 @@ audio.addEventListener('error', () => {
 audio.addEventListener('stalled', () => {
   if (currentTrack && currentTrack.preview) showToast('Connexion lente — préécoute en pause', 'info');
 });
+
+/* ════════ FILE D'ATTENTE (panneau lateral) ════════ */
+let qDragFrom = null;
+
+function queuePanelOpen() { return $('#qpanel').classList.contains('on'); }
+function toggleQueuePanel(force) {
+  const open = force != null ? force : !queuePanelOpen();
+  $('#qpanel').classList.toggle('on', open);
+  $('#qpanel-backdrop').classList.toggle('on', open);
+  if (open) renderQueuePanel();
+}
+function refreshQueueIfOpen() { if (queuePanelOpen()) renderQueuePanel(); }
+
+function renderQueuePanel() {
+  const body = $('#qpanel-body');
+  if (!playQueue.length || playPos < 0) {
+    body.innerHTML = '<div class="qpanel-empty">La file est vide.<br>Lance une lecture pour la remplir.</div>';
+    return;
+  }
+  body.innerHTML = '';
+  playQueue.forEach((id, i) => {
+    const t = trackById(id);
+    const row = document.createElement('div');
+    row.className = 'qrow' + (i === playPos ? ' current' : '');
+    row.draggable = true;
+    row.dataset.qi = i;
+    row.innerHTML = `
+      <div class="qrow-handle" title="Glisser pour reordonner">⋮⋮</div>
+      <div class="qrow-thumb">${t && t.cover ? `<img src="${local(t.cover)}" onerror="this.remove()">` : SVG_NOTE(12, '.3')}</div>
+      <div class="qrow-info">
+        <div class="qrow-title">${esc(t ? t.title : 'Titre indisponible')}</div>
+        <div class="qrow-artist">${esc(t ? (t.artist || 'Inconnu') : '')}</div>
+      </div>
+      <div class="qrow-dur">${t ? fmtDur(t.duration) : ''}</div>
+      <button class="qrow-x" title="Retirer de la file">×</button>`;
+    row.querySelector('.qrow-info').addEventListener('click', () => { playPos = i; loadTrack(playQueue[i]); });
+    row.querySelector('.qrow-x').addEventListener('click', (e) => { e.stopPropagation(); removeFromQueue(i); });
+    row.addEventListener('dragstart', () => { qDragFrom = i; row.classList.add('dragging'); });
+    row.addEventListener('dragend', () => { row.classList.remove('dragging'); $$('.qrow').forEach((r) => r.classList.remove('drop-target')); });
+    row.addEventListener('dragover', (e) => { e.preventDefault(); row.classList.add('drop-target'); });
+    row.addEventListener('dragleave', () => row.classList.remove('drop-target'));
+    row.addEventListener('drop', (e) => { e.preventDefault(); row.classList.remove('drop-target'); if (qDragFrom != null && qDragFrom !== i) moveInQueue(qDragFrom, i); qDragFrom = null; });
+    body.appendChild(row);
+  });
+}
+
+function moveInQueue(from, to) {
+  if (from < 0 || to < 0 || from >= playQueue.length || to >= playQueue.length || from === to) return;
+  const currentId = playQueue[playPos];
+  const [moved] = playQueue.splice(from, 1);
+  playQueue.splice(to, 0, moved);
+  playPos = playQueue.indexOf(currentId);
+  renderQueuePanel();
+}
+
+function removeFromQueue(i) {
+  if (i < 0 || i >= playQueue.length) return;
+  const removingCurrent = i === playPos;
+  playQueue.splice(i, 1);
+  if (!playQueue.length) { stopPlayback(); renderQueuePanel(); return; }
+  if (removingCurrent) {
+    if (playPos >= playQueue.length) playPos = 0;
+    loadTrack(playQueue[playPos]);
+  } else if (i < playPos) {
+    playPos--;
+  }
+  renderQueuePanel();
+  renderLibrary();
+}
+
+function clearQueueExceptCurrent() {
+  if (playPos < 0 || !playQueue.length) return;
+  playQueue = [playQueue[playPos]];
+  playPos = 0;
+  renderQueuePanel();
+}
+
+function playNext(id) {
+  if (!trackById(id)) { showToast('Telecharge le titre pour la file', 'info'); return; }
+  if (playPos < 0 || !playQueue.length) startQueue([id], 0);
+  else playQueue.splice(playPos + 1, 0, id);
+  refreshQueueIfOpen();
+  showToast('Lira juste apres', 'success');
+}
+function addToQueue(id) {
+  if (!trackById(id)) { showToast('Telecharge le titre pour la file', 'info'); return; }
+  if (playPos < 0 || !playQueue.length) startQueue([id], 0);
+  else playQueue.push(id);
+  refreshQueueIfOpen();
+  showToast('Ajoute a la file', 'success');
+}
+
+$('#queue-btn').addEventListener('click', () => toggleQueuePanel());
+$('#qpanel-close').addEventListener('click', () => toggleQueuePanel(false));
+$('#qpanel-backdrop').addEventListener('click', () => toggleQueuePanel(false));
+$('#qpanel-clear').addEventListener('click', clearQueueExceptCurrent);
+
+/* Menu contextuel (clic droit) sur les titres telecharges : Lire ensuite / Ajouter a la file */
+document.addEventListener('contextmenu', (e) => {
+  const el = e.target.closest('.lib-row[data-id], .rcard[data-id], .rcard[data-col-id]');
+  if (!el) return;
+  const id = el.dataset.id || el.dataset.colId;
+  if (!id || !trackById(id)) return;
+  e.preventDefault();
+  openTrackCtx(e.clientX, e.clientY, id);
+});
+function openTrackCtx(x, y, id) {
+  ctxMenu.innerHTML = `
+    <div class="ctx-item" data-q="next"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 4 15 12 5 20"/><rect x="17" y="4" width="2.4" height="16" rx="1"/></svg>Lire ensuite</div>
+    <div class="ctx-item" data-q="add"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="7" x2="15" y2="7"/><line x1="4" y1="12" x2="12" y2="12"/><line x1="4" y1="17" x2="12" y2="17"/><line x1="18" y1="10" x2="18" y2="16"/><line x1="15" y1="13" x2="21" y2="13"/></svg>Ajouter a la file</div>`;
+  ctxMenu.querySelector('[data-q="next"]').addEventListener('click', () => { closeCtx(); playNext(id); });
+  ctxMenu.querySelector('[data-q="add"]').addEventListener('click', () => { closeCtx(); addToQueue(id); });
+  ctxMenu.classList.add('on');
+  const mw = ctxMenu.offsetWidth, mh = ctxMenu.offsetHeight;
+  ctxMenu.style.left = Math.min(x, window.innerWidth - mw - 8) + 'px';
+  ctxMenu.style.top = Math.min(y, window.innerHeight - mh - 8) + 'px';
+}
 
 function syncPlayerUI() {
   const playing = !audio.paused && currentTrack;
@@ -1759,6 +1878,13 @@ window.MDL_TEST = {
   openFirstCollection: () => { if (collectionResults[0]) openCollectionRef({ browseId: collectionResults[0].browseId, kind: collectionResults[0].kind, fallback: collectionResults[0] }); },
   openArtist: (name) => openArtistByName(name),
   openArtistAlbum: (i) => { const a = artistView && artistView.albums[i || 0]; if (a) openCollectionRef({ browseId: a.browseId, kind: 'album', fallback: a }); },
+  openQueue: (open) => toggleQueuePanel(open !== false),
+  queueOrder: () => playQueue.slice(),
+  moveQueue: (from, to) => moveInQueue(from, to),
+  removeQueueAt: (i) => removeFromQueue(i),
+  playNextId: (id) => playNext(id),
+  addQueueId: (id) => addToQueue(id),
+  clearQueue: () => clearQueueExceptCurrent(),
   downloadCollection: () => $('#col-dl-all').click(),
   seekTo: (ratio) => { if (audio.duration) audio.currentTime = ratio * audio.duration; },
   toggleFav: () => { if (currentTrack) toggleFavorite(currentTrack.id); },
@@ -1821,6 +1947,7 @@ window.MDL_TEST = {
     artistName: artistView ? artistView.name : null,
     artistTop: artistView ? artistView.topSongs.length : 0,
     artistAlbums: artistView ? artistView.albums.length : 0,
+    queuePanelOpen: $('#qpanel').classList.contains('on'),
     hasMore: !!searchContinuation,
     searchError: lastSearchError,
     queue: queueSnap.length,
