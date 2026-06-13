@@ -1,4 +1,4 @@
-/* Mini-lecteur — reçoit l'état du lecteur principal, renvoie les commandes */
+/* Mini-lecteur vertical — reçoit l'état du lecteur principal, renvoie les commandes */
 'use strict';
 const $ = (s) => document.querySelector(s);
 
@@ -20,14 +20,22 @@ window.mdl.on('mini:state', (s) => {
   $('#fill').style.width = (s.pct || 0) + '%';
   $('#ico-play').style.display = s.playing ? 'none' : '';
   $('#ico-pause').style.display = s.playing ? '' : 'none';
-  const art = $('#art');
+  $('#dot').classList.toggle('paused', !s.playing);
+  $('#now-lbl').textContent = s.title ? (s.playing ? 'En lecture' : 'En pause') : 'En attente';
+
+  const art = $('#art'), ph = $('#art-ph');
   if (s.cover) {
-    if (!art.dataset.cover || art.dataset.cover !== s.cover) {
+    if (art.dataset.cover !== s.cover) {
       art.dataset.cover = s.cover;
-      art.innerHTML = `<img src="${s.cover.replace(/"/g, '&quot;')}">`;
+      art.querySelector('img')?.remove();
+      const img = document.createElement('img');
+      img.src = s.cover;
+      art.insertBefore(img, ph);
+      ph.style.display = 'none';
     }
   } else if (art.dataset.cover) {
     delete art.dataset.cover;
-    art.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.22)" stroke-width="1.5" stroke-linecap="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>';
+    art.querySelector('img')?.remove();
+    ph.style.display = '';
   }
 });

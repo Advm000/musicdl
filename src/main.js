@@ -692,9 +692,9 @@ let lastMiniState = null;
 function createMiniWindow() {
   if (miniWin && !miniWin.isDestroyed()) { miniWin.show(); miniWin.focus(); return; }
   miniWin = new BrowserWindow({
-    width: 332, height: 102,
+    width: 252, height: 396,
     frame: false, alwaysOnTop: true, resizable: false,
-    skipTaskbar: true, show: false, backgroundColor: '#060810',
+    skipTaskbar: true, show: false, backgroundColor: '#00000000', transparent: true,
     icon: fs.existsSync(ICON_PATH) ? ICON_PATH : undefined,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -1017,6 +1017,25 @@ async function runUpdateE2E() {
   app.exit(report.ok ? 0 : 1);
 }
 
+/* ══ E2E MINI : joue un titre, ouvre le mini vertical, capture ══ */
+async function runMiniE2E() {
+  const js = (code) => win.webContents.executeJavaScript(code, true);
+  const shotDir = process.env.MUSICDL_SHOT_DIR || path.join(__dirname, '..', 'shots');
+  try {
+    await sleep(2500);
+    await js('MDL_TEST.goLibrary(); MDL_TEST.playFirst();');
+    await sleep(2500);
+    await js("document.getElementById('mini-btn').click()"); // vrai flux (ouvre + envoie l'état)
+    await sleep(2500);
+    if (miniWin && !miniWin.isDestroyed()) {
+      const img = await miniWin.webContents.capturePage();
+      fs.mkdirSync(shotDir, { recursive: true });
+      fs.writeFileSync(path.join(shotDir, 'mini-vertical.png'), img.toPNG());
+    }
+  } catch (_) {}
+  app.exit(0);
+}
+
 /* ══ E2E TORTURE : clique tout dans tous les états, traque les erreurs JS ══ */
 async function runTortureE2E() {
   const js = (code) => win.webContents.executeJavaScript(code, true);
@@ -1178,6 +1197,8 @@ if (!gotLock) {
       win.webContents.once('did-finish-load', () => runUpdateE2E());
     } else if (process.env.MUSICDL_E2E_TORTURE) {
       win.webContents.once('did-finish-load', () => runTortureE2E());
+    } else if (process.env.MUSICDL_E2E_MINI) {
+      win.webContents.once('did-finish-load', () => runMiniE2E());
     }
   });
 

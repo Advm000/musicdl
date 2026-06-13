@@ -7,62 +7,94 @@
 <link rel="stylesheet" href="fonts/inter.css">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased;background:#060810;color:#f0f2f7}
-.mini{height:100vh;display:flex;align-items:center;gap:11px;padding:10px 12px;border:1px solid rgba(255,255,255,.08);position:relative;-webkit-app-region:drag;background:radial-gradient(ellipse 220px 120px at 18% 0%,rgba(79,136,248,.08),transparent 65%),#060810}
+html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased;background:transparent;color:#f0f2f7}
 button{-webkit-app-region:no-drag;font-family:'Inter',sans-serif}
 
-.art{width:66px;height:66px;border-radius:10px;overflow:hidden;background:#111828;border:1px solid rgba(255,255,255,.07);flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.mini{position:relative;height:100vh;display:flex;flex-direction:column;padding:13px 15px 16px;
+  background:#090d1b;border:1px solid rgba(255,255,255,.09);border-radius:18px;overflow:hidden;-webkit-app-region:drag}
+.mini::before{content:'';position:absolute;top:-70px;left:50%;transform:translateX(-50%);width:230px;height:180px;
+  background:radial-gradient(ellipse,rgba(79,136,248,.16),transparent 68%);pointer-events:none}
+
+/* Barre du haut */
+.top{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px;position:relative;z-index:2}
+.now{display:flex;align-items:center;gap:6px;font-size:8.5px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:rgba(255,255,255,.3)}
+.now-dot{width:5px;height:5px;border-radius:50%;background:#4f88f8;animation:pulse 2s ease-in-out infinite}
+.now-dot.paused{background:rgba(255,255,255,.25);animation:none}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+.top-acts{display:flex;gap:4px}
+.ta{width:24px;height:24px;border-radius:7px;border:none;cursor:pointer;background:rgba(255,255,255,.06);color:rgba(255,255,255,.38);display:flex;align-items:center;justify-content:center;transition:all .13s}
+.ta:hover{background:rgba(255,255,255,.12);color:#fff}
+.ta.close:hover{background:#e0455a;color:#fff}
+
+/* Grande pochette */
+.art{width:100%;aspect-ratio:1;border-radius:15px;overflow:hidden;position:relative;background:#111828;
+  box-shadow:0 16px 40px rgba(0,0,0,.55);flex-shrink:0;z-index:1}
 .art img{width:100%;height:100%;object-fit:cover;display:block}
+.art-ph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+.art-glow{position:absolute;inset:0;border-radius:15px;background:linear-gradient(135deg,rgba(79,136,248,.14),transparent 60%,rgba(29,211,176,.1));pointer-events:none}
 
-.mid{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px}
-.title{font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.artist{font-size:10px;color:#60a5fa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.bar-row{display:flex;align-items:center;gap:6px}
-.time{font-size:8.5px;color:rgba(255,255,255,.25);font-variant-numeric:tabular-nums;min-width:22px}
+/* Infos */
+.info{text-align:center;margin:13px 0 11px;position:relative;z-index:2}
+.title{font-size:14px;font-weight:800;letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.artist{font-size:11px;color:#60a5fa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:3px}
+
+/* Progression */
+.bar-row{display:flex;align-items:center;gap:7px;margin-bottom:12px;position:relative;z-index:2}
+.time{font-size:9px;color:rgba(255,255,255,.25);font-variant-numeric:tabular-nums;min-width:24px}
 .time:last-child{text-align:right}
-.bar{flex:1;height:3px;background:rgba(255,255,255,.08);border-radius:3px;cursor:pointer;-webkit-app-region:no-drag;position:relative}
-.fill{height:100%;width:0%;background:linear-gradient(90deg,#4f88f8,#1dd3b0);border-radius:3px}
-.ctr{display:flex;align-items:center;gap:2px}
-.cb{width:26px;height:26px;border-radius:50%;border:none;cursor:pointer;background:transparent;color:rgba(255,255,255,.4);display:flex;align-items:center;justify-content:center;transition:all .13s}
-.cb:hover{color:#fff;background:rgba(255,255,255,.07)}
-.play{width:30px;height:30px;border-radius:50%;border:none;cursor:pointer;background:#4f88f8;color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 10px rgba(79,136,248,.4);transition:all .14s}
-.play:hover{background:#3a76f0;transform:scale(1.07)}
+.bar{flex:1;height:4px;background:rgba(255,255,255,.08);border-radius:3px;cursor:pointer;position:relative;transition:height .12s}
+.bar:hover{height:6px}
+.fill{height:100%;width:0%;background:linear-gradient(90deg,#4f88f8,#1dd3b0);border-radius:3px;position:relative}
+.fill::after{content:'';position:absolute;right:-5px;top:50%;transform:translateY(-50%);width:10px;height:10px;border-radius:50%;background:#fff;box-shadow:0 0 8px rgba(79,136,248,.8);opacity:0;transition:opacity .12s}
+.bar:hover .fill::after{opacity:1}
 
-.top-acts{position:absolute;top:5px;right:6px;display:flex;gap:3px}
-.ta{width:20px;height:20px;border-radius:6px;border:none;cursor:pointer;background:transparent;color:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;transition:all .13s}
-.ta:hover{background:rgba(255,255,255,.08);color:#fff}
-.ta.close:hover{background:#e81123}
+/* Contrôles */
+.ctr{display:flex;align-items:center;justify-content:center;gap:10px;position:relative;z-index:2}
+.cb{width:34px;height:34px;border-radius:50%;border:none;cursor:pointer;background:transparent;color:rgba(255,255,255,.55);display:flex;align-items:center;justify-content:center;transition:all .13s}
+.cb:hover{color:#fff;background:rgba(255,255,255,.07)}
+.play{width:48px;height:48px;border-radius:50%;border:none;cursor:pointer;background:#4f88f8;color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(79,136,248,.42);transition:all .15s}
+.play:hover{background:#3a76f0;transform:scale(1.06);box-shadow:0 6px 22px rgba(79,136,248,.6)}
 </style>
 </head>
 <body>
 <div class="mini">
-  <div class="art" id="art">
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.22)" stroke-width="1.5" stroke-linecap="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
-  </div>
-  <div class="mid">
-    <div class="title" id="title">Aucune lecture</div>
-    <div class="artist" id="artist">—</div>
-    <div class="bar-row">
-      <span class="time" id="cur">0:00</span>
-      <div class="bar" id="bar"><div class="fill" id="fill"></div></div>
-      <span class="time" id="tot">0:00</span>
+  <div class="top">
+    <div class="now"><span class="now-dot" id="dot"></span><span id="now-lbl">En lecture</span></div>
+    <div class="top-acts">
+      <button class="ta" id="expand" title="Revenir à l'app">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/></svg>
+      </button>
+      <button class="ta close" id="close" title="Fermer le mini-lecteur">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
     </div>
   </div>
-  <div class="ctr">
-    <button class="cb" id="prev" title="Précédent"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg></button>
-    <button class="play" id="play" title="Lecture / pause">
-      <svg id="ico-play" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"/></svg>
-      <svg id="ico-pause" width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style="display:none"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
-    </button>
-    <button class="cb" id="next" title="Suivant"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zm9-12v12h2V6h-2z"/></svg></button>
+
+  <div class="art" id="art">
+    <div class="art-ph" id="art-ph">
+      <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.18)" stroke-width="1" stroke-linecap="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+    </div>
+    <div class="art-glow"></div>
   </div>
-  <div class="top-acts">
-    <button class="ta" id="expand" title="Revenir à l'app">
-      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/></svg>
+
+  <div class="info">
+    <div class="title" id="title">Aucune lecture</div>
+    <div class="artist" id="artist">—</div>
+  </div>
+
+  <div class="bar-row">
+    <span class="time" id="cur">0:00</span>
+    <div class="bar" id="bar"><div class="fill" id="fill"></div></div>
+    <span class="time" id="tot">0:00</span>
+  </div>
+
+  <div class="ctr">
+    <button class="cb" id="prev" title="Précédent"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg></button>
+    <button class="play" id="play" title="Lecture / pause">
+      <svg id="ico-play" width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"/></svg>
+      <svg id="ico-pause" width="17" height="17" viewBox="0 0 24 24" fill="currentColor" style="display:none"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
     </button>
-    <button class="ta close" id="close" title="Fermer le mini-lecteur">
-      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-    </button>
+    <button class="cb" id="next" title="Suivant"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zm9-12v12h2V6h-2z"/></svg></button>
   </div>
 </div>
 <script src="mini.js"></script>
