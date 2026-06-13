@@ -1,0 +1,14 @@
+{
+  "ok": true,
+  "steps": [
+    "bibliothèque prête: 30 titres",
+    "torture lecteur ok (repeat=1 shuffle=false)",
+    "torture bibliothèque ok (tri 5 colonnes + filtre)",
+    "fichier introuvable géré sans blocage (app répond, lecture arrêtée)",
+    "suppression pendant lecture ok (30 → 29)",
+    "bilan: 0 erreur(s) JS, 0 bug(s)"
+  ],
+  "bugs": [],
+  "jsErrors": [],
+  "responsive": true
+}

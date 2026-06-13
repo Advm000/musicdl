@@ -709,6 +709,7 @@ function createMiniWindow() {
   });
   miniWin.on('closed', () => {
     miniWin = null;
+    send('remote:cmd', { action: 'miniClosed' });
     // Si le mini se ferme, on ne laisse pas l'app invisible
     if (win && !win.isDestroyed() && !win.isVisible() && !quitting) win.show();
   });
@@ -1016,6 +1017,109 @@ async function runUpdateE2E() {
   app.exit(report.ok ? 0 : 1);
 }
 
+/* ══ E2E TORTURE : clique tout dans tous les états, traque les erreurs JS ══ */
+async function runTortureE2E() {
+  const js = (code) => win.webContents.executeJavaScript(code, true);
+  const shotDir = process.env.MUSICDL_SHOT_DIR || path.join(__dirname, '..', 'shots');
+  const report = { ok: false, steps: [], bugs: [] };
+  const st = async () => JSON.parse(await js('MDL_TEST.state()'));
+  const errs = async () => JSON.parse(await js('JSON.stringify(MDL_TEST.jsErrors())'));
+  try {
+    await sleep(2500);
+
+    // 1) S'assurer d'avoir au moins 2 titres en bibliothèque
+    let s = await st();
+    if (s.library < 2) {
+      await js(`MDL_TEST.search('daft punk')`);
+      for (let i = 0; i < 40; i++) { await sleep(1000); s = await st(); if (s.results > 1) break; }
+      await js('MDL_TEST.downloadFirst()');
+      // 2e titre
+      await js('MDL_TEST.search("the weeknd blinding lights")');
+      for (let i = 0; i < 30; i++) { await sleep(1000); s = await st(); if (s.results > 0) break; }
+      await js('MDL_TEST.downloadFirst()');
+      for (let i = 0; i < 240; i++) { await sleep(1000); s = await st(); if (s.library >= 2 && s.queue === 0) break; }
+    }
+    if (s.library < 1) throw new Error('Impossible de préparer la bibliothèque');
+    report.steps.push('bibliothèque prête: ' + s.library + ' titres');
+
+    // 2) Torture du lecteur : tous les boutons dans tous les états
+    await js('MDL_TEST.goLibrary(); MDL_TEST.playFirst();');
+    await sleep(2500);
+    const seq = [
+      'MDL_TEST.togglePlay()', 'MDL_TEST.togglePlay()',           // pause/play
+      'MDL_TEST.next()', 'MDL_TEST.next()', 'MDL_TEST.prev()',    // navigation
+      'MDL_TEST.toggleShuffle()', 'MDL_TEST.toggleShuffle()',
+      'MDL_TEST.cycleRepeat()', 'MDL_TEST.cycleRepeat()', 'MDL_TEST.cycleRepeat()', 'MDL_TEST.cycleRepeat()',
+      'MDL_TEST.setVol(0)', 'MDL_TEST.setVol(1)', 'MDL_TEST.toggleMute()', 'MDL_TEST.toggleMute()',
+      'MDL_TEST.seekTo(0.92)', 'MDL_TEST.seekTo(0.1)', 'MDL_TEST.seekTo(0.5)',
+      'MDL_TEST.openGL()', 'MDL_TEST.closeGL()'
+    ];
+    for (const cmd of seq) { await js(cmd); await sleep(250); }
+    s = await st();
+    report.steps.push('torture lecteur ok (repeat=' + s.repeatMode + ' shuffle=' + s.shuffleOn + ')');
+
+    // 3) Torture bibliothèque : tri sur chaque colonne (asc+desc) + filtre
+    for (const col of ['title', 'artist', 'album', 'year', 'duration']) {
+      await js(`MDL_TEST.sortBy('${col}')`); await sleep(150);
+      await js(`MDL_TEST.sortBy('${col}')`); await sleep(150);
+    }
+    await js(`MDL_TEST.setFilter('a')`); await sleep(300);
+    await js(`MDL_TEST.setFilter('')`); await sleep(300);
+    report.steps.push('torture bibliothèque ok (tri 5 colonnes + filtre)');
+    await shot('t1-apres-torture');
+
+    // 4) TEST CLÉ — fichier introuvable (bug n°1) : on renomme un vrai mp3
+    const track = store.library[0];
+    const realFile = track.file;
+    const bakFile = realFile + '.moved';
+    let renamed = false;
+    try {
+      fs.renameSync(realFile, bakFile);
+      renamed = true;
+      // forcer la lecture de CE titre cassé (file d'un seul élément)
+      await js(`MDL_TEST.playId(${JSON.stringify(track.id)})`);
+      let frozen = true;
+      for (let i = 0; i < 8; i++) {
+        await sleep(1000);
+        s = await st();           // si l'app répond encore, elle n'est pas figée
+        if (s && s.playing === false) { frozen = false; break; }   // doit s'arrêter proprement
+        if (s) frozen = false;
+      }
+      if (frozen) { report.bugs.push('FIGÉ sur fichier introuvable'); throw new Error('app figée sur fichier introuvable'); }
+      report.steps.push('fichier introuvable géré sans blocage (app répond, lecture arrêtée)');
+    } finally {
+      if (renamed && fs.existsSync(bakFile)) { try { fs.renameSync(bakFile, realFile); } catch (_) {} }
+    }
+    await shot('t2-fichier-introuvable');
+
+    // 5) Suppression d'un titre puis vérif que la file ne casse pas
+    s = await st();
+    const libBefore = s.library;
+    if (libBefore >= 2) {
+      await js('MDL_TEST.playFirst();'); await sleep(1500);
+      await js('MDL_TEST.deleteFirstLib();'); await sleep(1500);
+      s = await st();
+      if (s.library !== libBefore - 1) report.bugs.push('suppression: compte incohérent ' + s.library + '/' + (libBefore - 1));
+      else report.steps.push('suppression pendant lecture ok (' + libBefore + ' → ' + s.library + ')');
+    }
+
+    // 6) Bilan des erreurs JS
+    const errList = await errs();
+    s = await st();
+    report.jsErrors = errList;
+    report.responsive = !!s;
+    report.ok = errList.length === 0 && report.bugs.length === 0 && report.responsive;
+    if (errList.length) report.bugs.push('erreurs JS: ' + errList.join(' | '));
+    report.steps.push('bilan: ' + errList.length + ' erreur(s) JS, ' + report.bugs.length + ' bug(s)');
+  } catch (e) {
+    report.error = String(e && e.message || e);
+    try { await shot('t9-erreur'); } catch (_) {}
+  }
+  fs.mkdirSync(shotDir, { recursive: true });
+  fs.writeFileSync(path.join(shotDir, 'torture-report.json'), JSON.stringify(report, null, 2));
+  app.exit(report.ok ? 0 : 1);
+}
+
 /* ══ Démarrage ══ */
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
@@ -1072,6 +1176,8 @@ if (!gotLock) {
       win.webContents.once('did-finish-load', () => runE2E());
     } else if (process.env.MUSICDL_E2E_UPDATE) {
       win.webContents.once('did-finish-load', () => runUpdateE2E());
+    } else if (process.env.MUSICDL_E2E_TORTURE) {
+      win.webContents.once('did-finish-load', () => runTortureE2E());
     }
   });
 

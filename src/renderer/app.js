@@ -845,6 +845,10 @@ function confirmDeleteTrack(t) {
     okLabel: 'Supprimer'
   }, async () => {
     if (currentTrack && currentTrack.id === t.id) stopPlayback();
+    // Retirer le titre de la file de lecture pour éviter les enchaînements cassés
+    const wasBefore = playQueue.slice(0, playPos + 1).filter((id) => id === t.id).length;
+    playQueue = playQueue.filter((id) => id !== t.id);
+    playPos = Math.max(-1, playPos - wasBefore);
     await window.mdl.deleteTrack(t.id);
     appState.library = appState.library.filter((x) => x.id !== t.id);
     appState.playlists.forEach((p) => { p.tracks = p.tracks.filter((id) => id !== t.id); });
@@ -1023,6 +1027,8 @@ function shuffleArray(a) {
 function startQueue(ids, index) {
   playQueue = ids.slice();
   playPos = index;
+  failStreak = 0;
+  lastFailedSrc = null;
   if (shuffleOn) {
     const first = playQueue.splice(index, 1)[0];
     shuffleArray(playQueue);
@@ -1032,16 +1038,41 @@ function startQueue(ids, index) {
   loadTrack(playQueue[playPos]);
 }
 
+let failStreak = 0;          // nb d'échecs consécutifs (anti boucle infinie)
+let lastFailedSrc = null;    // évite de traiter 2× le même échec (play().catch + event error)
+
 function loadTrack(id) {
   const t = trackById(id);
-  if (!t) { nextTrack(); return; }
+  if (!t) { onLoadFail('Titre introuvable'); return; }
   currentTrack = t;
+  currentTrack.preview = false;
+  // Si le minuteur n'est pas en fondu, on garde le volume normal sur le nouveau titre
+  if (preFadeVolume != null && sleepDeadline === 0) { audio.volume = preFadeVolume; preFadeVolume = null; }
   audio.src = local(t.file);
-  audio.play().catch(() => showToast('Lecture impossible — fichier introuvable ?', 'error'));
+  audio.play().catch((err) => {
+    if (err && err.name === 'AbortError') return;   // src remplacée entre-temps : normal
+    onLoadFail('Lecture impossible');
+  });
   syncPlayerUI();
   renderLibrary();
   if (currentPlId) renderPlaylistDetail();
   updateMediaSession();
+}
+
+/* Échec de chargement d'un fichier : message clair + passage au suivant,
+   avec garde anti-boucle si toute la file est cassée. */
+function onLoadFail(reason) {
+  if (lastFailedSrc && lastFailedSrc === audio.src) return; // déjà traité pour ce fichier
+  lastFailedSrc = audio.src || (currentTrack && currentTrack.id) || String(Date.now());
+  failStreak++;
+  if (playQueue.length === 0 || failStreak >= Math.max(1, playQueue.length)) {
+    failStreak = 0;
+    showToast(reason + ' — lecture arrêtée', 'error');
+    stopPlayback();
+    return;
+  }
+  showToast(reason + ' — passage au titre suivant', 'error');
+  nextTrack(true);
 }
 
 function stopPlayback() {
@@ -1049,6 +1080,8 @@ function stopPlayback() {
   audio.removeAttribute('src');
   audio.load();
   currentTrack = null;
+  playQueue = [];
+  playPos = -1;
   syncPlayerUI();
   renderLibrary();
 }
@@ -1178,6 +1211,17 @@ audio.addEventListener('ended', () => {
 });
 audio.addEventListener('play', syncPlayerUI);
 audio.addEventListener('pause', syncPlayerUI);
+// Lecture réellement démarrée → on réinitialise le compteur d'échecs
+audio.addEventListener('playing', () => { failStreak = 0; lastFailedSrc = null; });
+// Fichier illisible (déplacé, corrompu, supprimé) → message + titre suivant
+audio.addEventListener('error', () => {
+  if (!currentTrack) return;
+  onLoadFail('Fichier audio illisible');
+});
+// Préécoute en streaming coupée par le réseau
+audio.addEventListener('stalled', () => {
+  if (currentTrack && currentTrack.preview) showToast('Connexion lente — préécoute en pause', 'info');
+});
 
 function syncPlayerUI() {
   const playing = !audio.paused && currentTrack;
@@ -1410,11 +1454,15 @@ window.mdl.on('remote:cmd', (p) => {
 });
 
 /* ── Mini-lecteur ── */
+let miniOpen = false;
 $('#mini-btn').addEventListener('click', () => {
+  miniOpen = true;
   window.mdl.openMini();
   pushMiniState();
 });
+window.mdl.on('remote:cmd', (p) => { if (p && p.action === 'miniClosed') miniOpen = false; });
 function pushMiniState() {
+  if (!miniOpen) return; // n'envoie rien tant que le mini n'est pas ouvert
   window.mdl.sendMiniState({
     title: currentTrack ? currentTrack.title : null,
     artist: currentTrack ? (currentTrack.artist || 'Inconnu') : null,
@@ -1484,6 +1532,15 @@ $('#sb-update-btn').addEventListener('click', () => {
   else if (updateState === 'ready') window.mdl.installUpdate();
 });
 
+/* ════════ CAPTURE GLOBALE DES ERREURS (diagnostic) ════════ */
+const jsErrors = [];
+window.addEventListener('error', (e) => {
+  jsErrors.push(String(e.message || e.error || 'erreur') + (e.filename ? ` @${e.filename.split('/').pop()}:${e.lineno}` : ''));
+});
+window.addEventListener('unhandledrejection', (e) => {
+  jsErrors.push('promesse: ' + String((e.reason && e.reason.message) || e.reason || 'rejet'));
+});
+
 /* ════════ INIT ════════ */
 async function init() {
   appState = await window.mdl.getState();
@@ -1519,9 +1576,27 @@ window.MDL_TEST = {
   openGL: () => openGL(),
   closeGL: () => closeGL(),
   clickUpdate: () => $('#sb-update-btn').click(),
+  // Hooks pour le test "torture" du lecteur / bibliothèque
+  togglePlay: () => togglePlay(),
+  next: () => nextTrack(false),
+  prev: () => prevTrack(),
+  toggleShuffle: () => toggleShuffle(),
+  cycleRepeat: () => toggleRepeat(),
+  setVol: (v) => setVolume(v),
+  toggleMute: () => $('#vol-btn').click(),
+  sortBy: (k) => { const h = document.querySelector(`#lib-cols .lib-col-h[data-sort="${k}"]`); if (h) h.click(); },
+  setFilter: (v) => { $('#lib-filter').value = v; $('#lib-filter').dispatchEvent(new Event('input')); },
+  deleteFirstLib: () => { const t = visibleLibrary()[0]; if (t) { confirmDeleteTrack(t); $('#confirm-ok').click(); } },
+  playId: (id) => startQueue([id], 0),
+  jsErrors: () => jsErrors.slice(),
   state: () => JSON.stringify({
     updateState,
     updateVersion,
+    jsErrors: jsErrors.length,
+    repeatMode,
+    shuffleOn,
+    queueLen: playQueue.length,
+    playPos,
     updatePct: parseInt($('#sb-update-prog-fill').style.width) || 0,
     page: currentPage,
     tab: searchTab,
