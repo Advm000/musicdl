@@ -237,6 +237,93 @@ async function ytMusicSuggest(input) {
   return out.slice(0, 7);
 }
 
+/* Page artiste complète : en-tête (nom, photo, abonnés), top titres, discographie */
+async function getArtist(browseId) {
+  try {
+    const data = await innertube('browse', { browseId });
+    let header = null;
+    walkJson(data, (n) => {
+      if (!header && (n.musicImmersiveHeaderRenderer || n.musicVisualHeaderRenderer)) {
+        header = n.musicImmersiveHeaderRenderer || n.musicVisualHeaderRenderer;
+      }
+    });
+    let name = '', subs = '', photo = null;
+    if (header) {
+      name = (header.title && header.title.runs && header.title.runs[0].text) || '';
+      walkJson(header, (n) => {
+        if (!subs && n.subscriberCountText && n.subscriberCountText.runs) subs = n.subscriberCountText.runs.map((r) => r.text).join('');
+        if (!photo && n.thumbnails && Array.isArray(n.thumbnails) && n.thumbnails.length) photo = n.thumbnails[n.thumbnails.length - 1].url.replace(/=w\d+-h\d+[^=]*$/, '=w480-h480');
+      });
+    }
+    const topSongs = [];
+    const seenS = new Set();
+    walkJson(data, (n) => {
+      const r = n.musicResponsiveListItemRenderer;
+      if (!r) return;
+      const id = r.playlistItemData && r.playlistItemData.videoId;
+      if (!id || seenS.has(id) || topSongs.length >= 10) return;
+      const cols = (r.flexColumns || []).map((c) => {
+        const t = c.musicResponsiveListItemFlexColumnRenderer;
+        return (t && t.text && t.text.runs) || [];
+      });
+      const title = cols[0] && cols[0][0] ? cols[0][0].text : null;
+      if (!title) return;
+      let artist = name;
+      for (const run of cols.slice(1).flat()) {
+        const page = run.navigationEndpoint && run.navigationEndpoint.browseEndpoint
+          && run.navigationEndpoint.browseEndpoint.browseEndpointContextSupportedConfigs
+          && run.navigationEndpoint.browseEndpoint.browseEndpointContextSupportedConfigs.browseEndpointContextMusicConfig
+          && run.navigationEndpoint.browseEndpoint.browseEndpointContextSupportedConfigs.browseEndpointContextMusicConfig.pageType;
+        if (page === 'MUSIC_PAGE_TYPE_ARTIST') { artist = (run.text || '').trim(); break; }
+      }
+      seenS.add(id);
+      topSongs.push({ id, title, artist, duration: parseFixedDuration(r), thumb: itemThumb(r, id) });
+    });
+    const albums = collectArtistAlbums(data, name);
+    if (!name && !topSongs.length && !albums.length) return { ok: false, error: 'Artiste introuvable' };
+    return { ok: true, artist: { browseId, name, subs, photo, topSongs, albums } };
+  } catch (e) {
+    return { ok: false, error: 'Impossible de charger cet artiste' };
+  }
+}
+
+async function getArtistByName(nameQuery) {
+  try {
+    const res = await ytMusicSearch(nameQuery, 'artists');
+    const top = res.results[0];
+    if (!top) return { ok: false, error: 'Artiste introuvable' };
+    return getArtist(top.browseId);
+  } catch (_) {
+    return { ok: false, error: 'Artiste introuvable' };
+  }
+}
+
+function collectArtistAlbums(data, artistName) {
+  const albums = [];
+  const seen = new Set();
+  walkJson(data, (n) => {
+    const r = n.musicTwoRowItemRenderer;
+    if (!r) return;
+    const be = r.navigationEndpoint && r.navigationEndpoint.browseEndpoint;
+    if (!be || !/^MPREb/.test(be.browseId || '') || seen.has(be.browseId)) return;
+    const title = r.title && r.title.runs && r.title.runs[0] && r.title.runs[0].text;
+    if (!title) return;
+    const subRuns = ((r.subtitle && r.subtitle.runs) || []).map((x) => (x.text || '').trim()).filter((x) => x && x !== '•');
+    let year = null, type = 'Album';
+    for (const txt of subRuns) {
+      if (/^\d{4}$/.test(txt)) year = Number(txt);
+      else if (/single/i.test(txt)) type = 'Single';
+      else if (/^EP$/i.test(txt)) type = 'EP';
+    }
+    const thumbs = ((((r.thumbnailRenderer || {}).musicThumbnailRenderer || {}).thumbnail || {}).thumbnails) || [];
+    const thumb = thumbs.length ? thumbs[thumbs.length - 1].url.replace(/=w\d+-h\d+/, '=w232-h232') : null;
+    seen.add(be.browseId);
+    albums.push({ browseId: be.browseId, kind: 'album', title, artist: artistName, year, info: type, thumb });
+  });
+  albums.sort((a, b) => (a.info === 'Single') - (b.info === 'Single') || (b.year || 0) - (a.year || 0));
+  return albums.slice(0, 40);
+}
+
 /* Discographie officielle d'un artiste (albums + singles de sa page) */
 async function getArtistAlbums(artistBrowseId, artistName) {
   const data = await innertube('browse', { browseId: artistBrowseId });
@@ -832,6 +919,8 @@ ipcMain.handle('search:suggest', async (_e, input) => {
   try { return await ytMusicSuggest(String(input || '').slice(0, 80)); } catch (_) { return []; }
 });
 ipcMain.handle('collection:get', (_e, ref) => getCollection(ref));
+ipcMain.handle('artist:get', (_e, browseId) => getArtist(browseId));
+ipcMain.handle('artist:byName', (_e, name) => getArtistByName(name));
 ipcMain.handle('dl:start', (_e, track) => enqueueDownload(track));
 
 /* ── Préécoute (streaming avant téléchargement) ── */
@@ -979,12 +1068,20 @@ async function runE2E() {
     if (!st.seekable || st.position < 5) throw new Error('Seek inopérant: ' + JSON.stringify({ seekable: st.seekable, position: st.position }));
     report.steps.push('seek ok (position ' + st.position + 's, seekable ' + st.seekable + 's)');
 
-    // ── Favori ──
+    // ── Favori (test idempotent : on verifie que le basculement change l etat dans les deux sens,
+    //    quel que soit l etat de depart, puis on laisse le titre en favori pour la capture) ──
+    const favStart = JSON.parse(await js('MDL_TEST.state()')).favOn;
     await js('MDL_TEST.toggleFav()');
     await sleep(500);
+    const favAfter1 = JSON.parse(await js('MDL_TEST.state()')).favOn;
+    if (favAfter1 === favStart) throw new Error('Favori inoperant : 1er basculement sans effet');
+    await js('MDL_TEST.toggleFav()');
+    await sleep(500);
+    const favAfter2 = JSON.parse(await js('MDL_TEST.state()')).favOn;
+    if (favAfter2 !== favStart) throw new Error('Favori inoperant : 2e basculement ne revient pas a l etat initial');
+    if (!favAfter2) { await js('MDL_TEST.toggleFav()'); await sleep(400); }
     st = JSON.parse(await js('MDL_TEST.state()'));
-    if (!st.favOn) throw new Error('Favori inopérant');
-    report.steps.push('favori ok');
+    report.steps.push('favori ok (bascule on/off verifiee, etat final favori=' + st.favOn + ')');
 
     // ── Minuteur de sommeil ──
     await js('MDL_TEST.setSleep(15); MDL_TEST.openGL();');
@@ -1140,6 +1237,39 @@ async function runMiniE2E() {
     }
   } catch (_) {}
   app.exit(0);
+}
+
+/* ══ E2E PAGE ARTISTE : ouvre une page artiste, verifie top titres + discographie ══ */
+async function runArtistE2E() {
+  const js = (code) => win.webContents.executeJavaScript(code, true);
+  const shotDir = process.env.MUSICDL_SHOT_DIR || path.join(__dirname, '..', 'shots');
+  const report = { ok: false, steps: [] };
+  const st = async () => JSON.parse(await js('MDL_TEST.state()'));
+  try {
+    await sleep(2500);
+    const name = process.env.MUSICDL_E2E_ARTIST_NAME || 'stormy';
+    await js(`MDL_TEST.openArtist(${JSON.stringify(name)})`);
+    let s = null;
+    for (let i = 0; i < 30; i++) { await sleep(1000); s = await st(); if (s.artistOpen && (s.artistTop > 0 || s.artistAlbums > 0)) break; if (s.searchError) break; }
+    if (!s || !s.artistOpen) throw new Error('Page artiste non ouverte: ' + JSON.stringify(s));
+    report.artistName = s.artistName;
+    report.top = s.artistTop;
+    report.albums = s.artistAlbums;
+    report.steps.push('page ouverte: ' + s.artistName + ' (top ' + s.artistTop + ', albums ' + s.artistAlbums + ')');
+    if (s.artistTop < 1 || s.artistAlbums < 1) throw new Error('Top titres ou discographie vide: top=' + s.artistTop + ' albums=' + s.artistAlbums);
+    await sleep(2500); // laisser charger les images reseau (photo + pochettes)
+    report.photoLoaded = await js("(()=>{const i=document.querySelector('#art-photo img');return i?i.naturalWidth:-1})()");
+    report.steps.push('photo artiste: ' + (report.photoLoaded > 0 ? 'chargee (' + report.photoLoaded + 'px)' : (report.photoLoaded === 0 ? 'presente mais non chargee' : 'img absente (photo nulle)')));
+    await shot('artist-1-page');
+    // Ouvrir le 1er album de la discographie -> vue album
+    await js('MDL_TEST.openArtistAlbum(0)');
+    for (let i = 0; i < 20; i++) { await sleep(1000); s = await st(); if (s.colTracks > 0) break; }
+    if (s.colTracks > 0) { report.steps.push('album discographie ouvert: ' + (s.colTitle || '?') + ' (' + s.colTracks + ' titres)'); await sleep(400); await shot('artist-2-album'); }
+    report.ok = true;
+  } catch (e) { report.error = String(e && e.message || e); try { await shot('artist-9-erreur'); } catch (_) {} }
+  fs.mkdirSync(shotDir, { recursive: true });
+  fs.writeFileSync(path.join(shotDir, 'artist-report.json'), JSON.stringify(report, null, 2));
+  app.exit(report.ok ? 0 : 1);
 }
 
 /* ══ E2E TORTURE : clique tout dans tous les états, traque les erreurs JS ══ */
@@ -1307,6 +1437,8 @@ if (!gotLock) {
       win.webContents.once('did-finish-load', () => runMiniE2E());
     } else if (process.env.MUSICDL_E2E_LYRICS) {
       win.webContents.once('did-finish-load', () => runLyricsE2E());
+    } else if (process.env.MUSICDL_E2E_ARTIST) {
+      win.webContents.once('did-finish-load', () => runArtistE2E());
     }
   });
 

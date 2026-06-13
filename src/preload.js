@@ -20,6 +20,8 @@ contextBridge.exposeInMainWorld('mdl', {
   searchMore: (token, kind) => ipcRenderer.invoke('search:more', token, kind),
   suggest: (input) => ipcRenderer.invoke('search:suggest', input),
   getCollection: (ref) => ipcRenderer.invoke('collection:get', ref),
+  getArtist: (browseId) => ipcRenderer.invoke('artist:get', browseId),
+  getArtistByName: (name) => ipcRenderer.invoke('artist:byName', name),
   previewUrl: (id) => ipcRenderer.invoke('preview:get', id),
   getLyrics: (id) => ipcRenderer.invoke('lyrics:get', id),
   refetchLyrics: (id) => ipcRenderer.invoke('lyrics:refetch', id),

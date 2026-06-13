@@ -187,13 +187,14 @@ let searchTab = 'songs';                 // 'songs' | 'albums' | 'playlists'
 let collectionResults = [];              // cartes albums/playlists du dernier onglet
 let currentCollection = null;            // collection ouverte (vue détail)
 let currentArtist = null;                // bandeau artiste (mode albums intelligent)
+let artistView = null;                   // vue Page Artiste ouverte { browseId, name, subs, photo, topSongs, albums }
 let lastQuery = '';
 let searchContinuation = null;           // jeton de page suivante
 let loadingMore = false;
 const MAX_RESULTS = 200;
 
 function setSearchState(state) {
-  ['empty', 'loading', 'error', 'results', 'collections', 'collection'].forEach((s) => $('#ss-' + s).classList.toggle('on', s === state));
+  ['empty', 'loading', 'error', 'results', 'collections', 'collection', 'artist'].forEach((s) => $('#ss-' + s).classList.toggle('on', s === state));
 }
 
 async function runSearch(q) {
@@ -417,7 +418,7 @@ function renderCollectionDetail() {
       </div>
       <div class="rcard-info">
         <div class="rcard-title">${i + 1}. ${esc(t.title)}</div>
-        <div class="rcard-meta"><span class="rcard-ch">${esc(t.artist || 'Inconnu')}</span></div>
+        <div class="rcard-meta">${artistSpan(t.artist, 'rcard-ch')}</div>
         <div class="rcard-prog-wrap" style="display:none">
           <div class="rcard-prog"><div class="rcard-prog-fill" style="width:0%"></div></div>
           <div class="rcard-prog-lbl">Téléchargement… 0%</div>
@@ -512,7 +513,7 @@ function buildResultCard(t, i) {
     <div class="rcard-info">
       <div class="rcard-title">${esc(t.title)}</div>
       <div class="rcard-meta">
-        <span class="rcard-ch">${esc(t.artist || 'Inconnu')}</span>
+        ${artistSpan(t.artist, 'rcard-ch')}
         ${t.views ? `<span class="rcard-sep">·</span><span class="rcard-views">${fmtViews(t.views)}</span>` : ''}
       </div>
       <div class="rcard-prog-wrap" style="display:none">
@@ -575,6 +576,75 @@ function refreshCard(id) {
   }
 }
 
+/* ════════ PAGE ARTISTE ════════ */
+/* Nom d'artiste cliquable -> ouvre sa page. cls = classe de base du span. */
+function artistSpan(name, cls) {
+  const label = name || 'Inconnu';
+  if (!name) return `<span class="${cls}">${esc(label)}</span>`;
+  return `<span class="${cls} art-link" data-artist="${esc(name)}">${esc(label)}</span>`;
+}
+
+async function openArtistView(promise, label) {
+  if (!online) { showToast('Hors ligne — connexion requise', 'error'); return; }
+  if (currentPage !== 0) goPage(0);
+  closeGL();
+  hideSuggest();
+  setSearchState('loading');
+  const r = await promise;
+  if (!r || !r.ok) { showToast((r && r.error) || 'Artiste introuvable', 'error'); backFromArtist(); return; }
+  artistView = r.artist;
+  renderArtist();
+  setSearchState('artist');
+}
+function openArtist(browseId) {
+  if (!browseId) return;
+  return openArtistView(window.mdl.getArtist(browseId));
+}
+function openArtistByName(name) {
+  const clean = (name || '').split(/,|&|·|feat\.|ft\./i)[0].trim();
+  if (!clean) return;
+  return openArtistView(window.mdl.getArtistByName(clean));
+}
+
+function renderArtist() {
+  const a = artistView;
+  if (!a) return;
+  $('#art-photo').innerHTML = a.photo ? `<img src="${esc(a.photo)}" onerror="this.remove()">` : SVG_NOTE(32, '.3');
+  $('#art-name').textContent = a.name || 'Artiste';
+  const subs = $('#art-subs');
+  subs.textContent = a.subs || '';
+  subs.style.display = a.subs ? '' : 'none';
+  // Titres populaires (reutilise les cartes resultat)
+  const topSec = $('#art-top-sec'), top = $('#art-top');
+  top.innerHTML = '';
+  const songs = a.topSongs || [];
+  topSec.style.display = songs.length ? '' : 'none';
+  songs.forEach((t, i) => { top.appendChild(buildResultCard(t, i)); refreshCard(t.id); refreshPvBtn(t.id); });
+  // Discographie (reutilise les cartes album)
+  const discoSec = $('#art-disco-sec'), grid = $('#art-albums');
+  grid.innerHTML = '';
+  const albums = a.albums || [];
+  discoSec.style.display = albums.length ? '' : 'none';
+  albums.forEach((c) => grid.appendChild(buildColCard(c)));
+  $('#search-pb').scrollTop = 0;
+}
+
+function backFromArtist() {
+  artistView = null;
+  if (collectionResults.length) setSearchState('collections');
+  else if (searchResults.length) setSearchState('results');
+  else setSearchState('empty');
+}
+$('#art-back').addEventListener('click', backFromArtist);
+
+/* Clic delegue sur tout nom d'artiste cliquable */
+document.addEventListener('click', (e) => {
+  const link = e.target.closest('.art-link[data-artist]');
+  if (!link) return;
+  e.stopPropagation();
+  openArtistByName(link.dataset.artist);
+});
+
 /* ════════ PRÉÉCOUTE (écouter avant de télécharger) ════════ */
 let previewLoading = null;
 const previewUrls = new Map();
@@ -608,6 +678,7 @@ function refreshPvBtn(id) {
 function refreshAllPv() {
   searchResults.forEach((t) => refreshPvBtn(t.id));
   if (currentCollection) currentCollection.tracks.forEach((t) => refreshPvBtn(t.id));
+  if (artistView) artistView.topSongs.forEach((t) => refreshPvBtn(t.id));
 }
 
 async function previewToggle(t) {
@@ -650,7 +721,9 @@ async function previewToggle(t) {
 }
 
 async function startDownload(id) {
-  const t = searchResults.find((x) => x.id === id) || trackById(id);
+  const t = searchResults.find((x) => x.id === id)
+    || (artistView && artistView.topSongs.find((x) => x.id === id))
+    || trackById(id);
   if (!t) return;
   if (!online) { showToast('Hors ligne — connexion requise', 'error'); return; }
   const r = await window.mdl.download({ id: t.id, title: t.title, artist: t.artist, thumb: t.thumb, duration: t.duration, album: t.album });
@@ -685,6 +758,7 @@ window.mdl.on('dl:queue', (snap) => {
   queueSnap = snap;
   renderQueue();
   searchResults.forEach((t) => refreshCard(t.id));
+  if (artistView) artistView.topSongs.forEach((t) => refreshCard(t.id));
   if (currentCollection) { currentCollection.tracks.forEach((t) => refreshColRow(t.id)); syncColDlAll(); }
 });
 window.mdl.on('dl:done', ({ track }) => {
@@ -806,7 +880,7 @@ function buildRow(t, i, { context, list, plId }) {
     <div class="rc-thumb ${tClass(i)}">${t.cover ? `<img src="${local(t.cover)}" loading="lazy" onerror="this.remove()">` : `<div class="rc-thumb-ph">${SVG_NOTE(14, '.3')}</div>`}</div>
     <div class="rc-info">
       <div class="rc-title">${esc(t.title)}</div>
-      <div class="rc-artist">${esc(t.artist || 'Inconnu')}</div>
+      <div class="rc-artist">${artistSpan(t.artist, 'rc-artist-name')}</div>
     </div>
     <div class="rc-album">${esc(t.album || '—')}</div>
     <div class="rc-year">${t.year || '—'}</div>
@@ -1150,6 +1224,8 @@ $('#gl-repeat').addEventListener('click', toggleRepeat);
 /* Favori (player + GL) */
 $('#ply-fav').addEventListener('click', () => currentTrack && toggleFavorite(currentTrack.id));
 $('#gl-fav').addEventListener('click', () => currentTrack && toggleFavorite(currentTrack.id));
+$('#ply-artist').addEventListener('click', () => { if (currentTrack && currentTrack.artist) openArtistByName(currentTrack.artist); });
+$('#gl-artist').addEventListener('click', () => { if (currentTrack && currentTrack.artist) openArtistByName(currentTrack.artist); });
 
 /* Volume */
 let lastVolume = parseFloat(localStorage.getItem('mdl-volume') || '0.8');
@@ -1679,6 +1755,8 @@ window.MDL_TEST = {
   search: (q) => runSearch(q),
   setTab: (t) => { searchTab = t; $$('#stabs .stab').forEach((x) => x.classList.toggle('on', x.dataset.tab === t)); },
   openFirstCollection: () => { if (collectionResults[0]) openCollectionRef({ browseId: collectionResults[0].browseId, kind: collectionResults[0].kind, fallback: collectionResults[0] }); },
+  openArtist: (name) => openArtistByName(name),
+  openArtistAlbum: (i) => { const a = artistView && artistView.albums[i || 0]; if (a) openCollectionRef({ browseId: a.browseId, kind: 'album', fallback: a }); },
   downloadCollection: () => $('#col-dl-all').click(),
   seekTo: (ratio) => { if (audio.duration) audio.currentTime = ratio * audio.duration; },
   toggleFav: () => { if (currentTrack) toggleFavorite(currentTrack.id); },
@@ -1737,6 +1815,10 @@ window.MDL_TEST = {
     sleepArmed: sleepDeadline > 0 || sleepEoq,
     preview: !!(currentTrack && currentTrack.preview),
     artistBand: !!currentArtist,
+    artistOpen: $('#ss-artist').classList.contains('on'),
+    artistName: artistView ? artistView.name : null,
+    artistTop: artistView ? artistView.topSongs.length : 0,
+    artistAlbums: artistView ? artistView.albums.length : 0,
     hasMore: !!searchContinuation,
     searchError: lastSearchError,
     queue: queueSnap.length,
