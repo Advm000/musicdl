@@ -1218,13 +1218,19 @@ async function runLyricsE2E() {
     let s = null;
     for (let i = 0; i < 20; i++) { await sleep(800); s = await st(); if (s.lyricsLines > 0) break; }
     report.steps.push('paroles: ' + (s ? s.lyricsLines : 0) + ' lignes, trouvées=' + (s && s.lyricsFound));
+    // Anti-regression du bug "paroles invisibles" (panneau .gl-lyrics rendu a hauteur 0) :
+    // en mode lyrics-on, le panneau doit avoir une hauteur rendue non nulle (CSS = 220px).
+    const lyH = await js("(()=>{const p=document.querySelector('.gl-card.lyrics-on .gl-lyrics');return p?Math.round(p.getBoundingClientRect().height):-1})()");
+    report.lyricsPanelHeight = lyH;
+    report.steps.push('hauteur panneau paroles (lyrics-on): ' + lyH + 'px');
+    if (lyH < 100) throw new Error('Regression bug paroles: panneau .gl-lyrics hauteur ' + lyH + 'px (attendu >= 100)');
     // avancer dans le morceau pour activer une ligne
     await js('MDL_TEST.seekTo(0.45)');
     await sleep(2000);
     await shot('lyrics-karaoke');
     s = await st();
     report.lyricsLines = s.lyricsLines;
-    report.ok = s.lyricsLines > 0;
+    report.ok = s.lyricsLines > 0 && lyH >= 100;
   } catch (e) { report.error = String(e && e.message || e); }
   fs.mkdirSync(shotDir, { recursive: true });
   fs.writeFileSync(path.join(shotDir, 'lyrics-report.json'), JSON.stringify(report, null, 2));

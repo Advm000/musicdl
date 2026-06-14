@@ -12,8 +12,10 @@ shots/
 shots-packaged/
 shots-update/
 shots-v11/
+shots-v12/
 shots-mini/
 shots-torture/
+shots-lyrics/
 
 # Divers
 *.log
