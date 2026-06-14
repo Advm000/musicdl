@@ -12,12 +12,13 @@
 <meta property="og:url" content="https://advm000.github.io/musicdl/">
 <link rel="icon" type="image/png" href="assets/icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
   --bg0:#06080f;--bg1:#090c16;--bg2:#0d1120;
-  --blue:#4f88f8;--teal:#1dd3b0;--pink:#ff6b8a;
+  --blue:#4f88f8;--teal:#1dd3b0;--pink:#ff6b8a;--violet:#7c3aed;
   --t1:#f0f2f7;--border:rgba(255,255,255,.06);
 }
 html{scroll-behavior:smooth}
@@ -25,8 +26,23 @@ body{background:var(--bg0);color:var(--t1);font-family:'Inter',sans-serif;-webki
 a{text-decoration:none;color:inherit}
 .wrap{max-width:1080px;margin:0 auto;padding:0 24px;position:relative;z-index:2}
 
-/* ── FOND ANIME (halos + particules) ── */
-.bg-fx{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+/* ── CANVAS WEBGL (scene 3D reelle, plein ecran) ── */
+#bg-webgl{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:0;transition:opacity 1.1s ease}
+#bg-webgl.ready{opacity:1}
+/* Voile de contraste : garde le texte lisible par-dessus la scene 3D */
+#bg-scrim{position:fixed;inset:0;z-index:1;pointer-events:none;opacity:0;transition:opacity 1.1s ease;
+  background:linear-gradient(90deg,rgba(6,8,15,.92) 0%,rgba(6,8,15,.6) 36%,rgba(6,8,15,0) 64%),
+             linear-gradient(0deg,rgba(6,8,15,.8) 0%,rgba(6,8,15,0) 26%)}
+body.webgl #bg-scrim{opacity:1}
+/* Mobile : orb adouci + voile plus enveloppant pour une lisibilite parfaite */
+@media(max-width:920px){
+  #bg-webgl.ready{opacity:.58}
+  body.webgl #bg-scrim{background:linear-gradient(180deg,rgba(6,8,15,.5),rgba(6,8,15,.12) 34%,rgba(6,8,15,.18) 60%,rgba(6,8,15,.6))}
+}
+
+/* ── FOND DE REPLI (halos + particules CSS, si pas de WebGL) ── */
+.bg-fx{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;transition:opacity .8s ease}
+body.webgl .bg-fx{opacity:.45}
 .halo{position:absolute;border-radius:50%;filter:blur(70px);will-change:transform;opacity:.5}
 .halo.h1{width:560px;height:560px;background:radial-gradient(circle,rgba(79,136,248,.5),transparent 65%);top:-180px;left:-120px}
 .halo.h2{width:520px;height:520px;background:radial-gradient(circle,rgba(29,211,176,.36),transparent 65%);top:120px;right:-160px}
@@ -35,7 +51,7 @@ a{text-decoration:none;color:inherit}
 @keyframes drift{0%{transform:translateY(0);opacity:0}10%{opacity:.7}90%{opacity:.5}100%{transform:translateY(-120px);opacity:0}}
 
 /* ── NAVBAR ── */
-.nav{position:sticky;top:0;z-index:50;background:rgba(6,8,15,.7);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--border)}
+.nav{position:sticky;top:0;z-index:50;background:rgba(6,8,15,.55);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-bottom:1px solid var(--border)}
 .nav-in{max-width:1080px;margin:0 auto;padding:0 24px;height:62px;display:flex;align-items:center;gap:10px}
 .brand{display:flex;align-items:center;gap:10px}
 .brand-ico{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#4f88f8,#1dd3b0);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(79,136,248,.3)}
@@ -69,12 +85,13 @@ h1 .grad{background:linear-gradient(90deg,#4f88f8,#1dd3b0);-webkit-background-cl
 .hm{display:flex;align-items:center;gap:7px;font-size:11.5px;color:rgba(255,255,255,.3)}
 .hm svg{color:rgba(29,211,176,.7);flex-shrink:0}
 
-/* ── SCENE 3D ── */
-.scene{position:relative;perspective:1400px}
+/* ── SCENE / CADRE PRODUIT ── */
+.scene{position:relative;perspective:1500px}
 .float{position:absolute;border-radius:13px;will-change:transform;pointer-events:none;box-shadow:0 18px 40px rgba(0,0,0,.5)}
+body.webgl .float{display:none}
 .float .note{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.85)}
 .shot-zone{position:relative;transform-style:preserve-3d;will-change:transform;transition:transform .12s ease-out}
-.shot-frame{position:relative;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,.1);box-shadow:0 50px 110px rgba(0,0,0,.7),0 0 0 1px rgba(79,136,248,.08),0 0 90px rgba(79,136,248,.1);background:#090c16;aspect-ratio:1120/690}
+.shot-frame{position:relative;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,.1);box-shadow:0 50px 110px rgba(0,0,0,.7),0 0 0 1px rgba(79,136,248,.08),0 0 90px rgba(79,136,248,.14);background:#090c16;aspect-ratio:1120/690}
 .shot-frame::after{content:'';position:absolute;inset:0;background:linear-gradient(115deg,rgba(255,255,255,.14),transparent 35%);pointer-events:none;mix-blend-mode:screen}
 .slide{position:absolute;inset:0;opacity:0;transition:opacity .5s ease;pointer-events:none}
 .slide.on{opacity:1}
@@ -92,7 +109,7 @@ h1 .grad{background:linear-gradient(90deg,#4f88f8,#1dd3b0);-webkit-background-cl
 /* ── STATS ── */
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;padding:8px 0 60px}
 @media(max-width:600px){.stats{grid-template-columns:repeat(2,1fr)}}
-.stat{background:rgba(255,255,255,.025);border:1px solid var(--border);border-radius:15px;padding:20px 16px;text-align:center}
+.stat{background:rgba(255,255,255,.025);border:1px solid var(--border);border-radius:15px;padding:20px 16px;text-align:center;backdrop-filter:blur(6px)}
 .stat-n{font-size:27px;font-weight:900;letter-spacing:-.6px;background:linear-gradient(90deg,#4f88f8,#1dd3b0);-webkit-background-clip:text;background-clip:text;color:transparent}
 .stat-l{font-size:11px;color:rgba(255,255,255,.35);margin-top:5px}
 
@@ -108,14 +125,24 @@ h1 .grad{background:linear-gradient(90deg,#4f88f8,#1dd3b0);-webkit-background-cl
 .feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
 @media(max-width:920px){.feat-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:600px){.feat-grid{grid-template-columns:1fr}}
-.feat{background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:22px;transition:border-color .2s,background .2s,transform .2s,box-shadow .2s}
-.feat:hover{border-color:rgba(79,136,248,.25);background:rgba(79,136,248,.04);transform:translateY(-4px);box-shadow:0 16px 44px rgba(0,0,0,.4)}
-.feat-ico{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:15px}
+.feat{background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:22px;transition:border-color .2s,background .2s,transform .15s,box-shadow .2s;transform-style:preserve-3d;will-change:transform}
+.feat:hover{border-color:rgba(79,136,248,.25);background:rgba(79,136,248,.05);box-shadow:0 16px 44px rgba(0,0,0,.4)}
+.feat-ico{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:15px;transform:translateZ(28px)}
 .fi-blue{background:rgba(79,136,248,.1);border:1px solid rgba(79,136,248,.2);color:#60a5fa}
 .fi-teal{background:rgba(29,211,176,.08);border:1px solid rgba(29,211,176,.18);color:#1dd3b0}
 .fi-pink{background:rgba(255,107,138,.08);border:1px solid rgba(255,107,138,.18);color:#ff6b8a}
-.feat-title{font-size:14.5px;font-weight:700;margin-bottom:7px;letter-spacing:-.2px}
-.feat-sub{font-size:12px;line-height:1.65;color:rgba(255,255,255,.35)}
+.feat-title{font-size:14.5px;font-weight:700;margin-bottom:7px;letter-spacing:-.2px;transform:translateZ(18px)}
+.feat-sub{font-size:12px;line-height:1.65;color:rgba(255,255,255,.35);transform:translateZ(10px)}
+
+/* ── HOW IT WORKS ── */
+.how{padding:10px 0 70px}
+.how-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;position:relative}
+@media(max-width:760px){.how-grid{grid-template-columns:1fr}}
+.how-step{position:relative;background:rgba(255,255,255,.025);border:1px solid var(--border);border-radius:16px;padding:26px 22px;transition:transform .2s,border-color .2s}
+.how-step:hover{transform:translateY(-4px);border-color:rgba(29,211,176,.25)}
+.how-num{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#4f88f8,#1dd3b0);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:#fff;margin-bottom:15px;box-shadow:0 6px 18px rgba(79,136,248,.35)}
+.how-t{font-size:15px;font-weight:700;margin-bottom:7px;letter-spacing:-.2px}
+.how-s{font-size:12.5px;line-height:1.65;color:rgba(255,255,255,.38)}
 
 /* ── NOUVEAUTES v1.2 ── */
 .news{padding:10px 0 70px}
@@ -163,12 +190,17 @@ footer{border-top:1px solid var(--border);padding:26px 0;background:rgba(6,8,16,
   .reveal{opacity:1;transform:none;transition:none}
   .particle,.cta.pulse,.badge-dot{animation:none}
   .shot-zone{transition:none}
+  #bg-webgl{display:none}
 }
 </style>
 </head>
 <body>
 
-<!-- ═══ FOND ANIME ═══ -->
+<!-- ═══ SCENE 3D WEBGL (Three.js) ═══ -->
+<canvas id="bg-webgl" aria-hidden="true"></canvas>
+<div id="bg-scrim" aria-hidden="true"></div>
+
+<!-- ═══ FOND DE REPLI (halos CSS) ═══ -->
 <div class="bg-fx" id="bg-fx">
   <div class="halo h1" data-depth="14"></div>
   <div class="halo h2" data-depth="22"></div>
@@ -195,6 +227,7 @@ footer{border-top:1px solid var(--border);padding:26px 0;background:rgba(6,8,16,
     </div>
     <div class="nav-links">
       <a class="nav-link" href="#fonctionnalites">Fonctionnalités</a>
+      <a class="nav-link" href="#comment">Comment ça marche</a>
       <a class="nav-link" href="#nouveautes">Nouveautés</a>
       <a class="nav-link" href="#faq">FAQ</a>
       <a class="nav-link" href="https://github.com/Advm000/musicdl" target="_blank" rel="noopener">GitHub</a>
@@ -268,35 +301,60 @@ footer{border-top:1px solid var(--border);padding:26px 0;background:rgba(6,8,16,
       <div class="sec-sub">Une app de bureau rapide, propre et complète pour ta musique.</div>
     </div>
     <div class="feat-grid">
-      <div class="feat reveal">
+      <div class="feat reveal tilt">
         <div class="feat-ico fi-blue"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></div>
         <div class="feat-title">Recherche YouTube Music</div>
         <div class="feat-sub">Tape un titre, un artiste ou colle un lien YouTube. Les résultats arrivent en quelques secondes avec durée et miniatures.</div>
       </div>
-      <div class="feat reveal">
+      <div class="feat reveal tilt">
         <div class="feat-ico fi-teal"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></div>
         <div class="feat-title">MP3 jusqu'à 320 kbps</div>
         <div class="feat-sub">Téléchargements en parallèle avec progression en direct. La vraie pochette d'album est intégrée dans chaque fichier.</div>
       </div>
-      <div class="feat reveal">
+      <div class="feat reveal tilt">
         <div class="feat-ico fi-pink"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/><path d="M10.71 5.05A16 16 0 0 1 22.56 9"/><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg></div>
         <div class="feat-title">Mode hors ligne</div>
         <div class="feat-sub">Ta bibliothèque, tes playlists et le lecteur fonctionnent à 100% sans connexion. Ta musique t'appartient.</div>
       </div>
-      <div class="feat reveal">
+      <div class="feat reveal tilt">
         <div class="feat-ico fi-teal"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>
         <div class="feat-title">Lecteur intégré</div>
         <div class="feat-sub">Grand lecteur avec pochette, file d'attente, aléatoire, répétition, favoris — et les touches média de ton clavier.</div>
       </div>
-      <div class="feat reveal">
+      <div class="feat reveal tilt">
         <div class="feat-ico fi-blue"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></div>
         <div class="feat-title">Playlists &amp; bibliothèque</div>
         <div class="feat-sub">Organise ta musique en playlists, trie et filtre ta bibliothèque, tout est rangé dans un dossier créé automatiquement.</div>
       </div>
-      <div class="feat reveal">
+      <div class="feat reveal tilt">
         <div class="feat-ico fi-pink"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg></div>
         <div class="feat-title">Mises à jour automatiques</div>
         <div class="feat-sub">L'app te prévient quand une nouvelle version officielle sort, et l'installe en un clic, directement depuis l'app.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ COMMENT CA MARCHE ═══ -->
+  <section class="how" id="comment">
+    <div class="sec-head reveal">
+      <div class="sec-title">Trois étapes, et c'est à toi</div>
+      <div class="sec-sub">De la recherche à l'écoute hors ligne, en moins d'une minute.</div>
+    </div>
+    <div class="how-grid">
+      <div class="how-step reveal">
+        <div class="how-num">1</div>
+        <div class="how-t">Cherche</div>
+        <div class="how-s">Tape un titre, un artiste ou un album. Music DL interroge YouTube Music et affiche les vraies pochettes.</div>
+      </div>
+      <div class="how-step reveal">
+        <div class="how-num">2</div>
+        <div class="how-t">Télécharge</div>
+        <div class="how-s">Un clic — le MP3 arrive en 320 kbps avec pochette et métadonnées, jusqu'à trois en parallèle.</div>
+      </div>
+      <div class="how-step reveal">
+        <div class="how-num">3</div>
+        <div class="how-t">Écoute partout</div>
+        <div class="how-s">Lecteur intégré, paroles karaoké, playlists — et tout fonctionne à 100% hors ligne, pour toujours.</div>
       </div>
     </div>
   </section>
@@ -395,11 +453,168 @@ footer{border-top:1px solid var(--border);padding:26px 0;background:rgba(6,8,16,
   </div>
 </footer>
 
+<!-- ═══ SCENE 3D — Three.js (orb audio + particules + bloom) ═══ -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+function webglOK(){ try { const c=document.createElement('canvas'); return !!(window.WebGLRenderingContext && (c.getContext('webgl2')||c.getContext('webgl'))); } catch(_) { return false; } }
+
+if (webglOK() && !reduce) {
+  try { await initScene(); } catch (e) { console.warn('WebGL scene desactivee:', e); }
+}
+
+async function initScene() {
+  const THREE = await import('three');
+  const { EffectComposer } = await import('three/addons/postprocessing/EffectComposer.js');
+  const { RenderPass } = await import('three/addons/postprocessing/RenderPass.js');
+  const { UnrealBloomPass } = await import('three/addons/postprocessing/UnrealBloomPass.js');
+
+  const canvas = document.getElementById('bg-webgl');
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
+  renderer.setClearColor(0x000000, 0);
+  const DPR = Math.min(window.devicePixelRatio || 1, 2);
+  renderer.setPixelRatio(DPR);
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 100);
+  camera.position.set(0, 0, 7);
+
+  // ── Orb : icosaedre deforme par bruit, fresnel neon bleu->turquoise ──
+  const noiseGLSL = `
+    vec3 mod289(vec3 x){return x-floor(x*(1.0/289.0))*289.0;}
+    vec4 mod289(vec4 x){return x-floor(x*(1.0/289.0))*289.0;}
+    vec4 permute(vec4 x){return mod289(((x*34.0)+1.0)*x);}
+    vec4 taylorInvSqrt(vec4 r){return 1.79284291400159-0.85373472095314*r;}
+    float snoise(vec3 v){
+      const vec2 C=vec2(1.0/6.0,1.0/3.0);const vec4 D=vec4(0.0,0.5,1.0,2.0);
+      vec3 i=floor(v+dot(v,C.yyy));vec3 x0=v-i+dot(i,C.xxx);
+      vec3 g=step(x0.yzx,x0.xyz);vec3 l=1.0-g;vec3 i1=min(g.xyz,l.zxy);vec3 i2=max(g.xyz,l.zxy);
+      vec3 x1=x0-i1+C.xxx;vec3 x2=x0-i2+C.yyy;vec3 x3=x0-D.yyy;
+      i=mod289(i);
+      vec4 p=permute(permute(permute(i.z+vec4(0.0,i1.z,i2.z,1.0))+i.y+vec4(0.0,i1.y,i2.y,1.0))+i.x+vec4(0.0,i1.x,i2.x,1.0));
+      float n_=0.142857142857;vec3 ns=n_*D.wyz-D.xzx;
+      vec4 j=p-49.0*floor(p*ns.z*ns.z);
+      vec4 x_=floor(j*ns.z);vec4 y_=floor(j-7.0*x_);
+      vec4 x=x_*ns.x+ns.yyyy;vec4 y=y_*ns.x+ns.yyyy;vec4 h=1.0-abs(x)-abs(y);
+      vec4 b0=vec4(x.xy,y.xy);vec4 b1=vec4(x.zw,y.zw);
+      vec4 s0=floor(b0)*2.0+1.0;vec4 s1=floor(b1)*2.0+1.0;vec4 sh=-step(h,vec4(0.0));
+      vec4 a0=b0.xzyw+s0.xzyw*sh.xxyy;vec4 a1=b1.xzyw+s1.xzyw*sh.zzww;
+      vec3 p0=vec3(a0.xy,h.x);vec3 p1=vec3(a0.zw,h.y);vec3 p2=vec3(a1.xy,h.z);vec3 p3=vec3(a1.zw,h.w);
+      vec4 norm=taylorInvSqrt(vec4(dot(p0,p0),dot(p1,p1),dot(p2,p2),dot(p3,p3)));
+      p0*=norm.x;p1*=norm.y;p2*=norm.z;p3*=norm.w;
+      vec4 m=max(0.6-vec4(dot(x0,x0),dot(x1,x1),dot(x2,x2),dot(x3,x3)),0.0);m=m*m;
+      return 42.0*dot(m*m,vec4(dot(p0,x0),dot(p1,x1),dot(p2,x2),dot(p3,x3)));
+    }`;
+  const orbMat = new THREE.ShaderMaterial({
+    uniforms: { uTime: { value: 0 }, uBlue: { value: new THREE.Color(0x4f88f8) }, uTeal: { value: new THREE.Color(0x1dd3b0) } },
+    vertexShader: noiseGLSL + `
+      uniform float uTime; varying float vDisp; varying vec3 vNormal; varying vec3 vView;
+      void main(){
+        float n = snoise(normal * 1.3 + uTime * 0.28);
+        float n2 = snoise(normal * 2.6 - uTime * 0.18) * 0.5;
+        vDisp = n + n2;
+        vec3 pos = position + normal * vDisp * 0.30;
+        vNormal = normalize(normalMatrix * normal);
+        vec4 mv = modelViewMatrix * vec4(pos, 1.0);
+        vView = normalize(-mv.xyz);
+        gl_Position = projectionMatrix * mv;
+      }`,
+    fragmentShader: `
+      uniform vec3 uBlue; uniform vec3 uTeal; varying float vDisp; varying vec3 vNormal; varying vec3 vView;
+      void main(){
+        float fres = pow(1.0 - max(dot(vNormal, vView), 0.0), 2.4);
+        vec3 base = mix(uBlue, uTeal, clamp(vDisp * 0.9 + 0.5, 0.0, 1.0));
+        vec3 col = base * (0.32 + 0.7 * fres) + uTeal * fres * 0.6;
+        gl_FragColor = vec4(col, 0.9);
+      }`,
+    transparent: true
+  });
+  const orb = new THREE.Mesh(new THREE.IcosahedronGeometry(1.45, 48), orbMat);
+  const wire = new THREE.Mesh(new THREE.IcosahedronGeometry(1.9, 3),
+    new THREE.MeshBasicMaterial({ color: 0x1dd3b0, wireframe: true, transparent: true, opacity: 0.06 }));
+  const orbGroup = new THREE.Group();
+  orbGroup.add(orb); orbGroup.add(wire);
+  scene.add(orbGroup);
+
+  // ── Particules (champ de profondeur) ──
+  const N = 1100, pos = new Float32Array(N * 3);
+  for (let i = 0; i < N; i++) {
+    const r = 3 + Math.random() * 7, t = Math.random() * Math.PI * 2, p = Math.acos(2 * Math.random() - 1);
+    pos[i*3] = r * Math.sin(p) * Math.cos(t); pos[i*3+1] = r * Math.sin(p) * Math.sin(t); pos[i*3+2] = r * Math.cos(p);
+  }
+  const pg = new THREE.BufferGeometry(); pg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const points = new THREE.Points(pg, new THREE.PointsMaterial({ color: 0x9ec3ff, size: 0.032, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending, depthWrite: false }));
+  scene.add(points);
+
+  // ── Bloom (lueur neon) ──
+  const composer = new EffectComposer(renderer);
+  composer.addPass(new RenderPass(scene, camera));
+  const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.7, 0.6, 0.18);
+  composer.addPass(bloom);
+
+  function resize() {
+    const w = innerWidth, h = innerHeight;
+    camera.aspect = w / h; camera.updateProjectionMatrix();
+    renderer.setSize(w, h); composer.setSize(w, h);
+    orbGroup.position.x = camera.aspect > 1.15 ? 1.7 : 0; // decale a droite sur desktop (texte lisible a gauche)
+  }
+  resize(); addEventListener('resize', resize, { passive: true });
+
+  // ── Interaction souris + scroll ──
+  let mx = 0, my = 0, cmx = 0, cmy = 0, scrollP = 0;
+  addEventListener('mousemove', (e) => { mx = (e.clientX / innerWidth) - 0.5; my = (e.clientY / innerHeight) - 0.5; }, { passive: true });
+  addEventListener('scroll', () => { scrollP = Math.min(1, scrollY / Math.max(1, innerHeight)); }, { passive: true });
+
+  // ── Pause hors-ecran / onglet cache (perf) ──
+  let visible = true;
+  document.addEventListener('visibilitychange', () => { visible = !document.hidden; if (visible) loop(); });
+
+  // ── Garde-fou FPS : coupe le bloom si ca rame ──
+  let frames = 0, fpsT = performance.now(), bloomOn = true;
+  const clock = new THREE.Clock();
+  let raf = null;
+  function loop() {
+    if (!visible) { raf = null; return; }
+    raf = requestAnimationFrame(loop);
+    const t = clock.getElapsedTime();
+    orbMat.uniforms.uTime.value = t;
+    cmx += (mx - cmx) * 0.045; cmy += (my - cmy) * 0.045;
+    orb.rotation.y = t * 0.12 + cmx * 0.6; orb.rotation.x = cmy * 0.5;
+    wire.rotation.y = -t * 0.06; wire.rotation.x = t * 0.04;
+    points.rotation.y = t * 0.02;
+    // dolly cinematique au scroll + parallaxe souris
+    camera.position.x += (cmx * 1.1 - camera.position.x) * 0.05;
+    camera.position.y += (-cmy * 0.9 - camera.position.y) * 0.05;
+    camera.position.z = 7 + scrollP * 2.2;
+    orb.scale.setScalar(0.92 - scrollP * 0.1);
+    camera.lookAt(0, 0, 0);
+    (bloomOn ? composer : renderer).render(scene, camera);
+
+    frames++;
+    if (performance.now() - fpsT > 1600) {
+      const fps = frames * 1000 / (performance.now() - fpsT);
+      frames = 0; fpsT = performance.now();
+      if (fps < 38 && bloomOn) { bloomOn = false; } // degrade gracieusement
+    }
+  }
+  document.body.classList.add('webgl');
+  requestAnimationFrame(() => { canvas.classList.add('ready'); loop(); });
+}
+</script>
+
+<!-- ═══ UI : carrousel, tilt, FAQ, compteurs, revelations ═══ -->
 <script>
-const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const reduceM = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const fine = window.matchMedia('(pointer: fine)').matches && window.innerWidth > 920;
 
-/* ── Carrousel ── */
+/* ── Carrousel (capture produit) ── */
 const SLIDES = [
   { img: 'assets/shot-recherche.png',     label: 'Recherche YouTube Music' },
   { img: 'assets/shot-albums.png',        label: "Discographie d'artiste" },
@@ -435,7 +650,7 @@ document.getElementById('car-next').addEventListener('click', () => { go(cur + 1
 label.textContent = SLIDES[0].label;
 restart();
 
-/* ── Pochettes flottantes (couches de profondeur) ── */
+/* ── Pochettes flottantes (repli si pas de WebGL) ── */
 const GRADS = ['linear-gradient(135deg,#4f88f8,#1dd3b0)','linear-gradient(135deg,#7c3aed,#4f88f8)','linear-gradient(135deg,#1dd3b0,#0ea5e9)','linear-gradient(135deg,#ff6b8a,#7c3aed)','linear-gradient(135deg,#f59e0b,#ff6b8a)'];
 const TILES = [
   { x: -8,  y: 4,  s: 78, d: 34 }, { x: 86, y: -6, s: 64, d: 46 },
@@ -444,8 +659,9 @@ const TILES = [
 ];
 const NOTE = '<span class="note"><svg width="40%" height="40%" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></span>';
 const floatsBox = document.getElementById('floats');
+const usingWebgl = document.body.classList.contains('webgl');
 const floats = [];
-if (fine) {
+if (fine && !usingWebgl) {
   TILES.forEach((t, i) => {
     const el = document.createElement('div');
     el.className = 'float';
@@ -457,8 +673,8 @@ if (fine) {
   });
 }
 
-/* ── Particules ── */
-if (!reduce) {
+/* ── Particules CSS (repli) ── */
+if (!reduceM && !usingWebgl) {
   const fx = document.getElementById('bg-fx');
   for (let i = 0; i < 16; i++) {
     const p = document.createElement('div');
@@ -471,14 +687,14 @@ if (!reduce) {
   }
 }
 
-/* ── Parallaxe souris + inclinaison 3D du cadre ── */
+/* ── Inclinaison 3D du cadre + parallaxe halos/floats à la souris ── */
 const shotZone = document.getElementById('shot-zone');
 const halos = document.querySelectorAll('.halo');
 let tRX = 0, tRY = 0, RX = 0, RY = 0, mX = 0, mY = 0, cmX = 0, cmY = 0, raf = null;
 function onMove(e) {
   const nx = (e.clientX / window.innerWidth) - 0.5;
   const ny = (e.clientY / window.innerHeight) - 0.5;
-  tRY = nx * 16; tRX = -ny * 12; mX = nx; mY = ny;
+  tRY = nx * 14; tRX = -ny * 11; mX = nx; mY = ny;
   if (!raf) raf = requestAnimationFrame(loop);
 }
 function loop() {
@@ -486,37 +702,35 @@ function loop() {
   cmX += (mX - cmX) * 0.06; cmY += (mY - cmY) * 0.06;
   if (shotZone) shotZone.style.transform = 'rotateX(' + RX.toFixed(2) + 'deg) rotateY(' + RY.toFixed(2) + 'deg)';
   floats.forEach((el) => { const d = +el.dataset.depth; el.style.transform = 'translate(' + (cmX * d).toFixed(1) + 'px,' + (cmY * d).toFixed(1) + 'px)'; });
-  halos.forEach((el) => { const d = +el.dataset.depth; el.style.transform = 'translate(' + (cmX * d).toFixed(1) + 'px,' + (cmY * d).toFixed(1) + 'px)'; });
+  if (!usingWebgl) halos.forEach((el) => { const d = +el.dataset.depth; el.style.transform = 'translate(' + (cmX * d).toFixed(1) + 'px,' + (cmY * d).toFixed(1) + 'px)'; });
   if (Math.abs(tRX - RX) > 0.05 || Math.abs(tRY - RY) > 0.05 || Math.abs(mX - cmX) > 0.002 || Math.abs(mY - cmY) > 0.002) {
     raf = requestAnimationFrame(loop);
   } else { raf = null; }
 }
-if (fine && !reduce) window.addEventListener('mousemove', onMove, { passive: true });
+if (fine && !reduceM) window.addEventListener('mousemove', onMove, { passive: true });
 
-/* ── Parallaxe au scroll (halos) ── */
-if (!reduce) {
-  let ticking = false;
-  window.addEventListener('scroll', () => {
-    if (ticking) return;
-    ticking = true;
-    requestAnimationFrame(() => {
-      const y = window.scrollY;
-      halos.forEach((el, i) => { el.style.marginTop = (y * (0.04 + i * 0.02)).toFixed(0) + 'px'; });
-      ticking = false;
+/* ── Tilt 3D des cartes Features au survol ── */
+if (fine) {
+  document.querySelectorAll('.feat.tilt').forEach((card) => {
+    card.addEventListener('mousemove', (e) => {
+      const r = card.getBoundingClientRect();
+      const px = (e.clientX - r.left) / r.width - 0.5, py = (e.clientY - r.top) / r.height - 0.5;
+      card.style.transform = 'perspective(700px) rotateX(' + (-py * 7).toFixed(2) + 'deg) rotateY(' + (px * 9).toFixed(2) + 'deg) translateY(-4px)';
     });
-  }, { passive: true });
+    card.addEventListener('mouseleave', () => { card.style.transform = ''; });
+  });
 }
 
-/* ── Révélation au scroll ── */
+/* ── Révélations au scroll (IntersectionObserver — robuste, sans dépendance) ── */
 const io = new IntersectionObserver((entries) => {
   entries.forEach((en) => { if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); } });
-}, { threshold: 0.14 });
+}, { threshold: 0.12, rootMargin: '0px 0px -6% 0px' });
 document.querySelectorAll('.reveal').forEach((el) => io.observe(el));
 
 /* ── Compteurs animés ── */
 function animCount(el) {
   const to = +el.dataset.to, fmt = el.dataset.fmt;
-  if (reduce) { el.textContent = fmt === 'ver' ? (to / 10).toFixed(1) : to; return; }
+  if (reduceM) { el.textContent = fmt === 'ver' ? (to / 10).toFixed(1) : to; return; }
   const dur = 1100, t0 = performance.now();
   function step(now) {
     const p = Math.min(1, (now - t0) / dur);
