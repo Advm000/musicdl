@@ -4,9 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Music DL — Télécharge ta musique depuis YouTube Music</title>
-<meta name="description" content="Music DL pour Windows : recherche YouTube Music, téléchargement MP3 avec les vraies pochettes, lecteur intégré et mode hors ligne. Gratuit.">
+<meta name="description" content="Music DL pour Windows : recherche YouTube Music, téléchargement MP3 avec les vraies pochettes, lecteur intégré, paroles karaoké et mode hors ligne. Gratuit.">
 <meta property="og:title" content="Music DL — Ta musique, téléchargée pour toujours">
-<meta property="og:description" content="Recherche YouTube Music, MP3 avec pochettes officielles, mode hors ligne, mises à jour automatiques. Gratuit pour Windows.">
+<meta property="og:description" content="Recherche YouTube Music, MP3 avec pochettes officielles, paroles synchronisées, mode hors ligne, mises à jour automatiques. Gratuit pour Windows.">
 <meta property="og:type" content="website">
 <meta property="og:image" content="https://advm000.github.io/musicdl/assets/icon.png">
 <meta property="og:url" content="https://advm000.github.io/musicdl/">
@@ -21,12 +21,21 @@
   --t1:#f0f2f7;--border:rgba(255,255,255,.06);
 }
 html{scroll-behavior:smooth}
-body{background:radial-gradient(ellipse 900px 500px at 25% -5%,rgba(79,136,248,.09),transparent 60%),radial-gradient(ellipse 700px 450px at 85% 25%,rgba(29,211,176,.05),transparent 55%),var(--bg0);color:var(--t1);font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh}
+body{background:var(--bg0);color:var(--t1);font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh;overflow-x:hidden}
 a{text-decoration:none;color:inherit}
-.wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+.wrap{max-width:1080px;margin:0 auto;padding:0 24px;position:relative;z-index:2}
+
+/* ── FOND ANIME (halos + particules) ── */
+.bg-fx{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.halo{position:absolute;border-radius:50%;filter:blur(70px);will-change:transform;opacity:.5}
+.halo.h1{width:560px;height:560px;background:radial-gradient(circle,rgba(79,136,248,.5),transparent 65%);top:-180px;left:-120px}
+.halo.h2{width:520px;height:520px;background:radial-gradient(circle,rgba(29,211,176,.36),transparent 65%);top:120px;right:-160px}
+.halo.h3{width:480px;height:480px;background:radial-gradient(circle,rgba(124,58,237,.28),transparent 65%);top:1100px;left:30%}
+.particle{position:absolute;width:3px;height:3px;border-radius:50%;background:rgba(255,255,255,.5);box-shadow:0 0 6px rgba(120,170,255,.8);animation:drift linear infinite}
+@keyframes drift{0%{transform:translateY(0);opacity:0}10%{opacity:.7}90%{opacity:.5}100%{transform:translateY(-120px);opacity:0}}
 
 /* ── NAVBAR ── */
-.nav{position:sticky;top:0;z-index:50;background:rgba(6,8,15,.78);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--border)}
+.nav{position:sticky;top:0;z-index:50;background:rgba(6,8,15,.7);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--border)}
 .nav-in{max-width:1080px;margin:0 auto;padding:0 24px;height:62px;display:flex;align-items:center;gap:10px}
 .brand{display:flex;align-items:center;gap:10px}
 .brand-ico{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#4f88f8,#1dd3b0);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(79,136,248,.3)}
@@ -40,49 +49,66 @@ a{text-decoration:none;color:inherit}
 @media(max-width:760px){.nav-link{display:none}}
 
 /* ── HERO ── */
-.hero{padding:72px 0 56px;display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:center}
+.hero{padding:74px 0 70px;display:grid;grid-template-columns:1.05fr 1fr;gap:48px;align-items:center}
 @media(max-width:920px){.hero{grid-template-columns:1fr;padding:48px 0 40px}}
 .badge-line{display:inline-flex;align-items:center;gap:7px;padding:6px 12px;border-radius:99px;background:rgba(29,211,176,.07);border:1px solid rgba(29,211,176,.18);color:#1dd3b0;font-size:11px;font-weight:700;margin-bottom:22px}
 .badge-dot{width:6px;height:6px;border-radius:50%;background:#1dd3b0;animation:pulse 2s ease-in-out infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
-h1{font-size:44px;font-weight:900;letter-spacing:-1.4px;line-height:1.08;margin-bottom:18px}
+h1{font-size:46px;font-weight:900;letter-spacing:-1.5px;line-height:1.07;margin-bottom:18px}
 h1 .grad{background:linear-gradient(90deg,#4f88f8,#1dd3b0);-webkit-background-clip:text;background-clip:text;color:transparent}
 .hero-sub{font-size:15.5px;line-height:1.7;color:rgba(255,255,255,.45);max-width:440px;margin-bottom:30px}
 .hero-sub strong{color:rgba(255,255,255,.75);font-weight:600}
 .cta-row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:26px}
-.cta{height:50px;padding:0 26px;border-radius:12px;background:#4f88f8;color:#fff;font-size:14.5px;font-weight:700;display:inline-flex;align-items:center;gap:10px;box-shadow:0 8px 28px rgba(79,136,248,.35);transition:all .18s}
+.cta{height:50px;padding:0 26px;border-radius:12px;background:#4f88f8;color:#fff;font-size:14.5px;font-weight:700;display:inline-flex;align-items:center;gap:10px;box-shadow:0 8px 28px rgba(79,136,248,.35);transition:transform .18s,box-shadow .18s,background .18s}
 .cta:hover{background:#3a76f0;transform:translateY(-2px);box-shadow:0 12px 36px rgba(79,136,248,.5)}
-.cta.ghost{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.6);box-shadow:none}
+.cta.pulse{animation:ctaPulse 2.6s ease-in-out infinite}
+@keyframes ctaPulse{0%,100%{box-shadow:0 8px 28px rgba(79,136,248,.35)}50%{box-shadow:0 8px 28px rgba(79,136,248,.35),0 0 0 8px rgba(79,136,248,.08)}}
+.cta.ghost{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.6);box-shadow:none;animation:none}
 .cta.ghost:hover{background:rgba(255,255,255,.09);color:#fff;transform:translateY(-2px)}
 .hero-meta{display:flex;gap:18px;flex-wrap:wrap}
 .hm{display:flex;align-items:center;gap:7px;font-size:11.5px;color:rgba(255,255,255,.3)}
 .hm svg{color:rgba(29,211,176,.7);flex-shrink:0}
 
-/* ── CARROUSEL ── */
-.shot-zone{position:relative}
-.shot-frame{position:relative;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,.1);box-shadow:0 40px 90px rgba(0,0,0,.65),0 0 0 1px rgba(79,136,248,.08),0 0 80px rgba(79,136,248,.07);background:#090c16;aspect-ratio:1120/690}
+/* ── SCENE 3D ── */
+.scene{position:relative;perspective:1400px}
+.float{position:absolute;border-radius:13px;will-change:transform;pointer-events:none;box-shadow:0 18px 40px rgba(0,0,0,.5)}
+.float .note{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.85)}
+.shot-zone{position:relative;transform-style:preserve-3d;will-change:transform;transition:transform .12s ease-out}
+.shot-frame{position:relative;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,.1);box-shadow:0 50px 110px rgba(0,0,0,.7),0 0 0 1px rgba(79,136,248,.08),0 0 90px rgba(79,136,248,.1);background:#090c16;aspect-ratio:1120/690}
+.shot-frame::after{content:'';position:absolute;inset:0;background:linear-gradient(115deg,rgba(255,255,255,.14),transparent 35%);pointer-events:none;mix-blend-mode:screen}
 .slide{position:absolute;inset:0;opacity:0;transition:opacity .5s ease;pointer-events:none}
-.slide.on{opacity:1;pointer-events:auto}
+.slide.on{opacity:1}
 .slide img{width:100%;height:100%;object-fit:cover;display:block}
-.car-btn{position:absolute;top:50%;transform:translateY(-50%);width:38px;height:38px;border-radius:50%;border:1px solid rgba(255,255,255,.12);background:rgba(9,12,22,.85);backdrop-filter:blur(8px);color:rgba(255,255,255,.65);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .16s;z-index:5}
+.car-btn{position:absolute;top:50%;transform:translateY(-50%);width:38px;height:38px;border-radius:50%;border:1px solid rgba(255,255,255,.12);background:rgba(9,12,22,.85);backdrop-filter:blur(8px);color:rgba(255,255,255,.65);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .16s;z-index:6}
 .car-btn:hover{background:#4f88f8;color:#fff;border-color:transparent;box-shadow:0 6px 20px rgba(79,136,248,.45)}
 .car-btn.prev{left:-19px}
 .car-btn.next{right:-19px}
-.car-foot{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:16px}
+.car-foot{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:18px}
 .car-dots{display:flex;gap:7px}
 .car-dot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.14);cursor:pointer;transition:all .2s;border:none;padding:0}
 .car-dot.on{background:#4f88f8;width:22px;border-radius:5px;box-shadow:0 0 10px rgba(79,136,248,.6)}
-.car-label{font-size:11px;color:rgba(255,255,255,.3);font-weight:600;min-width:120px;text-align:left}
+.car-label{font-size:11px;color:rgba(255,255,255,.3);font-weight:600;min-width:130px;text-align:left}
 
-/* ── FEATURES ── */
-.features{padding:30px 0 80px}
+/* ── STATS ── */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;padding:8px 0 60px}
+@media(max-width:600px){.stats{grid-template-columns:repeat(2,1fr)}}
+.stat{background:rgba(255,255,255,.025);border:1px solid var(--border);border-radius:15px;padding:20px 16px;text-align:center}
+.stat-n{font-size:27px;font-weight:900;letter-spacing:-.6px;background:linear-gradient(90deg,#4f88f8,#1dd3b0);-webkit-background-clip:text;background-clip:text;color:transparent}
+.stat-l{font-size:11px;color:rgba(255,255,255,.35);margin-top:5px}
+
+/* ── REVEAL ── */
+.reveal{opacity:0;transform:translateY(26px);transition:opacity .7s cubic-bezier(.2,.7,.2,1),transform .7s cubic-bezier(.2,.7,.2,1)}
+.reveal.in{opacity:1;transform:none}
+
+/* ── SECTIONS ── */
 .sec-head{text-align:center;margin-bottom:38px}
 .sec-title{font-size:28px;font-weight:800;letter-spacing:-.7px;margin-bottom:10px}
 .sec-sub{font-size:13.5px;color:rgba(255,255,255,.35)}
+.features{padding:24px 0 70px}
 .feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
 @media(max-width:920px){.feat-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:600px){.feat-grid{grid-template-columns:1fr}}
-.feat{background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:22px;transition:all .2s}
+.feat{background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:22px;transition:border-color .2s,background .2s,transform .2s,box-shadow .2s}
 .feat:hover{border-color:rgba(79,136,248,.25);background:rgba(79,136,248,.04);transform:translateY(-4px);box-shadow:0 16px 44px rgba(0,0,0,.4)}
 .feat-ico{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:15px}
 .fi-blue{background:rgba(79,136,248,.1);border:1px solid rgba(79,136,248,.2);color:#60a5fa}
@@ -91,8 +117,30 @@ h1 .grad{background:linear-gradient(90deg,#4f88f8,#1dd3b0);-webkit-background-cl
 .feat-title{font-size:14.5px;font-weight:700;margin-bottom:7px;letter-spacing:-.2px}
 .feat-sub{font-size:12px;line-height:1.65;color:rgba(255,255,255,.35)}
 
+/* ── NOUVEAUTES v1.2 ── */
+.news{padding:10px 0 70px}
+.news-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+@media(max-width:920px){.news-grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:560px){.news-grid{grid-template-columns:repeat(2,1fr)}}
+.news-card{position:relative;background:linear-gradient(160deg,rgba(79,136,248,.07),rgba(29,211,176,.03));border:1px solid rgba(79,136,248,.16);border-radius:15px;padding:18px 15px;transition:transform .2s,border-color .2s}
+.news-card:hover{transform:translateY(-4px);border-color:rgba(29,211,176,.35)}
+.news-badge{position:absolute;top:11px;right:11px;font-size:8px;font-weight:800;letter-spacing:.5px;color:#1dd3b0;background:rgba(29,211,176,.12);border:1px solid rgba(29,211,176,.25);padding:2px 6px;border-radius:5px}
+.news-ico{color:#7aa6fb;margin-bottom:12px}
+.news-t{font-size:13px;font-weight:700;margin-bottom:5px;letter-spacing:-.2px}
+.news-s{font-size:11px;line-height:1.55;color:rgba(255,255,255,.36)}
+
+/* ── FAQ ── */
+.faq{padding:10px 0 70px;max-width:760px;margin:0 auto}
+.faq-item{border:1px solid var(--border);border-radius:13px;margin-bottom:10px;background:rgba(255,255,255,.02);overflow:hidden}
+.faq-q{width:100%;text-align:left;background:none;border:none;color:var(--t1);font-family:inherit;font-size:14px;font-weight:600;padding:17px 20px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.faq-q .chev{color:rgba(255,255,255,.4);transition:transform .25s;flex-shrink:0}
+.faq-item.open .chev{transform:rotate(180deg)}
+.faq-a{max-height:0;overflow:hidden;transition:max-height .3s ease}
+.faq-a-in{padding:0 20px 17px;font-size:12.5px;line-height:1.7;color:rgba(255,255,255,.42)}
+.faq-a-in a{color:rgba(79,136,248,.85)}.faq-a-in a:hover{text-decoration:underline}
+
 /* ── DOWNLOAD ── */
-.dl-sec{padding:20px 0 90px}
+.dl-sec{padding:14px 0 80px}
 .dl-card{background:linear-gradient(135deg,rgba(79,136,248,.1),rgba(29,211,176,.06));border:1px solid rgba(79,136,248,.2);border-radius:24px;padding:54px 32px;text-align:center;position:relative;overflow:hidden}
 .dl-card::before{content:'';position:absolute;top:-120px;left:50%;transform:translateX(-50%);width:520px;height:300px;background:radial-gradient(ellipse,rgba(79,136,248,.16),transparent 65%);pointer-events:none}
 .dl-title{font-size:30px;font-weight:900;letter-spacing:-.8px;margin-bottom:12px;position:relative}
@@ -102,16 +150,30 @@ h1 .grad{background:linear-gradient(90deg,#4f88f8,#1dd3b0);-webkit-background-cl
 .dl-note a:hover{text-decoration:underline}
 
 /* ── FOOTER ── */
-footer{border-top:1px solid var(--border);padding:26px 0;background:rgba(6,8,16,.6)}
+footer{border-top:1px solid var(--border);padding:26px 0;background:rgba(6,8,16,.6);position:relative;z-index:2}
 .foot-in{max-width:1080px;margin:0 auto;padding:0 24px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
 .foot-txt{font-size:11.5px;color:rgba(255,255,255,.22)}
 .foot-links{margin-left:auto;display:flex;gap:18px}
 .foot-link{font-size:11.5px;color:rgba(255,255,255,.3);transition:color .15s}
 .foot-link:hover{color:rgba(255,255,255,.7)}
-@media(max-width:920px){.car-btn.prev{left:8px}.car-btn.next{right:8px}h1{font-size:36px}}
+@media(max-width:920px){.car-btn.prev{left:8px}.car-btn.next{right:8px}h1{font-size:36px}.float{display:none}}
+
+/* Fallback : pas d'animations si l'utilisateur les a desactivees */
+@media(prefers-reduced-motion:reduce){
+  .reveal{opacity:1;transform:none;transition:none}
+  .particle,.cta.pulse,.badge-dot{animation:none}
+  .shot-zone{transition:none}
+}
 </style>
 </head>
 <body>
+
+<!-- ═══ FOND ANIME ═══ -->
+<div class="bg-fx" id="bg-fx">
+  <div class="halo h1" data-depth="14"></div>
+  <div class="halo h2" data-depth="22"></div>
+  <div class="halo h3" data-depth="10"></div>
+</div>
 
 <!-- ═══ NAVBAR ═══ -->
 <nav class="nav">
@@ -133,7 +195,8 @@ footer{border-top:1px solid var(--border);padding:26px 0;background:rgba(6,8,16,
     </div>
     <div class="nav-links">
       <a class="nav-link" href="#fonctionnalites">Fonctionnalités</a>
-      <a class="nav-link" href="#captures">Captures</a>
+      <a class="nav-link" href="#nouveautes">Nouveautés</a>
+      <a class="nav-link" href="#faq">FAQ</a>
       <a class="nav-link" href="https://github.com/Advm000/musicdl" target="_blank" rel="noopener">GitHub</a>
       <a class="nav-cta" href="https://github.com/Advm000/musicdl/releases/latest/download/Music-DL-Setup.exe">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -147,14 +210,14 @@ footer{border-top:1px solid var(--border);padding:26px 0;background:rgba(6,8,16,
 <div class="wrap">
   <section class="hero" id="captures">
     <div>
-      <div class="badge-line"><span class="badge-dot"></span> v1.1.0 — Gratuit pour Windows</div>
+      <div class="badge-line"><span class="badge-dot"></span> v1.2 — Gratuit pour Windows</div>
       <h1>Ta musique.<br>Téléchargée.<br><span class="grad">Pour toujours.</span></h1>
       <p class="hero-sub">
         Music DL cherche sur <strong>YouTube Music</strong>, télécharge en <strong>MP3 jusqu'à 320 kbps</strong>
-        avec la vraie pochette de l'album, et lit ta musique <strong>même sans internet</strong>.
+        avec la vraie pochette de l'album, affiche les <strong>paroles synchronisées</strong> et lit ta musique <strong>même sans internet</strong>.
       </p>
       <div class="cta-row">
-        <a class="cta" href="https://github.com/Advm000/musicdl/releases/latest/download/Music-DL-Setup.exe">
+        <a class="cta pulse" href="https://github.com/Advm000/musicdl/releases/latest/download/Music-DL-Setup.exe">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Télécharger pour Windows
         </a>
@@ -165,61 +228,72 @@ footer{border-top:1px solid var(--border);padding:26px 0;background:rgba(6,8,16,
       </div>
       <div class="hero-meta">
         <div class="hm"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>Windows 10 / 11</div>
-        <div class="hm"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>Aucune installation supplémentaire</div>
-        <div class="hm"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>Mises à jour automatiques</div>
+        <div class="hm"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>Aucune dépendance</div>
+        <div class="hm"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>Mises à jour auto</div>
       </div>
     </div>
 
-    <div class="shot-zone">
-      <div class="shot-frame" id="car-frame"></div>
-      <button class="car-btn prev" id="car-prev" aria-label="Capture précédente">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-      </button>
-      <button class="car-btn next" id="car-next" aria-label="Capture suivante">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-      </button>
+    <div class="scene" id="scene">
+      <div class="float" id="floats"></div>
+      <div class="shot-zone" id="shot-zone">
+        <div class="shot-frame" id="car-frame"></div>
+        <button class="car-btn prev" id="car-prev" aria-label="Capture précédente">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <button class="car-btn next" id="car-next" aria-label="Capture suivante">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+      </div>
       <div class="car-foot">
         <div class="car-dots" id="car-dots"></div>
         <div class="car-label" id="car-label"></div>
       </div>
     </div>
   </section>
+
+  <!-- ═══ STATS ═══ -->
+  <section class="stats reveal">
+    <div class="stat"><div class="stat-n"><span class="count" data-to="320">0</span></div><div class="stat-l">kbps maximum</div></div>
+    <div class="stat"><div class="stat-n"><span class="count" data-to="3">0</span>×</div><div class="stat-l">téléchargements parallèles</div></div>
+    <div class="stat"><div class="stat-n"><span class="count" data-to="100">0</span>%</div><div class="stat-l">hors ligne</div></div>
+    <div class="stat"><div class="stat-n">v<span class="count" data-to="12" data-fmt="ver">0</span></div><div class="stat-l">dernière version</div></div>
+  </section>
 </div>
 
 <!-- ═══ FEATURES ═══ -->
 <div class="wrap">
   <section class="features" id="fonctionnalites">
-    <div class="sec-head">
+    <div class="sec-head reveal">
       <div class="sec-title">Tout ce qu'il faut. Rien de plus.</div>
       <div class="sec-sub">Une app de bureau rapide, propre et complète pour ta musique.</div>
     </div>
     <div class="feat-grid">
-      <div class="feat">
+      <div class="feat reveal">
         <div class="feat-ico fi-blue"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></div>
         <div class="feat-title">Recherche YouTube Music</div>
         <div class="feat-sub">Tape un titre, un artiste ou colle un lien YouTube. Les résultats arrivent en quelques secondes avec durée et miniatures.</div>
       </div>
-      <div class="feat">
+      <div class="feat reveal">
         <div class="feat-ico fi-teal"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></div>
         <div class="feat-title">MP3 jusqu'à 320 kbps</div>
         <div class="feat-sub">Téléchargements en parallèle avec progression en direct. La vraie pochette d'album est intégrée dans chaque fichier.</div>
       </div>
-      <div class="feat">
+      <div class="feat reveal">
         <div class="feat-ico fi-pink"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/><path d="M10.71 5.05A16 16 0 0 1 22.56 9"/><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg></div>
         <div class="feat-title">Mode hors ligne</div>
         <div class="feat-sub">Ta bibliothèque, tes playlists et le lecteur fonctionnent à 100% sans connexion. Ta musique t'appartient.</div>
       </div>
-      <div class="feat">
+      <div class="feat reveal">
         <div class="feat-ico fi-teal"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>
         <div class="feat-title">Lecteur intégré</div>
         <div class="feat-sub">Grand lecteur avec pochette, file d'attente, aléatoire, répétition, favoris — et les touches média de ton clavier.</div>
       </div>
-      <div class="feat">
+      <div class="feat reveal">
         <div class="feat-ico fi-blue"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></div>
         <div class="feat-title">Playlists &amp; bibliothèque</div>
         <div class="feat-sub">Organise ta musique en playlists, trie et filtre ta bibliothèque, tout est rangé dans un dossier créé automatiquement.</div>
       </div>
-      <div class="feat">
+      <div class="feat reveal">
         <div class="feat-ico fi-pink"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg></div>
         <div class="feat-title">Mises à jour automatiques</div>
         <div class="feat-sub">L'app te prévient quand une nouvelle version officielle sort, et l'installe en un clic, directement depuis l'app.</div>
@@ -227,13 +301,72 @@ footer{border-top:1px solid var(--border);padding:26px 0;background:rgba(6,8,16,
     </div>
   </section>
 
+  <!-- ═══ NOUVEAUTES v1.2 ═══ -->
+  <section class="news" id="nouveautes">
+    <div class="sec-head reveal">
+      <div class="sec-title">Nouveau dans la v1.2</div>
+      <div class="sec-sub">Cinq ajouts pour une expérience plus riche.</div>
+    </div>
+    <div class="news-grid">
+      <div class="news-card reveal"><span class="news-badge">NEW</span>
+        <div class="news-ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>
+        <div class="news-t">Paroles karaoké</div>
+        <div class="news-s">Paroles synchronisées dans le grand lecteur, ligne par ligne, même hors ligne.</div>
+      </div>
+      <div class="news-card reveal"><span class="news-badge">NEW</span>
+        <div class="news-ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 12 0v1"/><path d="M18 8h4"/><path d="M20 6v4"/></svg></div>
+        <div class="news-t">Page Artiste</div>
+        <div class="news-s">Photo, auditeurs, titres populaires et discographie complète en un clic sur un nom.</div>
+      </div>
+      <div class="news-card reveal"><span class="news-badge">NEW</span>
+        <div class="news-ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="14" y2="6"/><line x1="3" y1="12" x2="14" y2="12"/><line x1="3" y1="18" x2="10" y2="18"/><polyline points="17 8 21 12 17 16"/></svg></div>
+        <div class="news-t">File d'attente</div>
+        <div class="news-s">Panneau latéral, glisser-déposer, « Lire ensuite » et « Ajouter à la file ».</div>
+      </div>
+      <div class="news-card reveal"><span class="news-badge">NEW</span>
+        <div class="news-ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></div>
+        <div class="news-t">Playlists intelligentes</div>
+        <div class="news-s">Favoris, Récents et Plus écoutés, mises à jour toutes seules.</div>
+      </div>
+      <div class="news-card reveal"><span class="news-badge">NEW</span>
+        <div class="news-ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="3"/><circle cx="12" cy="16" r="2.5"/></svg></div>
+        <div class="news-t">Mini-lecteur vertical</div>
+        <div class="news-s">Un lecteur de poche flottant, toujours au-dessus, pour garder la main.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ FAQ ═══ -->
+  <section class="faq" id="faq">
+    <div class="sec-head reveal">
+      <div class="sec-title">Questions fréquentes</div>
+      <div class="sec-sub">L'essentiel avant de te lancer.</div>
+    </div>
+    <div class="faq-item reveal">
+      <button class="faq-q">Windows affiche un avertissement bleu (SmartScreen). C'est normal ?<svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg></button>
+      <div class="faq-a"><div class="faq-a-in">Oui. L'app n'est pas signée par un certificat payant, donc Windows SmartScreen prévient par précaution. Clique sur <strong>Informations complémentaires</strong> puis <strong>Exécuter quand même</strong>. Le fichier provient directement des <a href="https://github.com/Advm000/musicdl/releases" target="_blank" rel="noopener">releases GitHub officielles</a>.</div></div>
+    </div>
+    <div class="faq-item reveal">
+      <button class="faq-q">Faut-il installer autre chose (ffmpeg, Python…) ?<svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg></button>
+      <div class="faq-a"><div class="faq-a-in">Non. Tout est inclus dans l'installateur. Tu télécharges, tu installes, tu écoutes.</div></div>
+    </div>
+    <div class="faq-item reveal">
+      <button class="faq-q">Où sont rangés mes fichiers MP3 ?<svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg></button>
+      <div class="faq-a"><div class="faq-a-in">Dans un dossier <strong>Musique\Music DL</strong> créé automatiquement (modifiable dans les réglages). Les fichiers sont de vrais MP3 lisibles partout, avec pochette et métadonnées.</div></div>
+    </div>
+    <div class="faq-item reveal">
+      <button class="faq-q">C'est gratuit ? Y a-t-il des pubs ?<svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg></button>
+      <div class="faq-a"><div class="faq-a-in">Gratuit, sans pub, sans compte. Music DL est destiné à un usage personnel — respecte les droits d'auteur de ta région.</div></div>
+    </div>
+  </section>
+
   <!-- ═══ DOWNLOAD ═══ -->
   <section class="dl-sec" id="telecharger">
-    <div class="dl-card">
+    <div class="dl-card reveal">
       <div class="dl-title">Prêt à écouter ?</div>
       <div class="dl-sub">Téléchargement gratuit · Windows 10 / 11 · Installation en 30 secondes</div>
       <div class="cta-row" style="justify-content:center;position:relative">
-        <a class="cta" href="https://github.com/Advm000/musicdl/releases/latest/download/Music-DL-Setup.exe">
+        <a class="cta pulse" href="https://github.com/Advm000/musicdl/releases/latest/download/Music-DL-Setup.exe">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Télécharger Music DL
         </a>
@@ -263,10 +396,13 @@ footer{border-top:1px solid var(--border);padding:26px 0;background:rgba(6,8,16,
 </footer>
 
 <script>
+const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const fine = window.matchMedia('(pointer: fine)').matches && window.innerWidth > 920;
+
 /* ── Carrousel ── */
 const SLIDES = [
   { img: 'assets/shot-recherche.png',     label: 'Recherche YouTube Music' },
-  { img: 'assets/shot-albums.png',        label: 'Discographie d\'artiste' },
+  { img: 'assets/shot-albums.png',        label: "Discographie d'artiste" },
   { img: 'assets/shot-album-detail.png',  label: 'Album entier en un clic' },
   { img: 'assets/shot-telechargement.png',label: 'Téléchargements en direct' },
   { img: 'assets/shot-bibliotheque.png',  label: 'Bibliothèque' },
@@ -276,11 +412,10 @@ const frame = document.getElementById('car-frame');
 const dots = document.getElementById('car-dots');
 const label = document.getElementById('car-label');
 let cur = 0, timer = null;
-
 SLIDES.forEach((s, i) => {
   const d = document.createElement('div');
   d.className = 'slide' + (i === 0 ? ' on' : '');
-  d.innerHTML = `<img src="${s.img}" alt="${s.label}" loading="${i === 0 ? 'eager' : 'lazy'}">`;
+  d.innerHTML = '<img src="' + s.img + '" alt="' + s.label + '" loading="' + (i === 0 ? 'eager' : 'lazy') + '">';
   frame.appendChild(d);
   const b = document.createElement('button');
   b.className = 'car-dot' + (i === 0 ? ' on' : '');
@@ -299,6 +434,111 @@ document.getElementById('car-prev').addEventListener('click', () => { go(cur - 1
 document.getElementById('car-next').addEventListener('click', () => { go(cur + 1); restart(); });
 label.textContent = SLIDES[0].label;
 restart();
+
+/* ── Pochettes flottantes (couches de profondeur) ── */
+const GRADS = ['linear-gradient(135deg,#4f88f8,#1dd3b0)','linear-gradient(135deg,#7c3aed,#4f88f8)','linear-gradient(135deg,#1dd3b0,#0ea5e9)','linear-gradient(135deg,#ff6b8a,#7c3aed)','linear-gradient(135deg,#f59e0b,#ff6b8a)'];
+const TILES = [
+  { x: -8,  y: 4,  s: 78, d: 34 }, { x: 86, y: -6, s: 64, d: 46 },
+  { x: 92,  y: 60, s: 86, d: 30 }, { x: -12, y: 66, s: 58, d: 40 },
+  { x: 50,  y: -14,s: 50, d: 52 }
+];
+const NOTE = '<span class="note"><svg width="40%" height="40%" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></span>';
+const floatsBox = document.getElementById('floats');
+const floats = [];
+if (fine) {
+  TILES.forEach((t, i) => {
+    const el = document.createElement('div');
+    el.className = 'float';
+    el.style.cssText = 'left:' + t.x + '%;top:' + t.y + '%;width:' + t.s + 'px;height:' + t.s + 'px;background:' + GRADS[i % GRADS.length] + ';opacity:.92';
+    el.dataset.depth = t.d;
+    el.innerHTML = NOTE;
+    floatsBox.appendChild(el);
+    floats.push(el);
+  });
+}
+
+/* ── Particules ── */
+if (!reduce) {
+  const fx = document.getElementById('bg-fx');
+  for (let i = 0; i < 16; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.style.left = Math.random() * 100 + '%';
+    p.style.top = (20 + Math.random() * 80) + '%';
+    p.style.animationDuration = (5 + Math.random() * 6) + 's';
+    p.style.animationDelay = (-Math.random() * 8) + 's';
+    fx.appendChild(p);
+  }
+}
+
+/* ── Parallaxe souris + inclinaison 3D du cadre ── */
+const shotZone = document.getElementById('shot-zone');
+const halos = document.querySelectorAll('.halo');
+let tRX = 0, tRY = 0, RX = 0, RY = 0, mX = 0, mY = 0, cmX = 0, cmY = 0, raf = null;
+function onMove(e) {
+  const nx = (e.clientX / window.innerWidth) - 0.5;
+  const ny = (e.clientY / window.innerHeight) - 0.5;
+  tRY = nx * 16; tRX = -ny * 12; mX = nx; mY = ny;
+  if (!raf) raf = requestAnimationFrame(loop);
+}
+function loop() {
+  RX += (tRX - RX) * 0.08; RY += (tRY - RY) * 0.08;
+  cmX += (mX - cmX) * 0.06; cmY += (mY - cmY) * 0.06;
+  if (shotZone) shotZone.style.transform = 'rotateX(' + RX.toFixed(2) + 'deg) rotateY(' + RY.toFixed(2) + 'deg)';
+  floats.forEach((el) => { const d = +el.dataset.depth; el.style.transform = 'translate(' + (cmX * d).toFixed(1) + 'px,' + (cmY * d).toFixed(1) + 'px)'; });
+  halos.forEach((el) => { const d = +el.dataset.depth; el.style.transform = 'translate(' + (cmX * d).toFixed(1) + 'px,' + (cmY * d).toFixed(1) + 'px)'; });
+  if (Math.abs(tRX - RX) > 0.05 || Math.abs(tRY - RY) > 0.05 || Math.abs(mX - cmX) > 0.002 || Math.abs(mY - cmY) > 0.002) {
+    raf = requestAnimationFrame(loop);
+  } else { raf = null; }
+}
+if (fine && !reduce) window.addEventListener('mousemove', onMove, { passive: true });
+
+/* ── Parallaxe au scroll (halos) ── */
+if (!reduce) {
+  let ticking = false;
+  window.addEventListener('scroll', () => {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(() => {
+      const y = window.scrollY;
+      halos.forEach((el, i) => { el.style.marginTop = (y * (0.04 + i * 0.02)).toFixed(0) + 'px'; });
+      ticking = false;
+    });
+  }, { passive: true });
+}
+
+/* ── Révélation au scroll ── */
+const io = new IntersectionObserver((entries) => {
+  entries.forEach((en) => { if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); } });
+}, { threshold: 0.14 });
+document.querySelectorAll('.reveal').forEach((el) => io.observe(el));
+
+/* ── Compteurs animés ── */
+function animCount(el) {
+  const to = +el.dataset.to, fmt = el.dataset.fmt;
+  if (reduce) { el.textContent = fmt === 'ver' ? (to / 10).toFixed(1) : to; return; }
+  const dur = 1100, t0 = performance.now();
+  function step(now) {
+    const p = Math.min(1, (now - t0) / dur);
+    const e = 1 - Math.pow(1 - p, 3);
+    el.textContent = fmt === 'ver' ? (to / 10 * e).toFixed(1) : Math.round(to * e);
+    if (p < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+const cio = new IntersectionObserver((entries) => {
+  entries.forEach((en) => { if (en.isIntersecting) { animCount(en.target); cio.unobserve(en.target); } });
+}, { threshold: 0.5 });
+document.querySelectorAll('.count').forEach((el) => cio.observe(el));
+
+/* ── FAQ accordéon ── */
+document.querySelectorAll('.faq-item').forEach((item) => {
+  const q = item.querySelector('.faq-q'), a = item.querySelector('.faq-a');
+  q.addEventListener('click', () => {
+    const open = item.classList.toggle('open');
+    a.style.maxHeight = open ? a.scrollHeight + 'px' : '0';
+  });
+});
 </script>
 </body>
 </html>
