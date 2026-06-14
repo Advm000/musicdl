@@ -24,7 +24,8 @@ const DEFAULT_STORE = {
   settings: { folder: path.join(app.getPath('music'), 'Music DL'), quality: '192', format: 'mp3', closeToTray: true },
   library: [],
   playlists: [],
-  recents: []
+  recents: [],
+  plays: {}
 };
 let store = loadStore();
 
@@ -35,7 +36,8 @@ function loadStore() {
       settings: Object.assign({}, DEFAULT_STORE.settings, raw.settings),
       library: Array.isArray(raw.library) ? raw.library : [],
       playlists: Array.isArray(raw.playlists) ? raw.playlists : [],
-      recents: Array.isArray(raw.recents) ? raw.recents : []
+      recents: Array.isArray(raw.recents) ? raw.recents : [],
+      plays: (raw.plays && typeof raw.plays === 'object' && !Array.isArray(raw.plays)) ? raw.plays : {}
     };
   } catch (_) {
     return JSON.parse(JSON.stringify(DEFAULT_STORE));
@@ -903,8 +905,16 @@ ipcMain.handle('state:get', () => ({
   settings: store.settings,
   library: store.library,
   playlists: store.playlists,
-  recents: store.recents
+  recents: store.recents,
+  plays: store.plays
 }));
+
+ipcMain.handle('plays:bump', (_e, id) => {
+  if (!id) return { ok: false };
+  store.plays[id] = (store.plays[id] || 0) + 1;
+  saveStore();
+  return { ok: true, plays: store.plays[id] };
+});
 
 ipcMain.handle('search:run', (_e, query, kind) => searchMusic(query, kind));
 ipcMain.handle('search:more', async (_e, token, kind) => {
@@ -943,6 +953,7 @@ ipcMain.handle('library:delete', (_e, id) => {
   }
   store.library = store.library.filter((x) => x.id !== id);
   store.playlists.forEach((p) => { p.tracks = p.tracks.filter((tid) => tid !== id); });
+  delete store.plays[id];
   saveStore();
   return { ok: true };
 });
@@ -1331,6 +1342,45 @@ async function runQueueE2E() {
   app.exit(report.ok ? 0 : 1);
 }
 
+/* ══ E2E PLAYLISTS INTELLIGENTES : compteur d'ecoute + 3 cartes auto ══ */
+async function runSmartE2E() {
+  const js = (code) => win.webContents.executeJavaScript(code, true);
+  const shotDir = process.env.MUSICDL_SHOT_DIR || path.join(__dirname, '..', 'shots');
+  const report = { ok: false, steps: [] };
+  const st = async () => JSON.parse(await js('MDL_TEST.state()'));
+  try {
+    await sleep(2500);
+    await js('MDL_TEST.goLibrary(); MDL_TEST.playFirst();');
+    await sleep(2200);
+    let s = await st();
+    if (!s.playing) throw new Error('Lecture non demarree (bibliotheque vide ?)');
+    const before = s.playCount;
+    await js('MDL_TEST.seekTo(0.55)'); // au-dela de 50% -> declenche le compteur
+    let counted = false;
+    for (let i = 0; i < 14; i++) { await sleep(700); s = await st(); if (s.playCount > before) { counted = true; break; } }
+    if (!counted) throw new Error('Compteur d ecoute non incremente (' + before + ' -> ' + s.playCount + ')');
+    report.steps.push('compteur d ecoute: ' + before + ' -> ' + s.playCount);
+    await js('MDL_TEST.goPlaylists()');
+    await sleep(800);
+    const n = await js('MDL_TEST.smartCardCount()');
+    report.smartCards = n;
+    report.steps.push('cartes auto presentes: ' + n);
+    if (n !== 3) throw new Error('Attendu 3 cartes auto, obtenu ' + n);
+    await shot('smart-1-grid');
+    await js("MDL_TEST.openSmart('top')");
+    await sleep(800);
+    s = await st();
+    report.steps.push('detail ouvert: ' + s.colTitlePld + ' (' + s.pldTracks + ' titre[s])');
+    if (s.colTitlePld !== 'Plus écoutés') throw new Error('Detail "Plus ecoutes" non ouvert: ' + s.colTitlePld);
+    if (s.pldTracks < 1) throw new Error('"Plus ecoutes" vide alors qu un titre a ete ecoute');
+    await shot('smart-2-top');
+    report.ok = true;
+  } catch (e) { report.error = String(e && e.message || e); try { await shot('smart-9-erreur'); } catch (_) {} }
+  fs.mkdirSync(shotDir, { recursive: true });
+  fs.writeFileSync(path.join(shotDir, 'smart-report.json'), JSON.stringify(report, null, 2));
+  app.exit(report.ok ? 0 : 1);
+}
+
 /* ══ E2E TORTURE : clique tout dans tous les états, traque les erreurs JS ══ */
 async function runTortureE2E() {
   const js = (code) => win.webContents.executeJavaScript(code, true);
@@ -1500,6 +1550,8 @@ if (!gotLock) {
       win.webContents.once('did-finish-load', () => runArtistE2E());
     } else if (process.env.MUSICDL_E2E_QUEUE) {
       win.webContents.once('did-finish-load', () => runQueueE2E());
+    } else if (process.env.MUSICDL_E2E_SMART) {
+      win.webContents.once('did-finish-load', () => runSmartE2E());
     }
   });
 

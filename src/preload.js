@@ -32,6 +32,7 @@ contextBridge.exposeInMainWorld('mdl', {
   revealTrack: (id) => ipcRenderer.invoke('library:reveal', id),
   openFolder: () => ipcRenderer.invoke('folder:open'),
   setFavorite: (id, on) => ipcRenderer.invoke('fav:set', { id, on }),
+  bumpPlay: (id) => ipcRenderer.invoke('plays:bump', id),
 
   // Playlists
   createPlaylist: (name) => ipcRenderer.invoke('playlist:create', name),

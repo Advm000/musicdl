@@ -422,6 +422,14 @@ img{-webkit-user-drag:none;user-select:none}
 .qrow-x:hover{background:rgba(224,69,90,.16);color:#ff8a9a}
 .qrow-handle{color:rgba(255,255,255,.2);font-size:12px;flex-shrink:0;letter-spacing:-3px;cursor:grab;padding-right:2px}
 
+/* Playlists intelligentes */
+.pl-cover.smart-cover{display:flex;align-items:center;justify-content:center;position:relative}
+.smart-cover.fav{background:linear-gradient(140deg,#3a1430,#5a1d3e);color:#ff8aa6}
+.smart-cover.recent{background:linear-gradient(140deg,#10243f,#143a5a);color:#6bb6ff}
+.smart-cover.top{background:linear-gradient(140deg,#3a2410,#5a3a14);color:#ffb35a}
+.smart-cover svg{filter:drop-shadow(0 4px 10px rgba(0,0,0,.35))}
+.pl-auto-badge{position:absolute;top:8px;left:8px;font-size:8.5px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;padding:3px 7px;border-radius:5px;background:rgba(0,0,0,.42);color:#fff}
+
 /* Suggestions de frappe */
 .suggest-box{position:absolute;top:42px;left:0;right:0;background:#0d1326;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:5px;box-shadow:0 16px 48px rgba(0,0,0,.6);z-index:220;display:none}
 .suggest-box.on{display:block}

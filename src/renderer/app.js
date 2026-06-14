@@ -7,7 +7,7 @@ const $ = (s) => document.querySelector(s);
 const $$ = (s) => Array.from(document.querySelectorAll(s));
 
 /* ── État global ── */
-let appState = { version: '', settings: {}, library: [], playlists: [], recents: [] };
+let appState = { version: '', settings: {}, library: [], playlists: [], recents: [], plays: {} };
 let searchResults = [];
 let lastSearchError = null;
 let lastDlError = null;
@@ -85,6 +85,10 @@ function goPage(n) {
     $('#ni' + i).classList.toggle('on', i === n);
     $('#pg' + i).classList.toggle('on', i === n);
   });
+  // Rafraichir le contenu a l'arrivee (la bibliotheque et surtout les playlists
+  // intelligentes doivent refleter les favoris / ecoutes les plus recents).
+  if (n === 1) renderLibrary();
+  else if (n === 2) { if (currentPlId) renderPlaylistDetail(); else renderPlaylists(); }
 }
 $$('.ni').forEach((el) => el.addEventListener('click', () => goPage(+el.dataset.page)));
 $('#goto-search-btn').addEventListener('click', () => goPage(0));
@@ -962,9 +966,57 @@ function mosaicHtml(pl, cellSvgSize) {
   return cells;
 }
 
+/* ── Playlists intelligentes (virtuelles, recalculees au rendu) ── */
+function smartPlaylists() {
+  const lib = appState.library;
+  const plays = appState.plays || {};
+  return [
+    { id: '__fav', name: 'Favoris', virtual: true, smartIcon: 'fav', tracks: lib.filter((t) => t.favorite).map((t) => t.id) },
+    { id: '__recent', name: 'Récents', virtual: true, smartIcon: 'recent', tracks: lib.slice().sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0)).slice(0, 25).map((t) => t.id) },
+    { id: '__top', name: 'Plus écoutés', virtual: true, smartIcon: 'top', tracks: lib.filter((t) => (plays[t.id] || 0) > 0).sort((a, b) => (plays[b.id] || 0) - (plays[a.id] || 0)).slice(0, 25).map((t) => t.id) }
+  ];
+}
+function findPlaylist(id) {
+  if (id && id.indexOf('__') === 0) return smartPlaylists().find((p) => p.id === id);
+  return appState.playlists.find((p) => p.id === id);
+}
+function smartIconSvg(which) {
+  if (which === 'fav') return '<svg viewBox="0 0 24 24" fill="currentColor" width="32" height="32"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>';
+  if (which === 'recent') return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="32" height="32"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>';
+  return '<svg viewBox="0 0 24 24" fill="currentColor" width="30" height="30"><path d="M12 2c1.2 3-1 5-2 6-1.2 1.2-3 2.8-3 6a5 5 0 0 0 10 0c0-1.6-.6-3-1.6-4 .3 1 .2 2-.6 2.7.1-2-1.6-3.2-1.6-5.2-2 1.2-3 3.3-3 5.3a5 5 0 1 1-3-9.8C9 6 11 4.5 12 2z"/></svg>';
+}
+function buildSmartCard(sp) {
+  const tracks = sp.tracks.map(trackById).filter(Boolean);
+  const dur = tracks.reduce((s, t) => s + (t.duration || 0), 0);
+  const card = document.createElement('div');
+  card.className = 'pl-card smart-card';
+  card.innerHTML = `
+    <div class="pl-cover smart-cover ${sp.smartIcon}">${smartIconSvg(sp.smartIcon)}<span class="pl-auto-badge">Auto</span></div>
+    <div class="pl-foot">
+      <div class="pl-foot-info">
+        <div class="pl-name">${esc(sp.name)}</div>
+        <div class="pl-meta">${tracks.length} titre${tracks.length > 1 ? 's' : ''} · <span>${fmtDurLong(dur)}</span></div>
+      </div>
+      <div class="pl-foot-acts">
+        <button class="pl-act" data-act="shuffle" title="Lecture aléatoire"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M16 3h5v5"/><path d="m21 3-7 7"/><path d="M16 21h5v-5"/><path d="m21 21-7-7"/><path d="M3 3l4 4"/><path d="M3 21l4-4"/></svg></button>
+      </div>
+    </div>`;
+  card.addEventListener('click', (e) => {
+    const btn = e.target.closest('.pl-act');
+    if (!btn) { openPlaylist(sp.id); return; }
+    const ids = sp.tracks.filter(trackById);
+    if (!ids.length) { showToast('Aucun titre pour le moment', 'info'); return; }
+    shuffleOn = true;
+    startQueue(shuffleArray(ids.slice()), 0);
+    syncPlayerUI();
+  });
+  return card;
+}
+
 function renderPlaylists() {
   const grid = $('#pl-grid');
   grid.innerHTML = '';
+  smartPlaylists().forEach((sp) => grid.appendChild(buildSmartCard(sp)));
   appState.playlists.forEach((pl) => {
     const tracks = pl.tracks.map(trackById).filter(Boolean);
     const dur = tracks.reduce((s, t) => s + (t.duration || 0), 0);
@@ -1044,11 +1096,13 @@ function closePlaylist() {
 $('#pld-back').addEventListener('click', closePlaylist);
 
 function renderPlaylistDetail() {
-  const pl = appState.playlists.find((p) => p.id === currentPlId);
+  const pl = findPlaylist(currentPlId);
   if (!pl) { closePlaylist(); return; }
   const tracks = pl.tracks.map(trackById).filter(Boolean);
   $('#pld-mosaic').innerHTML = mosaicHtml(pl, 13).replace(/pl-cover-cell/g, 'pld-mosaic-cell');
   $('#pld-name').textContent = pl.name;
+  $('#pld-label').innerHTML = `<svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg> ${pl.virtual ? 'Playlist auto' : 'Playlist'}`;
+  $('#pld-rename').style.display = pl.virtual ? 'none' : '';
   const dur = tracks.reduce((s, t) => s + (t.duration || 0), 0);
   const artists = [...new Set(tracks.map((t) => t.artist).filter(Boolean))].slice(0, 3).join(', ');
   $('#pld-sub').innerHTML = `
@@ -1063,16 +1117,16 @@ function renderPlaylistDetail() {
     box.innerHTML = `<div class="empty-state"><div class="empty-title">Playlist vide</div><div class="empty-sub">Ajoute des titres depuis la bibliothèque avec le bouton +</div></div>`;
     return;
   }
-  tracks.forEach((t, i) => box.appendChild(buildRow(t, i, { context: 'pl', list: tracks, plId: pl.id })));
+  tracks.forEach((t, i) => box.appendChild(buildRow(t, i, { context: pl.virtual ? 'lib' : 'pl', list: tracks, plId: pl.id })));
 }
 $('#pld-play').addEventListener('click', () => {
-  const pl = appState.playlists.find((p) => p.id === currentPlId);
+  const pl = findPlaylist(currentPlId);
   if (!pl) return;
   const ids = pl.tracks.filter(trackById);
   if (ids.length) startQueue(ids, 0);
 });
 $('#pld-shuffle').addEventListener('click', () => {
-  const pl = appState.playlists.find((p) => p.id === currentPlId);
+  const pl = findPlaylist(currentPlId);
   if (!pl) return;
   const ids = pl.tracks.filter(trackById);
   if (!ids.length) return;
@@ -1081,8 +1135,8 @@ $('#pld-shuffle').addEventListener('click', () => {
   syncPlayerUI();
 });
 $('#pld-rename').addEventListener('click', () => {
-  const pl = appState.playlists.find((p) => p.id === currentPlId);
-  if (!pl) return;
+  const pl = findPlaylist(currentPlId);
+  if (!pl || pl.virtual) return;
   askInput({ title: 'Renommer la playlist', label: 'Nom de la playlist', value: pl.name, okLabel: 'Renommer' }, async (name) => {
     await window.mdl.renamePlaylist(pl.id, name);
     pl.name = name;
@@ -1116,12 +1170,14 @@ function startQueue(ids, index) {
 
 let failStreak = 0;          // nb d'échecs consécutifs (anti boucle infinie)
 let lastFailedSrc = null;    // évite de traiter 2× le même échec (play().catch + event error)
+let playCountedId = null;    // id deja compte pour la lecture en cours (1 incrément par lecture)
 
 function loadTrack(id) {
   const t = trackById(id);
   if (!t) { onLoadFail('Titre introuvable'); return; }
   currentTrack = t;
   currentTrack.preview = false;
+  playCountedId = null;   // nouvelle lecture -> compteur d'ecoute rearme
   // Si le minuteur n'est pas en fondu, on garde le volume normal sur le nouveau titre
   if (preFadeVolume != null && sleepDeadline === 0) { audio.volume = preFadeVolume; preFadeVolume = null; }
   audio.src = local(t.file);
@@ -1284,7 +1340,19 @@ audio.addEventListener('timeupdate', () => {
   $('#time-tot').textContent = fmtDur(tot);
   $('#gl-time-tot').textContent = fmtDur(tot);
   syncLyrics(audio.currentTime || 0);
+  // Compteur d'ecoute : un titre lu au-dela de 50% compte pour une ecoute (hors preecoute)
+  if (currentTrack && !currentTrack.preview && playCountedId !== currentTrack.id
+      && audio.duration && audio.currentTime / audio.duration >= 0.5) {
+    bumpPlay(currentTrack.id);
+  }
 });
+
+function bumpPlay(id) {
+  playCountedId = id;
+  appState.plays[id] = (appState.plays[id] || 0) + 1;
+  window.mdl.bumpPlay(id);
+  if (currentPage === 2 && !currentPlId) renderPlaylists();  // maj live "Plus ecoutes"
+}
 audio.addEventListener('ended', () => {
   if (sleepEoq && playPos >= playQueue.length - 1) {
     cancelSleep();
@@ -1885,6 +1953,9 @@ window.MDL_TEST = {
   playNextId: (id) => playNext(id),
   addQueueId: (id) => addToQueue(id),
   clearQueue: () => clearQueueExceptCurrent(),
+  smartCardCount: () => $$('#pl-grid .smart-card').length,
+  openSmart: (which) => openPlaylist('__' + which),
+  playCountFor: (id) => appState.plays[id] || 0,
   downloadCollection: () => $('#col-dl-all').click(),
   seekTo: (ratio) => { if (audio.duration) audio.currentTime = ratio * audio.duration; },
   toggleFav: () => { if (currentTrack) toggleFavorite(currentTrack.id); },
@@ -1948,6 +2019,9 @@ window.MDL_TEST = {
     artistTop: artistView ? artistView.topSongs.length : 0,
     artistAlbums: artistView ? artistView.albums.length : 0,
     queuePanelOpen: $('#qpanel').classList.contains('on'),
+    playCount: currentTrack ? (appState.plays[currentTrack.id] || 0) : 0,
+    colTitlePld: (findPlaylist(currentPlId) || {}).name || null,
+    pldTracks: (() => { const p = findPlaylist(currentPlId); return p ? p.tracks.filter(trackById).length : 0; })(),
     hasMore: !!searchContinuation,
     searchError: lastSearchError,
     queue: queueSnap.length,
