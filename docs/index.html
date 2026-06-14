@@ -19,17 +19,17 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
   --bg:#080910;
-  --panel:rgba(255,255,255,.026);
-  --panel-2:rgba(255,255,255,.05);
-  --border:rgba(255,255,255,.09);
-  --border-2:rgba(255,255,255,.16);
+  --panel:rgba(255,255,255,.03);
+  --panel-2:rgba(255,255,255,.055);
+  --border:rgba(255,255,255,.1);
+  --border-2:rgba(255,255,255,.18);
   --text:#f4f6fb;
   --text-2:rgba(236,240,250,.64);
   --text-3:rgba(236,240,250,.4);
   --blue:#4f88f8;
   --blue-press:#3d77ec;
   --teal:#1dd3b0;
-  --radius:20px;
+  --radius:18px;
   --maxw:1160px;
   --ease:cubic-bezier(.16,1,.3,1);
 }
@@ -40,12 +40,11 @@ body{
   font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
   overflow-x:hidden;min-height:100vh;
 }
-/* halos d'ambiance statiques, tres discrets */
 body::before{
   content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
   background:
-    radial-gradient(700px 460px at 22% 8%,rgba(79,136,248,.16),transparent 70%),
-    radial-gradient(680px 480px at 86% 26%,rgba(29,211,176,.10),transparent 72%);
+    radial-gradient(720px 460px at 20% 4%,rgba(79,136,248,.16),transparent 70%),
+    radial-gradient(700px 500px at 88% 24%,rgba(29,211,176,.10),transparent 72%);
 }
 a{text-decoration:none;color:inherit}
 img{max-width:100%;display:block}
@@ -56,11 +55,8 @@ img{max-width:100%;display:block}
   height:50px;padding:0 22px;border-radius:12px;font-size:15px;font-weight:600;letter-spacing:-.1px;
   cursor:pointer;border:1px solid transparent;overflow:hidden;
   transition:transform .2s var(--ease),background .2s,border-color .2s,box-shadow .2s;white-space:nowrap}
-.btn-primary{background:var(--blue);color:#fff;
-  box-shadow:0 1px 0 rgba(255,255,255,.2) inset,0 10px 26px -10px rgba(79,136,248,.8)}
-.btn-primary:hover{background:var(--blue-press);transform:translateY(-2px);
-  box-shadow:0 1px 0 rgba(255,255,255,.2) inset,0 16px 36px -10px rgba(79,136,248,.85)}
-/* sheen au survol (subtil, pro) */
+.btn-primary{background:var(--blue);color:#fff;box-shadow:0 1px 0 rgba(255,255,255,.2) inset,0 10px 26px -10px rgba(79,136,248,.8)}
+.btn-primary:hover{background:var(--blue-press);transform:translateY(-2px);box-shadow:0 1px 0 rgba(255,255,255,.2) inset,0 16px 36px -10px rgba(79,136,248,.85)}
 .btn-primary::after{content:'';position:absolute;top:0;left:-130%;width:60%;height:100%;
   background:linear-gradient(100deg,transparent,rgba(255,255,255,.28),transparent);transform:skewX(-18deg);transition:left .6s var(--ease)}
 .btn-primary:hover::after{left:140%}
@@ -68,61 +64,81 @@ img{max-width:100%;display:block}
 .btn-ghost:hover{background:rgba(255,255,255,.09);transform:translateY(-2px)}
 .btn-sm{height:40px;padding:0 16px;font-size:14px;border-radius:10px}
 
-/* ── NAV ── */
-.nav{position:sticky;top:0;z-index:50;backdrop-filter:saturate(160%) blur(14px);-webkit-backdrop-filter:saturate(160%) blur(14px);
-  background:rgba(8,9,16,.6);border-bottom:1px solid transparent;transition:border-color .25s,background .25s}
-.nav.scrolled{border-bottom-color:var(--border);background:rgba(8,9,16,.82)}
-.nav-in{max-width:var(--maxw);margin:0 auto;padding:0 26px;height:66px;display:flex;align-items:center;gap:14px}
+/* ── NAV (barre flottante bento) ── */
+.nav-wrap{position:sticky;top:14px;z-index:50;padding:14px 26px 0}
+.nav{max-width:var(--maxw);margin:0 auto;height:62px;display:flex;align-items:center;gap:14px;padding:0 14px 0 14px;
+  border:1px solid var(--border);border-radius:16px;background:rgba(12,14,22,.68);
+  backdrop-filter:saturate(160%) blur(16px);-webkit-backdrop-filter:saturate(160%) blur(16px);
+  box-shadow:0 10px 30px -16px rgba(0,0,0,.7);transition:border-color .25s,background .25s,box-shadow .25s}
+.nav.scrolled{background:rgba(12,14,22,.85);border-color:var(--border-2);box-shadow:0 14px 38px -18px rgba(0,0,0,.85)}
 .brand{display:flex;align-items:center;gap:11px}
 .brand-ico{width:36px;height:36px;border-radius:10px;background:linear-gradient(140deg,var(--blue),var(--teal));
   display:flex;align-items:center;justify-content:center;box-shadow:0 5px 16px -3px rgba(79,136,248,.55)}
-.brand-name{font-size:16px;font-weight:700;letter-spacing:-.3px}
-.brand-sub{font-size:10px;color:var(--text-3);margin-top:1px;letter-spacing:.2px}
+.brand-name{font-size:16px;font-weight:700;letter-spacing:-.3px;line-height:1.1}
+.brand-sub{font-size:10px;color:var(--text-3);letter-spacing:.2px}
 .nav-center{margin:0 auto;display:flex;align-items:center;gap:4px}
 .nav-link{padding:9px 14px;border-radius:9px;font-size:14px;font-weight:500;color:var(--text-3);transition:color .15s,background .15s}
 .nav-link:hover{color:var(--text);background:var(--panel-2)}
-@media(max-width:780px){.nav-center{display:none}.nav-in{justify-content:space-between}}
+@media(max-width:780px){.nav-center{display:none}.nav{justify-content:space-between}}
 
 /* ── HERO ── */
-.hero{display:grid;grid-template-columns:1.02fr 1.1fr;gap:34px;align-items:stretch;padding:64px 0 30px}
-@media(max-width:940px){.hero{grid-template-columns:1fr;gap:24px;padding:44px 0 20px}}
+.hero{display:grid;grid-template-columns:1.02fr 1.12fr;gap:30px;align-items:stretch;padding:54px 0 30px}
+@media(max-width:940px){.hero{grid-template-columns:1fr;gap:22px;padding:38px 0 20px}}
 
-/* panneau gauche (contenu) */
-.hero-card{position:relative;background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.012));
-  border:1px solid var(--border);border-radius:24px;padding:42px 40px;display:flex;flex-direction:column;justify-content:center;
+/* panneau gauche */
+.hero-card{position:relative;background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.014));
+  border:1px solid var(--border-2);border-radius:24px;padding:42px 40px;display:flex;flex-direction:column;justify-content:center;
   box-shadow:0 30px 80px -50px rgba(0,0,0,.9)}
 @media(max-width:560px){.hero-card{padding:32px 26px}}
 .badge{display:inline-flex;align-items:center;gap:8px;align-self:flex-start;padding:7px 13px;border-radius:99px;
   background:rgba(29,211,176,.09);border:1px solid rgba(29,211,176,.22);color:var(--teal);font-size:12.5px;font-weight:600;margin-bottom:22px}
-.badge .pip{width:7px;height:7px;border-radius:50%;background:var(--teal);box-shadow:0 0 0 0 rgba(29,211,176,.6);animation:pip 2.4s ease-out infinite}
+.badge .pip{width:7px;height:7px;border-radius:50%;background:var(--teal);animation:pip 2.4s ease-out infinite}
 @keyframes pip{0%{box-shadow:0 0 0 0 rgba(29,211,176,.5)}70%,100%{box-shadow:0 0 0 7px rgba(29,211,176,0)}}
-h1{font-size:clamp(2.15rem,3.6vw,3.05rem);font-weight:800;letter-spacing:-.03em;line-height:1.08;margin-bottom:18px}
+h1{font-size:clamp(2.1rem,3.5vw,3rem);font-weight:800;letter-spacing:-.03em;line-height:1.08;margin-bottom:18px}
 h1 .grad{background:linear-gradient(100deg,var(--blue) 10%,var(--teal) 90%);background-size:200% auto;
   -webkit-background-clip:text;background-clip:text;color:transparent;animation:shimmer 7s ease-in-out infinite}
 @keyframes shimmer{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
-.lead{font-size:clamp(1rem,1.3vw,1.12rem);line-height:1.65;color:var(--text-2);max-width:42ch;margin-bottom:30px}
+.lead{font-size:clamp(1rem,1.3vw,1.1rem);line-height:1.65;color:var(--text-2);max-width:42ch;margin-bottom:30px}
 .hero-cta{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:24px}
 .hero-meta{display:flex;gap:8px 20px;flex-wrap:wrap;color:var(--text-3);font-size:13px}
 .hero-meta span{display:inline-flex;align-items:center;gap:7px}
 .hero-meta svg{color:var(--teal)}
 
-/* panneau droit (image) */
-.hero-visual{position:relative;display:flex;align-items:center;justify-content:center}
-.hero-visual::before{content:'';position:absolute;inset:8% 4%;z-index:0;border-radius:40px;
-  background:radial-gradient(circle at 50% 45%,rgba(79,136,248,.32),rgba(29,211,176,.12) 45%,transparent 70%);
-  filter:blur(36px);animation:breathe 8s ease-in-out infinite}
+/* panneau droit : carrousel */
+.hero-visual{position:relative;display:flex;flex-direction:column;justify-content:center}
+.hero-visual::before{content:'';position:absolute;inset:6% 2%;z-index:0;border-radius:40px;
+  background:radial-gradient(circle at 50% 45%,rgba(79,136,248,.3),rgba(29,211,176,.12) 45%,transparent 70%);
+  filter:blur(38px);animation:breathe 8s ease-in-out infinite}
 @keyframes breathe{0%,100%{opacity:.7;transform:scale(.98)}50%{opacity:1;transform:scale(1.05)}}
-.float{position:relative;z-index:1;width:100%;animation:floaty 7s ease-in-out infinite;animation-delay:1.1s}
-@keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
+.car-wrap{position:relative;z-index:1;animation:floaty 7s ease-in-out infinite;animation-delay:1.1s}
+.hero-visual:hover .car-wrap{animation-play-state:paused}
+@keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
 .win{border:1px solid var(--border-2);border-radius:16px;overflow:hidden;background:#0b0d15;
   box-shadow:0 50px 120px -40px rgba(0,0,0,.92),0 0 0 1px rgba(255,255,255,.02)}
 .win-bar{display:flex;align-items:center;gap:8px;padding:11px 15px;border-bottom:1px solid var(--border);background:rgba(255,255,255,.02)}
 .tl{width:11px;height:11px;border-radius:50%}.tl.r{background:#ff5f57}.tl.y{background:#febc2e}.tl.g{background:#28c840}
 .win-title{margin-left:8px;font-size:12px;color:var(--text-3);font-weight:500}
-.win img{width:100%;height:auto;background:#06080f}
+.car{position:relative;aspect-ratio:1120/690;background:#06080f}
+.slide{position:absolute;inset:0;opacity:0;transition:opacity .55s var(--ease)}
+.slide.on{opacity:1}
+.slide img{width:100%;height:100%;object-fit:cover;display:block}
+.car-arr{position:absolute;top:50%;transform:translateY(-50%);width:40px;height:40px;border-radius:50%;
+  border:1px solid var(--border-2);background:rgba(11,13,21,.82);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  color:var(--text-2);display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:5;
+  transition:background .18s,color .18s,border-color .18s,box-shadow .18s,transform .18s}
+.car-arr:hover{background:var(--blue);color:#fff;border-color:transparent;box-shadow:0 8px 22px -6px rgba(79,136,248,.7);transform:translateY(-50%) scale(1.06)}
+.car-arr.prev{left:-20px}.car-arr.next{right:-20px}
+@media(max-width:600px){.car-arr.prev{left:8px}.car-arr.next{right:8px}}
+.car-foot{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:18px;position:relative;z-index:1}
+.car-dots{display:flex;gap:7px}
+.car-dot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.18);border:none;cursor:pointer;padding:0;
+  transition:background .2s,width .2s var(--ease)}
+.car-dot.on{background:var(--blue);width:22px;border-radius:5px}
+.car-label{font-size:12px;color:var(--text-3);font-weight:600;min-width:130px;text-align:left}
+@media(max-width:600px){.car-label{display:none}}
 
 /* ── CARTES (rangee de 5) ── */
-.cards{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;padding:36px 0 70px}
+.cards{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;padding:40px 0 70px}
 @media(max-width:1000px){.cards{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:660px){.cards{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:420px){.cards{grid-template-columns:1fr}}
@@ -144,7 +160,7 @@ footer{border-top:1px solid var(--border);padding:26px 0}
 .foot-link{font-size:12.5px;color:var(--text-3);transition:color .15s}
 .foot-link:hover{color:var(--text)}
 
-/* ── MOTION : entree sequencee + reveal ── */
+/* ── MOTION ── */
 @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:none}}
 @keyframes fadeScale{from{opacity:0;transform:translateY(26px) scale(.96)}to{opacity:1;transform:none}}
 .anim{opacity:0;animation:fadeUp .8s var(--ease) both;animation-delay:var(--d,0s)}
@@ -156,7 +172,6 @@ footer{border-top:1px solid var(--border);padding:26px 0}
 .cards .reveal:nth-child(3){transition-delay:.20s}
 .cards .reveal:nth-child(4){transition-delay:.28s}
 .cards .reveal:nth-child(5){transition-delay:.36s}
-
 @media(prefers-reduced-motion:reduce){
   html{scroll-behavior:auto}
   *,*::before,*::after{animation:none!important;transition-duration:.001s!important}
@@ -167,9 +182,9 @@ footer{border-top:1px solid var(--border);padding:26px 0}
 </head>
 <body>
 
-<!-- ═══ NAV ═══ -->
-<nav class="nav" id="nav">
-  <div class="nav-in">
+<!-- ═══ NAV (barre flottante) ═══ -->
+<div class="nav-wrap">
+  <nav class="nav" id="nav">
     <a class="brand anim" href="#top" style="--d:.05s" aria-label="Music DL">
       <span class="brand-ico">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
@@ -181,7 +196,7 @@ footer{border-top:1px solid var(--border);padding:26px 0}
         </svg>
       </span>
       <span>
-        <span class="brand-name">Music DL</span>
+        <span class="brand-name" style="display:block">Music DL</span>
         <span class="brand-sub" style="display:block">YouTube Music · MP3</span>
       </span>
     </a>
@@ -194,8 +209,8 @@ footer{border-top:1px solid var(--border);padding:26px 0}
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
       Télécharger
     </a>
-  </div>
-</nav>
+  </nav>
+</div>
 
 <span id="top"></span>
 
@@ -227,13 +242,30 @@ footer{border-top:1px solid var(--border);padding:26px 0}
       </div>
     </div>
 
-    <!-- droite : capture produit -->
+    <!-- droite : carrousel de captures -->
     <div class="hero-visual anim-scale" style="--d:.42s">
-      <div class="float">
+      <div class="car-wrap">
         <div class="win">
           <div class="win-bar"><span class="tl r"></span><span class="tl y"></span><span class="tl g"></span><span class="win-title">Music DL</span></div>
-          <img src="assets/shot-lecteur.png" alt="Le lecteur de Music DL avec pochette, file d'attente et paroles" width="1120" height="690" fetchpriority="high">
+          <div class="car" id="car">
+            <div class="slide on"><img src="assets/shot-recherche.png" alt="Recherche YouTube Music" width="1120" height="690" fetchpriority="high"></div>
+            <div class="slide"><img src="assets/shot-albums.png" alt="Discographie d'artiste" width="1120" height="690" loading="lazy"></div>
+            <div class="slide"><img src="assets/shot-album-detail.png" alt="Album entier" width="1120" height="690" loading="lazy"></div>
+            <div class="slide"><img src="assets/shot-telechargement.png" alt="Téléchargements en direct" width="1120" height="690" loading="lazy"></div>
+            <div class="slide"><img src="assets/shot-bibliotheque.png" alt="Bibliothèque" width="1120" height="690" loading="lazy"></div>
+            <div class="slide"><img src="assets/shot-lecteur.png" alt="Lecteur" width="1120" height="690" loading="lazy"></div>
+          </div>
         </div>
+        <button class="car-arr prev" id="car-prev" aria-label="Capture précédente">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <button class="car-arr next" id="car-next" aria-label="Capture suivante">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+      </div>
+      <div class="car-foot">
+        <div class="car-dots" id="car-dots"></div>
+        <div class="car-label" id="car-label"></div>
       </div>
     </div>
   </section>
@@ -281,7 +313,9 @@ footer{border-top:1px solid var(--border);padding:26px 0}
 </footer>
 
 <script>
-/* nav : bordure au scroll */
+const rm = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* nav : etat au scroll */
 const nav = document.getElementById('nav');
 const onScroll = () => nav.classList.toggle('scrolled', window.scrollY > 8);
 addEventListener('scroll', onScroll, { passive: true }); onScroll();
@@ -291,6 +325,41 @@ const io = new IntersectionObserver((entries) => {
   entries.forEach((en) => { if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); } });
 }, { threshold: 0.18, rootMargin: '0px 0px -6% 0px' });
 document.querySelectorAll('.reveal').forEach((el) => io.observe(el));
+
+/* carrousel de captures */
+(() => {
+  const slides = [...document.querySelectorAll('.slide')];
+  const labels = ['Recherche YouTube Music', "Discographie d'artiste", 'Album entier', 'Téléchargements en direct', 'Bibliothèque', 'Grand lecteur'];
+  const dotsBox = document.getElementById('car-dots');
+  const label = document.getElementById('car-label');
+  const wrap = document.querySelector('.hero-visual');
+  let cur = 0, timer = null;
+
+  slides.forEach((_, i) => {
+    const b = document.createElement('button');
+    b.className = 'car-dot' + (i === 0 ? ' on' : '');
+    b.setAttribute('aria-label', labels[i]);
+    b.addEventListener('click', () => { go(i); restart(); });
+    dotsBox.appendChild(b);
+  });
+  const dots = [...dotsBox.children];
+
+  function go(i) {
+    cur = (i + slides.length) % slides.length;
+    slides.forEach((s, j) => s.classList.toggle('on', j === cur));
+    dots.forEach((d, j) => d.classList.toggle('on', j === cur));
+    label.textContent = labels[cur];
+  }
+  function restart() { clearInterval(timer); if (!rm) timer = setInterval(() => go(cur + 1), 4800); }
+
+  document.getElementById('car-prev').addEventListener('click', () => { go(cur - 1); restart(); });
+  document.getElementById('car-next').addEventListener('click', () => { go(cur + 1); restart(); });
+  wrap.addEventListener('mouseenter', () => clearInterval(timer));
+  wrap.addEventListener('mouseleave', restart);
+
+  label.textContent = labels[0];
+  restart();
+})();
 </script>
 </body>
 </html>
