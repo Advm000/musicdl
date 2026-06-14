@@ -9,10 +9,12 @@
 Application **Windows de bureau** (Electron) pour **chercher, écouter, télécharger et organiser** de la musique depuis **YouTube Music**, sans abonnement. MP3/M4A avec vraies pochettes, lecteur complet, playlists, paroles karaoké, mode 100 % hors ligne, mises à jour automatiques. Cible : utilisateur grand public francophone. Design « pro » fidèle à un mockup officiel (palette bleu `#4f88f8` / turquoise `#1dd3b0`, fond sombre `#06080f`).
 
 ## 2. État actuel exact
-- **Version publiée** : `v1.1.0` (release GitHub + installeur en ligne + landing). Le bump vers `1.2.0` se fait à l'étape release (É9).
-- **package.json version locale** : `1.1.0`.
-- **Branche** : `main`. Tous les travaux ci-dessous sont **commités** sur `main`.
-- **Travaux v1.2** : Gate0 + É1 + É2 + É3 + É4 + É5 + É7 **FAITS et commités**. É6 (Radio) **sauté** (reporté v1.3). **Restent : É8 (E2E complets) et É9 (release v1.2.0)**.
+- **Version publiée** : `v1.2.0` (release GitHub non-draft + installeur `Music-DL-Setup.exe` 174 Mo + `latest.yml` + `.blockmap` en ligne + landing WebGL déployée). **Publiée le 2026-06-14** via GitHub Actions (`release.yml`, run 27504831302, build vert). `latest.yml` cohérent (version 1.2.0, taille/sha512 = exe) → auto-update depuis 1.1.0 opérationnel. Lien `releases/latest/download/Music-DL-Setup.exe` → 302 vers la v1.2.0.
+- **package.json version locale** : `1.2.0`.
+- **Branche** : `main`. Tag `v1.2.0` sur le remote (commit 5940b7e).
+- **Travaux v1.2** : Gate0 + É1 + É2 + É3 + É4 + É5 + É7 + **É7+ (fond WebGL Three.js landing)** + É8 (E2E) + É9 (release) **FAITS, commités, publiés**. É6 (Radio) **reporté v1.3**.
+- **Validation E2E v1.2.0 (2026-06-14)** : QUEUE ✅, SMART ✅ (compteur 0→1, 3 cartes auto), MINI ✅ (gap 22px), ARTIST ✅ (Stormy top 5/13 albums, InnerTube sain), anti-régression paroles ✅ (panneau lyrics-on = 220px). Full-E2E (téléchargement album entier) non relancé (code core inchangé). Lancer les suites via le **binaire direct** `./node_modules/electron/dist/electron.exe .` (et NON `npx electron .` qui se détache sous Windows et n'écrit aucun rapport).
+- **Prochaine étape (v1.3)** : É6 mode Radio (cf. PLAN-V1.2.md §É6).
 - **Working tree propre** sauf 2 outils dev non suivis : `tools/probe-artist.js`, `tools/check-store.js` (et ce `HANDOFF.md`).
 - Bibliothèque de test locale : variable (~1–3 titres ; le test torture en supprime/retélécharge). Reconstituée par les suites E2E.
 
@@ -152,7 +154,7 @@ Handlers IPC main correspondants : `artist:get`, `artist:byName`, `plays:bump` (
 ```
 PROJET: Music DL — app Windows Electron de telechargement/lecture YouTube Music (FR, sans abonnement).
 REPO: github.com/Advm000/musicdl (public, branche main). Landing: advm000.github.io/musicdl (GitHub Pages /docs).
-VERSION PUBLIEE: v1.1.0. EN COURS: v1.2 (Gate0+E1+E2+E3+E4+E5+E7 FAITS et commites ; reste E8 puis E9).
+VERSION PUBLIEE: v1.2.0 (publiee 2026-06-14, release Actions + installeur + latest.yml, auto-update OK). EN COURS: v1.3 (E6 Radio reporte).
 STACK: Electron 42 (main+preload+renderer vanilla JS, pas de framework). Persistance = %APPDATA%/Music DL/store.json
   (settings/library/playlists/recents/plays) + covers/ + lyrics/. Binaires bin/ (yt-dlp,ffmpeg) gitignored -> tools/fetch-bins.ps1.
 FICHIERS CLES: src/main.js (backend+E2E), src/preload.js (window.mdl.*), src/renderer/{app.js,index.html,styles.css,mini.html,mini.js},
@@ -172,8 +174,8 @@ RELEASE (E9): npm version 1.2.0 -> commit/push -> creer GitHub Release tag vX.Y.
 COMMITS: messages FR sans apostrophe typo/emoji. Outil Bash = heredoc git commit -F - <<'EOF' (PAS @'...'@ PowerShell).
   Signer Co-Authored-By: Claude Opus 4.8.
 INTERDITS: schema store.json existant, nom artefact exe, protocole mdl://+Range, appId, pont preload.
-PROCHAINE ACTION IMMEDIATE: E8 — etendre runE2E (src/main.js) pour couvrir page artiste, file d'attente, playlists auto,
-  + une assertion sur la HAUTEUR rendue des paroles (la classe du bug paroles ne doit pas revenir). Puis E9 release 1.2.0.
+PROCHAINE ACTION: v1.3 — E6 mode Radio (enchainement auto de titres similaires en streaming, endpoint InnerTube 'next'). Cf. PLAN-V1.2.md §E6.
+  NB E2E: lancer via le binaire direct ./node_modules/electron/dist/electron.exe . (npx electron . se detache sous Windows -> aucun rapport ecrit).
 PROTOCOLE: rester actif, annoncer chaque etape, captures de preuve, app laissee ouverte apres E3/E7 pour test boss,
   signe de vie <=15 min. Detail: PLAN-V1.2.md.
 ```
