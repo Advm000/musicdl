@@ -30,6 +30,8 @@
   --blue-press:#3d77ec;
   --teal:#1dd3b0;
   --ease:cubic-bezier(.16,1,.3,1);
+  --ease-soft:cubic-bezier(.22,.61,.36,1);
+  --ease-spring:cubic-bezier(.34,1.56,.64,1);
 }
 html{height:100%;-webkit-text-size-adjust:100%}
 body{
@@ -60,12 +62,14 @@ img{max-width:100%;display:block}
   cursor:pointer;border:1px solid transparent;overflow:hidden;
   transition:transform .2s var(--ease),background .2s,border-color .2s,box-shadow .2s;white-space:nowrap}
 .btn-primary{background:var(--blue);color:#fff;box-shadow:0 1px 0 rgba(255,255,255,.2) inset,0 10px 26px -10px rgba(79,136,248,.8)}
-.btn-primary:hover{background:var(--blue-press);transform:translateY(-2px);box-shadow:0 1px 0 rgba(255,255,255,.2) inset,0 16px 36px -10px rgba(79,136,248,.85)}
+.btn-primary:hover{background:var(--blue-press);transform:translateY(-2px) scale(1.015);box-shadow:0 1px 0 rgba(255,255,255,.2) inset,0 16px 36px -10px rgba(79,136,248,.85)}
+.btn:active{transform:translateY(0) scale(.985);transition-duration:.09s}
+.btn:focus-visible{outline:none;box-shadow:0 1px 0 rgba(255,255,255,.2) inset,0 0 0 3px rgba(79,136,248,.45)}
 .btn-primary::after{content:'';position:absolute;top:0;left:-130%;width:60%;height:100%;
   background:linear-gradient(100deg,transparent,rgba(255,255,255,.28),transparent);transform:skewX(-18deg);transition:left .6s var(--ease)}
 .btn-primary:hover::after{left:140%}
 .btn-ghost{background:var(--panel-2);color:var(--text);border-color:var(--border-2)}
-.btn-ghost:hover{background:rgba(255,255,255,.09);transform:translateY(-2px)}
+.btn-ghost:hover{background:rgba(255,255,255,.09);transform:translateY(-2px) scale(1.015)}
 .btn-sm{height:40px;padding:0 16px;font-size:14px;border-radius:10px}
 
 /* ── TOPBAR (nav dans le cadre) ── */
@@ -76,7 +80,10 @@ img{max-width:100%;display:block}
 .brand-name{font-size:16px;font-weight:700;letter-spacing:-.3px;line-height:1.1}
 .brand-sub{font-size:10px;color:var(--text-3);letter-spacing:.2px}
 .nav-center{margin:0 auto;display:flex;align-items:center;gap:4px}
-.nav-link{padding:9px 14px;border-radius:9px;font-size:14px;font-weight:500;color:var(--text-3);transition:color .15s,background .15s}
+.nav-link{position:relative;padding:9px 14px;border-radius:9px;font-size:14px;font-weight:500;color:var(--text-3);transition:color .15s,background .15s}
+.nav-link::after{content:'';position:absolute;left:14px;right:14px;bottom:5px;height:2px;border-radius:2px;
+  background:linear-gradient(90deg,var(--blue),var(--teal));transform:scaleX(0);transform-origin:left;transition:transform .26s var(--ease-soft)}
+.nav-link:hover::after{transform:scaleX(1)}
 .nav-link:hover{color:var(--text);background:var(--panel-2)}
 @media(max-width:820px){.nav-center{display:none}.topbar{justify-content:space-between}}
 
@@ -90,11 +97,11 @@ img{max-width:100%;display:block}
 @media(max-width:560px){.hero-card{padding:26px 24px}}
 .badge{display:inline-flex;align-items:center;gap:8px;align-self:flex-start;padding:6px 12px;border-radius:99px;
   background:rgba(29,211,176,.09);border:1px solid rgba(29,211,176,.22);color:var(--teal);font-size:12px;font-weight:600;margin-bottom:16px}
-.badge .pip{width:7px;height:7px;border-radius:50%;background:var(--teal);animation:pip 2.4s ease-out infinite}
+.badge .pip{width:7px;height:7px;border-radius:50%;background:var(--teal);animation:pip 2.4s ease-out 1.6s infinite}
 @keyframes pip{0%{box-shadow:0 0 0 0 rgba(29,211,176,.5)}70%,100%{box-shadow:0 0 0 7px rgba(29,211,176,0)}}
 h1{font-size:clamp(1.7rem,2.7vw,2.6rem);font-weight:800;letter-spacing:-.03em;line-height:1.08;margin-bottom:14px}
 h1 .grad{background:linear-gradient(100deg,var(--blue) 10%,var(--teal) 90%);background-size:200% auto;
-  -webkit-background-clip:text;background-clip:text;color:transparent;animation:shimmer 7s ease-in-out infinite}
+  -webkit-background-clip:text;background-clip:text;color:transparent;animation:shimmer 7s ease-in-out 1.9s infinite}
 @keyframes shimmer{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
 .lead{font-size:clamp(.94rem,1.15vw,1.05rem);line-height:1.6;color:var(--text-2);max-width:42ch;margin-bottom:22px}
 .hero-cta{display:flex;gap:11px;flex-wrap:wrap;margin-bottom:18px}
@@ -106,7 +113,7 @@ h1 .grad{background:linear-gradient(100deg,var(--blue) 10%,var(--teal) 90%);back
 .hero-visual{position:relative;min-height:0;display:flex;flex-direction:column;gap:10px}
 .hero-visual::before{content:'';position:absolute;inset:4% 2%;z-index:0;border-radius:36px;
   background:radial-gradient(circle at 50% 45%,rgba(79,136,248,.28),rgba(29,211,176,.1) 45%,transparent 70%);
-  filter:blur(38px);animation:breathe 8s ease-in-out infinite}
+  filter:blur(38px);opacity:0;animation:breathe 8s ease-in-out 1.7s infinite}
 @keyframes breathe{0%,100%{opacity:.65;transform:scale(.98)}50%{opacity:.95;transform:scale(1.04)}}
 .car-wrap{position:relative;z-index:1;flex:1;min-height:0}
 .win{height:100%;display:flex;flex-direction:column;border:1px solid var(--border-2);border-radius:16px;overflow:hidden;
@@ -114,10 +121,18 @@ h1 .grad{background:linear-gradient(100deg,var(--blue) 10%,var(--teal) 90%);back
 .win-bar{flex-shrink:0;display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--border);background:rgba(255,255,255,.02)}
 .tl{width:11px;height:11px;border-radius:50%}.tl.r{background:#ff5f57}.tl.y{background:#febc2e}.tl.g{background:#28c840}
 .win-title{margin-left:8px;font-size:12px;color:var(--text-3);font-weight:500}
-.car{position:relative;flex:1;min-height:0;background:#06080f}
-.slide{position:absolute;inset:0;opacity:0;transition:opacity .55s var(--ease)}
-.slide.on{opacity:1}
-.slide img{width:100%;height:100%;object-fit:cover;object-position:top center;display:block}
+.car{position:relative;flex:1;min-height:0;background:#06080f;overflow:hidden}
+/* transition directionnelle : glissement + fondu + profondeur */
+.slide{position:absolute;inset:0;opacity:0;z-index:1;
+  transform:translateX(calc(var(--dir,1) * 3%)) scale(1.015);
+  transition:opacity .7s var(--ease),transform .9s var(--ease);will-change:opacity,transform}
+.slide.on{opacity:1;z-index:2;transform:translateX(0) scale(1)}
+.slide.out{opacity:0;z-index:1;transform:translateX(calc(var(--dir,1) * -3%)) scale(1.015)}
+.slide img{width:100%;height:100%;object-fit:cover;object-position:top center;display:block;transform:scale(1.06)}
+/* barre de progression de l'avancement automatique */
+.car-progress{position:absolute;left:0;right:0;bottom:0;height:3px;z-index:6;background:rgba(255,255,255,.06)}
+.car-progress-fill{height:100%;width:100%;transform:scaleX(0);transform-origin:left center;
+  background:linear-gradient(90deg,var(--blue),var(--teal));box-shadow:0 0 14px rgba(79,136,248,.55)}
 .car-arr{position:absolute;top:50%;transform:translateY(-50%);width:38px;height:38px;border-radius:50%;
   border:1px solid var(--border-2);background:rgba(11,13,21,.82);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
   color:var(--text-2);display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:5;
@@ -128,7 +143,7 @@ h1 .grad{background:linear-gradient(100deg,var(--blue) 10%,var(--teal) 90%);back
 .car-foot{flex-shrink:0;display:flex;align-items:center;justify-content:center;gap:14px;position:relative;z-index:1}
 .car-dots{display:flex;gap:7px}
 .car-dot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.18);border:none;cursor:pointer;padding:0;transition:background .2s,width .2s var(--ease)}
-.car-dot.on{background:var(--blue);width:22px;border-radius:5px}
+.car-dot.on{background:linear-gradient(90deg,var(--blue),var(--teal));width:22px;border-radius:5px}
 .car-label{font-size:12px;color:var(--text-3);font-weight:600;min-width:130px;text-align:left}
 @media(max-width:600px){.car-label{display:none}}
 
@@ -138,9 +153,9 @@ h1 .grad{background:linear-gradient(100deg,var(--blue) 10%,var(--teal) 90%);back
 @media(max-width:420px){.cards{grid-template-columns:1fr}}
 .card{background:var(--panel);border:1px solid var(--border);border-radius:15px;padding:15px 16px;
   transition:transform .25s var(--ease),border-color .25s,background .25s;will-change:transform}
-.card:hover{transform:translateY(-4px);border-color:var(--border-2);background:var(--panel-2)}
+.card:hover{transform:translateY(-4px) scale(1.01);border-color:var(--border-2);background:var(--panel-2);box-shadow:inset 0 1px 0 rgba(255,255,255,.07)}
 .card-ico{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:11px;
-  background:rgba(79,136,248,.1);border:1px solid rgba(79,136,248,.2);color:#7aa6fb;transition:transform .25s var(--ease)}
+  background:rgba(79,136,248,.1);border:1px solid rgba(79,136,248,.2);color:#7aa6fb;transition:transform .25s var(--ease-spring)}
 .card:hover .card-ico{transform:scale(1.08) rotate(-3deg)}
 .card-ico.teal{background:rgba(29,211,176,.09);border-color:rgba(29,211,176,.2);color:var(--teal)}
 .card-t{font-size:14px;font-weight:700;letter-spacing:-.2px;margin-bottom:4px}
@@ -151,11 +166,11 @@ h1 .grad{background:linear-gradient(100deg,var(--blue) 10%,var(--teal) 90%);back
 @keyframes fadeScale{from{opacity:0;transform:translateY(20px) scale(.97)}to{opacity:1;transform:none}}
 .anim{opacity:0;animation:fadeUp .8s var(--ease) both;animation-delay:var(--d,0s)}
 .anim-scale{opacity:0;animation:fadeScale .95s var(--ease) both;animation-delay:var(--d,0s)}
-.reveal{opacity:0;transform:translateY(16px);transition:opacity .7s var(--ease),transform .7s var(--ease)}
-.reveal.in{opacity:1;transform:none}
-.cards .reveal:nth-child(1){transition-delay:.04s}.cards .reveal:nth-child(2){transition-delay:.12s}
-.cards .reveal:nth-child(3){transition-delay:.20s}.cards .reveal:nth-child(4){transition-delay:.28s}
-.cards .reveal:nth-child(5){transition-delay:.36s}
+.reveal{opacity:0;transform:translateY(18px) scale(.96);filter:blur(6px);transition:opacity .68s var(--ease),transform .68s var(--ease),filter .68s var(--ease)}
+.reveal.in{opacity:1;transform:none;filter:none}
+.cards .reveal:nth-child(1){transition-delay:1.42s}.cards .reveal:nth-child(2){transition-delay:1.49s}
+.cards .reveal:nth-child(3){transition-delay:1.56s}.cards .reveal:nth-child(4){transition-delay:1.63s}
+.cards .reveal:nth-child(5){transition-delay:1.70s}
 
 /* ── ECRANS PETITS / BAS : on autorise le scroll (sinon illisible) ── */
 @media(max-width:880px),(max-height:600px){
@@ -169,10 +184,79 @@ h1 .grad{background:linear-gradient(100deg,var(--blue) 10%,var(--teal) 90%);back
 }
 @media(prefers-reduced-motion:reduce){
   *,*::before,*::after{animation:none!important;transition-duration:.001s!important}
-  .anim,.anim-scale,.reveal{opacity:1!important;transform:none!important}
+  .anim,.anim-scale,.reveal{opacity:1!important;transform:none!important;filter:none!important}
+  .slide{transform:none!important}
+  .car-progress{display:none}
+  body::before{opacity:1!important;transform:none!important}
+  .hero-visual::before{opacity:.8!important}
+  .frame::before{display:none!important}
+  .stage{perspective:none!important}
+  .hero-visual,.win{filter:none!important;transform:none!important;opacity:1!important}
+  .line-i{transform:none!important;opacity:1!important;filter:none!important}
+  .badge,.lead,.hero-cta .btn,.hero-meta span,.brand-ico,.brand-tx{transform:none!important;opacity:1!important;animation:none!important}
+  h1 .grad{background-position:0% 50%!important}
+  .hero-meta polyline{stroke-dashoffset:0!important}
+  .slide.on img{animation:none!important;filter:none!important;transform:scale(1.06)!important}
 }
+
+/* ═══════════ MOTION "ASSEMBLY" : une entree orchestree, puis immobilite ═══════════ */
+
+/* Cadre : allumage + balayage lumineux unique sur le bord superieur */
+.frame{will-change:transform,opacity;animation:frameIn .9s var(--ease) both}
+.frame::before{content:'';position:absolute;top:0;left:0;height:2px;width:200%;z-index:5;pointer-events:none;
+  background:linear-gradient(100deg,transparent 35%,rgba(79,136,248,.55),rgba(29,211,176,.45),transparent 65%);
+  transform:translateX(-60%);opacity:0;animation:edgeSweep 1200ms var(--ease-soft) .12s 1 both}
+
+/* Lumiere ambiante : le fond s'allume avant le produit */
+body::before{opacity:0;transform:scale(1.06);animation:ambientWake 1400ms var(--ease-soft) .22s both}
+
+/* SIGNATURE : montee + mise au point de la fenetre sur une scene en perspective */
+.stage{perspective:1600px}
+.hero-visual{opacity:0;will-change:transform,filter,opacity;animation:windowRack 1100ms var(--ease) .52s both}
+.win{transform-origin:50% 60%;animation:winTilt 1100ms var(--ease) .52s backwards}
+
+/* Titre : revelation ligne par ligne (clip-up) */
+h1 .line{display:block;overflow:hidden}
+h1 .line-i{display:block;will-change:transform;animation:lineRise 920ms var(--ease) both}
+h1 .line:nth-child(1) .line-i{animation-delay:.88s}
+h1 .line:nth-child(2) .line-i{animation-delay:1.0s}
+
+/* Hero-meta : trace des coches */
+.hero-meta span{opacity:0;animation:copyIn .6s var(--ease) both}
+.hero-meta span:nth-child(1){animation-delay:1.32s}
+.hero-meta span:nth-child(2){animation-delay:1.38s}
+.hero-meta span:nth-child(3){animation-delay:1.44s}
+.hero-meta polyline{stroke-dasharray:24;stroke-dashoffset:24;animation:drawCheck .5s var(--ease-soft) both}
+.hero-meta span:nth-child(1) polyline{animation-delay:1.46s}
+.hero-meta span:nth-child(2) polyline{animation-delay:1.52s}
+.hero-meta span:nth-child(3) polyline{animation-delay:1.58s}
+
+/* Logo : le SEUL ressort autorise */
+.brand-ico{will-change:transform;animation:brandPop .7s var(--ease-spring) .38s both;
+  background-size:200% 200%;transition:transform .18s var(--ease-soft),background-position .18s var(--ease-soft)}
+.brand:hover .brand-ico{transform:scale(1.06);background-position:100% 50%}
+.brand-tx{display:inline-block;opacity:0;animation:copyIn .6s var(--ease) .44s both}
+
+/* Carrousel : mise au point + Ken-Burns de l'image active (transform/filter only) */
+.slide img{transition:filter .6s var(--ease)}
+.slide.on img{filter:blur(0);animation:kenBurns 4800ms linear both}
+.slide:not(.on) img{filter:blur(4px)}
+
+/* Clin d'oeil unique du bouton principal en fin d'entree */
+.btn-primary.lit::after{left:140%}
+
+@keyframes frameIn{from{opacity:0;transform:scale(.985)}to{opacity:1;transform:none}}
+@keyframes edgeSweep{0%{transform:translateX(-60%);opacity:0}15%{opacity:1}85%{opacity:1}100%{transform:translateX(60%);opacity:0}}
+@keyframes ambientWake{from{opacity:0;transform:scale(1.06)}to{opacity:1;transform:scale(1)}}
+@keyframes windowRack{from{opacity:0;transform:translateY(26px) scale(1.055);filter:blur(14px)}to{opacity:1;transform:none;filter:blur(0)}}
+@keyframes winTilt{from{transform:perspective(1600px) rotateX(4deg)}to{transform:perspective(1600px) rotateX(0)}}
+@keyframes lineRise{from{transform:translateY(110%);opacity:0;filter:blur(4px)}to{transform:translateY(0);opacity:1;filter:blur(0)}}
+@keyframes copyIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@keyframes drawCheck{to{stroke-dashoffset:0}}
+@keyframes brandPop{from{opacity:0;transform:scale(.4) rotate(-8deg)}to{opacity:1;transform:scale(1) rotate(0)}}
+@keyframes kenBurns{from{transform:scale(1.06)}to{transform:scale(1.085)}}
 </style>
-<noscript><style>.anim,.anim-scale,.reveal{opacity:1!important;transform:none!important}</style></noscript>
+<noscript><style>.anim,.anim-scale,.reveal,.line-i,.hero-meta span,.brand-tx,.brand-ico,.hero-visual{opacity:1!important;transform:none!important;filter:none!important;animation:none!important}.hero-meta polyline{stroke-dashoffset:0!important}</style></noscript>
 </head>
 <body>
 
@@ -189,7 +273,7 @@ h1 .grad{background:linear-gradient(100deg,var(--blue) 10%,var(--teal) 90%);back
           <path d="M18 10l2 3 2-3" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
       </span>
-      <span>
+      <span class="brand-tx">
         <span class="brand-name" style="display:block">Music DL</span>
         <span class="brand-sub" style="display:block">YouTube Music · MP3</span>
       </span>
@@ -210,12 +294,12 @@ h1 .grad{background:linear-gradient(100deg,var(--blue) 10%,var(--teal) 90%);back
     <!-- gauche -->
     <div class="hero-card">
       <div class="badge anim" style="--d:.24s"><span class="pip"></span> Version 1.2 · Gratuit pour Windows</div>
-      <h1 class="anim" style="--d:.32s">Toute ta musique,<br><span class="grad">téléchargée pour toujours.</span></h1>
-      <p class="lead anim" style="--d:.42s">
+      <h1 style="--d:.32s"><span class="line"><span class="line-i">Toute ta musique,</span></span><span class="line"><span class="line-i"><span class="grad">téléchargée pour toujours.</span></span></span></h1>
+      <p class="lead anim" style="--d:.98s">
         Cherche sur YouTube Music, télécharge en MP3 320 kbps avec les vraies pochettes.
         Lecteur, paroles synchronisées et playlists — même hors ligne.
       </p>
-      <div class="hero-cta anim" style="--d:.52s">
+      <div class="hero-cta anim" style="--d:1.12s">
         <a class="btn btn-primary" href="https://github.com/Advm000/musicdl/releases/latest/download/Music-DL-Setup.exe">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Télécharger pour Windows
@@ -233,7 +317,7 @@ h1 .grad{background:linear-gradient(100deg,var(--blue) 10%,var(--teal) 90%);back
     </div>
 
     <!-- droite : carrousel -->
-    <div class="hero-visual anim-scale" style="--d:.44s">
+    <div class="hero-visual stage" style="--d:.44s">
       <div class="car-wrap">
         <div class="win">
           <div class="win-bar"><span class="tl r"></span><span class="tl y"></span><span class="tl g"></span><span class="win-title">Music DL</span></div>
@@ -244,6 +328,7 @@ h1 .grad{background:linear-gradient(100deg,var(--blue) 10%,var(--teal) 90%);back
             <div class="slide"><img src="assets/shot-telechargement.png" alt="Téléchargements en direct" width="1120" height="690" loading="lazy"></div>
             <div class="slide"><img src="assets/shot-bibliotheque.png" alt="Bibliothèque" width="1120" height="690" loading="lazy"></div>
             <div class="slide"><img src="assets/shot-lecteur.png" alt="Lecteur" width="1120" height="690" loading="lazy"></div>
+            <div class="car-progress"><div class="car-progress-fill" id="car-progress-fill"></div></div>
           </div>
         </div>
         <button class="car-arr prev" id="car-prev" aria-label="Capture précédente">
@@ -293,13 +378,16 @@ h1 .grad{background:linear-gradient(100deg,var(--blue) 10%,var(--teal) 90%);back
 <script>
 const rm = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-/* carrousel de captures */
+/* carrousel de captures — transition directionnelle + barre de progression */
 (() => {
-  const slides = [...document.querySelectorAll('.slide')];
+  const car = document.getElementById('car');
+  const slides = [...car.querySelectorAll('.slide')];
   const labels = ['Recherche YouTube Music', "Discographie d'artiste", 'Album entier', 'Téléchargements en direct', 'Bibliothèque', 'Grand lecteur'];
   const dotsBox = document.getElementById('car-dots');
   const label = document.getElementById('car-label');
   const wrap = document.querySelector('.hero-visual');
+  const fill = document.getElementById('car-progress-fill');
+  const INTERVAL = 4800;
   let cur = 0, timer = null;
 
   slides.forEach((_, i) => {
@@ -311,18 +399,63 @@ const rm = matchMedia('(prefers-reduced-motion: reduce)').matches;
   });
   const dots = [...dotsBox.children];
 
-  function go(i) {
-    cur = (i + slides.length) % slides.length;
-    slides.forEach((s, j) => s.classList.toggle('on', j === cur));
-    dots.forEach((d, j) => d.classList.toggle('on', j === cur));
-    label.textContent = labels[cur];
+  /* barre de progression synchronisee avec l'avancement auto */
+  function startProgress() {
+    if (rm || !fill) return;
+    fill.style.transition = 'none';
+    fill.style.transform = 'scaleX(0)';
+    void fill.offsetWidth;                         // reflow -> repart de zero
+    fill.style.transition = 'transform ' + (INTERVAL / 1000) + 's linear';
+    fill.style.transform = 'scaleX(1)';
   }
-  function restart() { clearInterval(timer); if (!rm) timer = setInterval(() => go(cur + 1), 4800); }
+  function freezeProgress() {                       // fige la barre au survol
+    if (rm || !fill) return;
+    const m = getComputedStyle(fill).transform;
+    fill.style.transition = 'none';
+    fill.style.transform = (m === 'none' ? 'scaleX(0)' : m);
+  }
 
-  document.getElementById('car-prev').addEventListener('click', () => { go(cur - 1); restart(); });
-  document.getElementById('car-next').addEventListener('click', () => { go(cur + 1); restart(); });
-  wrap.addEventListener('mouseenter', () => clearInterval(timer));
+  /* dir = +1 (suivant) / -1 (precedent) : sens du glissement */
+  function go(i, dir) {
+    const n = slides.length;
+    const next = ((i % n) + n) % n;
+    if (next === cur) { startProgress(); return; }
+    dir = dir || (next > cur ? 1 : -1);
+    car.style.setProperty('--dir', dir);
+    slides.forEach((s) => s.classList.remove('out'));
+    slides[cur].classList.remove('on');
+    slides[cur].classList.add('out');
+    slides[next].classList.add('on');
+    dots.forEach((d, j) => d.classList.toggle('on', j === next));
+    cur = next;
+    label.textContent = labels[cur];
+    startProgress();
+  }
+  function restart() {
+    clearInterval(timer);
+    if (rm) return;
+    startProgress();
+    timer = setInterval(() => go(cur + 1, 1), INTERVAL);
+  }
+
+  document.getElementById('car-prev').addEventListener('click', () => { go(cur - 1, -1); restart(); });
+  document.getElementById('car-next').addEventListener('click', () => { go(cur + 1, 1); restart(); });
+  wrap.addEventListener('mouseenter', () => { clearInterval(timer); freezeProgress(); });
   wrap.addEventListener('mouseleave', restart);
+
+  /* clavier : fleches gauche/droite */
+  addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowLeft') { go(cur - 1, -1); restart(); }
+    else if (e.key === 'ArrowRight') { go(cur + 1, 1); restart(); }
+  });
+  /* tactile : swipe horizontal */
+  let sx = null;
+  car.addEventListener('pointerdown', (e) => { sx = e.clientX; });
+  car.addEventListener('pointerup', (e) => {
+    if (sx == null) return;
+    const dx = e.clientX - sx; sx = null;
+    if (Math.abs(dx) > 40) { dx < 0 ? go(cur + 1, 1) : go(cur - 1, -1); restart(); }
+  });
 
   label.textContent = labels[0];
   restart();
@@ -333,6 +466,65 @@ const io = new IntersectionObserver((entries) => {
   entries.forEach((en) => { if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); } });
 }, { threshold: 0.1 });
 document.querySelectorAll('.reveal').forEach((el) => io.observe(el));
+
+/* ═══ ASSEMBLY : hygiene de fin d'entree + Ken-Burns carrousel + parallaxe fenetre ═══ */
+if (!rm) {
+  const heroVisual = document.querySelector('.hero-visual');
+  const frameEl = document.querySelector('.frame');
+
+  /* (1) liberer will-change une fois l'entree posee (evite des couches GPU epinglees) */
+  setTimeout(() => {
+    if (frameEl) frameEl.style.willChange = 'auto';
+    if (heroVisual) heroVisual.style.willChange = 'auto';
+    document.querySelectorAll('h1 .line-i,.brand-ico').forEach((el) => { el.style.willChange = 'auto'; });
+  }, 1750);
+
+  /* (2) Ken-Burns relance sur l'image active (meme astuce de reflow que la barre de progression) */
+  const carEl = document.getElementById('car');
+  if (carEl) {
+    const restartKB = () => {
+      const img = carEl.querySelector('.slide.on img');
+      if (!img) return;
+      img.style.animation = 'none';
+      void img.offsetWidth;
+      img.style.animation = '';
+    };
+    restartKB();
+    const mo = new MutationObserver((muts) => {
+      for (const m of muts) { if (m.target.classList.contains('on')) { restartKB(); break; } }
+    });
+    carEl.querySelectorAll('.slide').forEach((s) => mo.observe(s, { attributes: true, attributeFilter: ['class'] }));
+  }
+
+  /* (3) Parallaxe pointeur de la fenetre — rAF auto-terminee (zero cout au repos), desktop fin uniquement */
+  const fine = matchMedia('(hover:hover) and (pointer:fine)').matches;
+  const wide = () => innerWidth > 880 && innerHeight > 600;
+  if (fine && wide() && heroVisual) {
+    const win = heroVisual.querySelector('.win');
+    let raf = 0, active = false, ready = false;
+    let tx = 0, ty = 0, cx = 0, cy = 0;
+    const MAXX = 2.4, MAXY = 4;
+    const tick = () => {
+      cx += (tx - cx) * 0.09; cy += (ty - cy) * 0.09;
+      if (win) win.style.transform =
+        'perspective(1600px) rotateX(' + (-cy * MAXX) + 'deg) rotateY(' + (cx * MAXY) + 'deg)';
+      if (Math.abs(tx - cx) > 0.001 || Math.abs(ty - cy) > 0.001 || active) {
+        raf = requestAnimationFrame(tick);
+      } else { raf = 0; if (win) win.style.transform = ''; }   // se pose a plat, arrete la boucle
+    };
+    const kick = () => { if (!raf) raf = requestAnimationFrame(tick); };
+    setTimeout(() => { ready = true; }, 1700);                  // s'attache apres l'atterrissage de la fenetre
+    heroVisual.addEventListener('pointermove', (e) => {
+      if (!ready || !wide()) return;
+      const r = heroVisual.getBoundingClientRect();
+      tx = ((e.clientX - r.left) / r.width - 0.5) * 2;
+      ty = ((e.clientY - r.top) / r.height - 0.5) * 2;
+      active = true; kick();
+    });
+    heroVisual.addEventListener('pointerleave', () => { tx = 0; ty = 0; active = false; kick(); });
+    addEventListener('resize', () => { if (!wide() && win) { win.style.transform = ''; } });
+  }
+}
 </script>
 </body>
 </html>
