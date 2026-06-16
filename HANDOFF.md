@@ -154,7 +154,7 @@ Handlers IPC main correspondants : `artist:get`, `artist:byName`, `plays:bump` (
 ```
 PROJET: Music DL — app Windows Electron de telechargement/lecture YouTube Music (FR, sans abonnement).
 REPO: github.com/Advm000/musicdl (public, branche main). Landing: advm000.github.io/musicdl (GitHub Pages /docs).
-VERSION PUBLIEE: v1.2.0 (publiee 2026-06-14, release Actions + installeur + latest.yml, auto-update OK). EN COURS: v1.3 (E6 Radio reporte).
+VERSION PUBLIEE: v1.2.0 (publiee 2026-06-14, release Actions + installeur + latest.yml, auto-update OK). v1.3 ABANDONNE (2026-06-17, decision boss : retour base stable v1.2.0, socle v1.3 + refonte landing annules). EN COURS: rien.
 STACK: Electron 42 (main+preload+renderer vanilla JS, pas de framework). Persistance = %APPDATA%/Music DL/store.json
   (settings/library/playlists/recents/plays) + covers/ + lyrics/. Binaires bin/ (yt-dlp,ffmpeg) gitignored -> tools/fetch-bins.ps1.
 FICHIERS CLES: src/main.js (backend+E2E), src/preload.js (window.mdl.*), src/renderer/{app.js,index.html,styles.css,mini.html,mini.js},
@@ -174,7 +174,7 @@ RELEASE (E9): npm version 1.2.0 -> commit/push -> creer GitHub Release tag vX.Y.
 COMMITS: messages FR sans apostrophe typo/emoji. Outil Bash = heredoc git commit -F - <<'EOF' (PAS @'...'@ PowerShell).
   Signer Co-Authored-By: Claude Opus 4.8.
 INTERDITS: schema store.json existant, nom artefact exe, protocole mdl://+Range, appId, pont preload.
-PROCHAINE ACTION: v1.3 — E6 mode Radio (enchainement auto de titres similaires en streaming, endpoint InnerTube 'next'). Cf. PLAN-V1.2.md §E6.
+PROCHAINE ACTION: aucune en cours. Projet parque sur la base stable v1.2.0 (v1.3 abandonne). Attendre instructions boss.
   NB E2E: lancer via le binaire direct ./node_modules/electron/dist/electron.exe . (npx electron . se detache sous Windows -> aucun rapport ecrit).
 PROTOCOLE: rester actif, annoncer chaque etape, captures de preuve, app laissee ouverte apres E3/E7 pour test boss,
   signe de vie <=15 min. Detail: PLAN-V1.2.md.
