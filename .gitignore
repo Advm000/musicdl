@@ -9,14 +9,10 @@ dist/
 
 # Tests / captures
 shots/
-shots-packaged/
-shots-update/
-shots-v11/
-shots-v12/
-shots-mini/
-shots-torture/
-shots-lyrics/
-shots-rel120/
+shots-*/
+audit-*/
+.ud-*/
+.e2e-userdata/
 
 # Divers
 *.log

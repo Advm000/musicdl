@@ -20,11 +20,15 @@ Electron 42 (vanilla JS, pas de framework). Recherche via API interne InnerTube 
 - Paroles synchronisées (LRCLIB), compteur d'écoutes, playlists (manuelles + intelligentes virtuelles favoris/récents/top).
 - Auto-update (electron-updater) + landing GitHub Pages.
 
-## Fonctionnalités en cours
-**Aucune.** Projet parqué sur la base stable v1.2.0.
+## Fonctionnalités en cours — v1.3.0 « Consolidation propre » (implémenté, non poussé)
+Upgrade/fiabilisation de l'existant, **sans nouvelle option** (cf `PLAN-V1.3.md`). Vérifié E2E (parcours complet + file d'attente) :
+- Fiabilité : `saveStore` atomique + backup store corrompu (anti-perte de bibliothèque).
+- Bugs : clic favori barre lecteur (stopPropagation) ; favori conservé au re-téléchargement.
+- Perf : file d'attente réordonnée par déplacement DOM en place (fluide à 30+).
+- Finition : titres au fichier manquant grisés/« introuvable » ; reprise de la dernière lecture au démarrage ; raccourcis ←/→.
 
-## Décision v1.3 (2026-06-17)
-v1.3 (socle online `onlineMeta` / réconciliation bibliothèque / multi-suppression / favoris online + refonte landing SaaS) **annulé** sur décision du boss. Retour intégral à l'état v1.2.0 publié : code applicatif et landing restaurés à v1.2.0. Mode Radio (É6) : déjà reporté/annulé.
+## Historique v1.3 (2026-06-17)
+Un premier v1.3 « online » (socle `onlineMeta` / réconciliation / multi-suppression / favoris online + refonte landing SaaS) a été **abandonné** (décision boss, retour v1.2.0), puis remplacé par le v1.3 « consolidation » ci-dessus. Mode Radio (É6) : abandonné.
 
 ## Architecture globale
 `main.js` (backend Node : IPC, store, yt-dlp/ffmpeg, InnerTube, lyrics, update, harness E2E) ⇄ `preload.js` (pont `window.mdl.*`, contextIsolation) ⇄ `renderer/` (UI vanilla : `app.js`, `index.html`, `styles.css`, `mini.*`).
@@ -44,9 +48,9 @@ Electron ^42.4.0, electron-updater ^6.8.9, electron-builder ^26.15.2, sharp ^0.3
 
 ## Roadmap
 ```
-v1.2.0  PUBLIÉ (2026-06-14) — Latest, base stable courante
-v1.3    ABANDONNÉ (2026-06-17)
-suite   à définir par le boss
+v1.2.0  PUBLIÉ (2026-06-14) — Latest
+v1.3.0  EN COURS — consolidation (fiabilité / bugs / perf / finition), implémenté + vérifié E2E, non poussé
+suite   release v1.3.0 (sur GO du boss) puis à définir
 ```
 
 ## Tags / versions

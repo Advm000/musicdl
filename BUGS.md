@@ -5,7 +5,9 @@
 ## Risques ouverts
 | # | Sujet | Statut | Note |
 |---|-------|--------|------|
-| L1 | `saveStore` non atomique en v1.2.0 | LATENT | `fs.writeFileSync(STORE_FILE, …)` direct (`main.js:47`) ; un crash en cours d'écriture peut tronquer `store.json`. L'écriture atomique (tmp+rename) + backup corruption faisaient partie du socle v1.3 **annulé**. À reconsidérer si reprise. |
+| L1 | `saveStore` non atomique | ✅ RÉSOLU (v1.3 conso) | Écriture atomique tmp+rename (`main.js:46`) + `loadStore` backup `store.json.corrupt-<ts>` (`main.js:32`). Vérifié E2E. |
+| B1 | Clic « favori » barre lecteur ouvrait le grand lecteur | ✅ RÉSOLU (v1.3 conso) | `stopPropagation` sur `#ply-fav`/`#gl-fav` (`app.js`). |
+| B2 | Re-téléchargement réinitialisait le favori | ✅ RÉSOLU (v1.3 conso) | Conserve favori/ancienneté/paroles depuis l'entrée existante (`main.js`). E2E favori final=true. |
 
 ## Contraintes environnementales connues (non-bugs)
 - **Verrou single-instance** : une instance « Music DL » (ou zombie après test tué) fait quitter toute nouvelle instance (exit 0, rien écrit). Tuer les zombies avant E2E.
@@ -26,4 +28,4 @@
 - **v1.3 abandonné (2026-06-17)** : socle online + refonte landing annulés, retour à v1.2.0. Vérifié en amont que le socle v1.3 fonctionnait (E2E état propre) ; abandon = choix produit, pas un bug.
 - Recherche : `yt-dlp ytmsearch` supprimé en 2026.06 → InnerTube `WEB_REMIX` (repli `ytsearch`).
 - Toujours penser compat ascendante `store.json` (champs additifs, défauts réinjectés par `loadStore`).
-- Fiabilité store : en v1.2.0, `saveStore` écrit en direct (non atomique) ; le `loadStore` réinjecte les défauts pour tout champ manquant (compat ascendante) mais ne sauvegarde pas un store illisible avant fallback. Améliorations (atomique + backup) étaient dans le socle v1.3 annulé (cf L1).
+- Fiabilité store : depuis le v1.3 consolidation, `saveStore` est atomique (tmp+rename) et `loadStore` sauvegarde un store illisible (`store.json.corrupt-<ts>`) avant repli. `loadStore` réinjecte toujours les défauts pour tout champ manquant (compat ascendante).

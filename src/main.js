@@ -40,11 +40,24 @@ function loadStore() {
       plays: (raw.plays && typeof raw.plays === 'object' && !Array.isArray(raw.plays)) ? raw.plays : {}
     };
   } catch (_) {
+    // Fichier present mais illisible (corrompu/tronque) : le sauvegarder AVANT de
+    // repartir des defauts -> ne jamais perdre la bibliotheque en silence.
+    try {
+      if (fs.existsSync(STORE_FILE) && fs.statSync(STORE_FILE).size > 0) {
+        fs.copyFileSync(STORE_FILE, STORE_FILE + '.corrupt-' + Date.now());
+      }
+    } catch (_) {}
     return JSON.parse(JSON.stringify(DEFAULT_STORE));
   }
 }
 function saveStore() {
-  try { fs.writeFileSync(STORE_FILE, JSON.stringify(store, null, 2)); } catch (_) {}
+  // Ecriture atomique : tmp + rename -> un crash en cours d'ecriture ne peut plus
+  // tronquer store.json (qui declencherait le fallback ci-dessus = perte totale).
+  try {
+    const tmp = STORE_FILE + '.tmp';
+    fs.writeFileSync(tmp, JSON.stringify(store, null, 2));
+    fs.renameSync(tmp, STORE_FILE);
+  } catch (_) {}
 }
 function ensureDirs() {
   try { fs.mkdirSync(store.settings.folder, { recursive: true }); } catch (_) {}
@@ -752,6 +765,13 @@ async function processDownload(item) {
   };
   // L'artiste YouTube Music finit souvent par " - Topic"
   entry.artist = entry.artist.replace(/\s*-\s*Topic$/i, '');
+  // Re-telechargement : conserver favori / anciennete / paroles deja connus (pas de reset)
+  const prev = store.library.find((t) => t.id === entry.id);
+  if (prev) {
+    entry.favorite = !!prev.favorite;
+    if (prev.addedAt) entry.addedAt = prev.addedAt;
+    if (prev.hasLyrics) entry.hasLyrics = true;
+  }
   store.library = store.library.filter((t) => t.id !== entry.id);
   store.library.push(entry);
   saveStore();

@@ -872,7 +872,8 @@ function renderLibrary() {
 
 function buildRow(t, i, { context, list, plId }) {
   const row = document.createElement('div');
-  row.className = 'lib-row' + (currentTrack && currentTrack.id === t.id ? ' playing' : '');
+  const isMissing = missingFiles.has(t.id);
+  row.className = 'lib-row' + (currentTrack && currentTrack.id === t.id ? ' playing' : '') + (isMissing ? ' missing' : '');
   row.dataset.id = t.id;
   const isPlaying = currentTrack && currentTrack.id === t.id;
   const eqPaused = audio.paused ? ' paused' : '';
@@ -885,7 +886,7 @@ function buildRow(t, i, { context, list, plId }) {
     </div>
     <div class="rc-thumb ${tClass(i)}">${t.cover ? `<img src="${local(t.cover)}" loading="lazy" onerror="this.remove()">` : `<div class="rc-thumb-ph">${SVG_NOTE(14, '.3')}</div>`}</div>
     <div class="rc-info">
-      <div class="rc-title">${esc(t.title)}</div>
+      <div class="rc-title">${esc(t.title)}${isMissing ? ' <span class="rc-missing">fichier introuvable</span>' : ''}</div>
       <div class="rc-artist">${artistSpan(t.artist, 'rc-artist-name')}</div>
     </div>
     <div class="rc-album">${esc(t.album || '—')}</div>
@@ -901,7 +902,10 @@ function buildRow(t, i, { context, list, plId }) {
 
   row.addEventListener('click', (e) => {
     const btn = e.target.closest('.act-btn');
-    if (!btn) { startQueue(list.map((x) => x.id), i); return; }
+    if (!btn) {
+      if (isMissing) { showToast('Fichier introuvable — re-telecharge le titre', 'error'); return; }
+      startQueue(list.map((x) => x.id), i); return;
+    }
     const act = btn.dataset.act;
     if (act === 'addpl') openPlaylistMenu(btn, t.id);
     else if (act === 'fav') toggleFavorite(t.id);
@@ -1171,6 +1175,9 @@ function startQueue(ids, index) {
 let failStreak = 0;          // nb d'échecs consécutifs (anti boucle infinie)
 let lastFailedSrc = null;    // évite de traiter 2× le même échec (play().catch + event error)
 let playCountedId = null;    // id deja compte pour la lecture en cours (1 incrément par lecture)
+const missingFiles = new Set(); // ids de titres telecharges dont le fichier local est introuvable (marquage UI)
+let restoring = false;       // reprise de la derniere lecture au demarrage (echec = silencieux)
+let lastPersistAt = 0;       // throttle de la sauvegarde "derniere lecture"
 
 function loadTrack(id) {
   const t = trackById(id);
@@ -1196,6 +1203,11 @@ function loadTrack(id) {
 /* Échec de chargement d'un fichier : message clair + passage au suivant,
    avec garde anti-boucle si toute la file est cassée. */
 function onLoadFail(reason) {
+  // Fichier local d'un titre telecharge introuvable -> le marquer indisponible en bibliotheque
+  if (currentTrack && !currentTrack.preview && currentTrack.file && trackById(currentTrack.id)) {
+    missingFiles.add(currentTrack.id);
+  }
+  if (restoring) { restoring = false; renderLibrary(); return; } // echec a la reprise au demarrage : silencieux
   if (lastFailedSrc && lastFailedSrc === audio.src) return; // déjà traité pour ce fichier
   lastFailedSrc = audio.src || (currentTrack && currentTrack.id) || String(Date.now());
   failStreak++;
@@ -1218,10 +1230,44 @@ function stopPlayback() {
   playPos = -1;
   currentLyrics = null;
   lyricsActiveIdx = -1;
+  try { localStorage.removeItem('mdl-last'); } catch (_) {} // plus de lecture a reprendre
   if (lyricsVisible) renderLyrics();
   syncPlayerUI();
   renderLibrary();
   refreshQueueIfOpen();
+}
+
+/* Reprise de lecture : memorise le dernier titre + position (throttle), restaure au demarrage (en pause). */
+function persistLastTrack() {
+  if (!currentTrack || currentTrack.preview) return;
+  try { localStorage.setItem('mdl-last', JSON.stringify({ id: currentTrack.id, pos: Math.floor(audio.currentTime || 0) })); } catch (_) {}
+}
+function restoreLastTrack() {
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem('mdl-last') || 'null'); } catch (_) { saved = null; }
+  if (!saved || !saved.id) return;
+  const t = trackById(saved.id);
+  if (!t || !t.file) return;               // titre supprime ou jamais telecharge
+  restoring = true;
+  currentTrack = t;
+  currentTrack.preview = false;
+  playQueue = [t.id];
+  playPos = 0;
+  playCountedId = t.id;                     // reprise = pas une nouvelle ecoute comptee
+  const seekTo = Math.max(0, Number(saved.pos) || 0);
+  const onMeta = () => {
+    audio.removeEventListener('loadedmetadata', onMeta);
+    try { if (seekTo > 0 && seekTo < (audio.duration || 1e9)) audio.currentTime = seekTo; } catch (_) {}
+    restoring = false;
+  };
+  audio.addEventListener('loadedmetadata', onMeta);
+  audio.src = local(t.file);
+  audio.load();                             // charge sans jouer (reste en pause)
+  syncPlayerUI();
+  refreshQueueIfOpen();
+  updateMediaSession();
+  loadLyrics(t);
+  setTimeout(() => { restoring = false; }, 4000); // garde-fou si le fichier est introuvable
 }
 
 function prevTrack() {
@@ -1281,9 +1327,10 @@ $('#gl-shuffle').addEventListener('click', toggleShuffle);
 $('#btn-repeat').addEventListener('click', toggleRepeat);
 $('#gl-repeat').addEventListener('click', toggleRepeat);
 
-/* Favori (player + GL) */
-$('#ply-fav').addEventListener('click', () => currentTrack && toggleFavorite(currentTrack.id));
-$('#gl-fav').addEventListener('click', () => currentTrack && toggleFavorite(currentTrack.id));
+/* Favori (player + GL) — stopPropagation : #ply-fav est imbrique dans #ply-left
+   (clic = ouvre le grand lecteur), sinon cliquer "favori" ouvrait le grand lecteur. */
+$('#ply-fav').addEventListener('click', (e) => { e.stopPropagation(); if (currentTrack) toggleFavorite(currentTrack.id); });
+$('#gl-fav').addEventListener('click', (e) => { e.stopPropagation(); if (currentTrack) toggleFavorite(currentTrack.id); });
 $('#ply-artist').addEventListener('click', () => { if (currentTrack && currentTrack.artist) openArtistByName(currentTrack.artist); });
 $('#gl-artist').addEventListener('click', () => { if (currentTrack && currentTrack.artist) openArtistByName(currentTrack.artist); });
 
@@ -1345,6 +1392,11 @@ audio.addEventListener('timeupdate', () => {
       && audio.duration && audio.currentTime / audio.duration >= 0.5) {
     bumpPlay(currentTrack.id);
   }
+  // Memorise la derniere lecture (titre + position) pour la reprise au demarrage (throttle ~4s)
+  if (currentTrack && !currentTrack.preview) {
+    const now = Date.now();
+    if (now - lastPersistAt > 4000) { lastPersistAt = now; persistLastTrack(); }
+  }
 });
 
 function bumpPlay(id) {
@@ -1363,9 +1415,12 @@ audio.addEventListener('ended', () => {
   nextTrack(true);
 });
 audio.addEventListener('play', syncPlayerUI);
-audio.addEventListener('pause', syncPlayerUI);
+audio.addEventListener('pause', () => { syncPlayerUI(); persistLastTrack(); });
 // Lecture réellement démarrée → on réinitialise le compteur d'échecs
-audio.addEventListener('playing', () => { failStreak = 0; lastFailedSrc = null; });
+audio.addEventListener('playing', () => {
+  failStreak = 0; lastFailedSrc = null;
+  if (currentTrack && missingFiles.delete(currentTrack.id)) renderLibrary(); // le fichier rejoue -> plus indisponible
+});
 // Fichier illisible (déplacé, corrompu, supprimé) → message + titre suivant
 audio.addEventListener('error', () => {
   if (!currentTrack) return;
@@ -1410,13 +1465,14 @@ function renderQueuePanel() {
       </div>
       <div class="qrow-dur">${t ? fmtDur(t.duration) : ''}</div>
       <button class="qrow-x" title="Retirer de la file">×</button>`;
-    row.querySelector('.qrow-info').addEventListener('click', () => { playPos = i; loadTrack(playQueue[i]); });
-    row.querySelector('.qrow-x').addEventListener('click', (e) => { e.stopPropagation(); removeFromQueue(i); });
-    row.addEventListener('dragstart', () => { qDragFrom = i; row.classList.add('dragging'); });
+    // Index lu depuis dataset.qi au moment de l'evenement (reste valide apres reordonnancement en place)
+    row.querySelector('.qrow-info').addEventListener('click', () => { const qi = +row.dataset.qi; playPos = qi; loadTrack(playQueue[qi]); });
+    row.querySelector('.qrow-x').addEventListener('click', (e) => { e.stopPropagation(); removeFromQueue(+row.dataset.qi); });
+    row.addEventListener('dragstart', () => { qDragFrom = +row.dataset.qi; row.classList.add('dragging'); });
     row.addEventListener('dragend', () => { row.classList.remove('dragging'); $$('.qrow').forEach((r) => r.classList.remove('drop-target')); });
     row.addEventListener('dragover', (e) => { e.preventDefault(); row.classList.add('drop-target'); });
     row.addEventListener('dragleave', () => row.classList.remove('drop-target'));
-    row.addEventListener('drop', (e) => { e.preventDefault(); row.classList.remove('drop-target'); if (qDragFrom != null && qDragFrom !== i) moveInQueue(qDragFrom, i); qDragFrom = null; });
+    row.addEventListener('drop', (e) => { e.preventDefault(); row.classList.remove('drop-target'); const to = +row.dataset.qi; if (qDragFrom != null && qDragFrom !== to) moveInQueue(qDragFrom, to); qDragFrom = null; });
     body.appendChild(row);
   });
 }
@@ -1427,7 +1483,24 @@ function moveInQueue(from, to) {
   const [moved] = playQueue.splice(from, 1);
   playQueue.splice(to, 0, moved);
   playPos = playQueue.indexOf(currentId);
-  renderQueuePanel();
+  // Reordonnancement DOM en place (pas de reconstruction complete) -> fluide a 30+ titres.
+  const body = $('#qpanel-body');
+  let rows = Array.from(body.children);
+  if (rows.length !== playQueue.length || !rows[from]) { renderQueuePanel(); return; }
+  const movingRow = rows[from];
+  movingRow.remove();
+  rows = Array.from(body.children);              // lignes restantes, ordre d'origine
+  if (to >= rows.length) body.appendChild(movingRow);
+  else body.insertBefore(movingRow, rows[to]);
+  renumberQueueRows();
+}
+
+// Renumerote dataset.qi + classe .current sans reconstruire le DOM ni reattacher les listeners.
+function renumberQueueRows() {
+  Array.from($('#qpanel-body').children).forEach((r, idx) => {
+    r.dataset.qi = idx;
+    r.classList.toggle('current', idx === playPos);
+  });
 }
 
 function removeFromQueue(i) {
@@ -1772,6 +1845,8 @@ function updateMediaSession() {
 document.addEventListener('keydown', (e) => {
   const typing = ['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName);
   if (e.code === 'Space' && !typing) { e.preventDefault(); togglePlay(); }
+  if (e.code === 'ArrowRight' && !typing && currentTrack) { e.preventDefault(); nextTrack(false); }
+  if (e.code === 'ArrowLeft' && !typing && currentTrack) { e.preventDefault(); prevTrack(); }
   if (e.key === 'Escape') { closeGL(); closeCtx(); $$('.modal-back.on').forEach((m) => m.classList.remove('on')); }
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
     e.preventDefault();
@@ -1935,6 +2010,7 @@ async function init() {
   renderRecents();
   renderLibrary();
   renderPlaylists();
+  restoreLastTrack();   // reprend le dernier titre (en pause, position memorisee)
   syncPlayerUI();
 }
 init();

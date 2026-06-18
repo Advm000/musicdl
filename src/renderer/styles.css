@@ -147,6 +147,9 @@ img{-webkit-user-drag:none;user-select:none}
 .lib-row{display:flex;align-items:center;height:54px;padding:0 14px;border-bottom:1px solid rgba(255,255,255,.035);cursor:pointer;transition:background .12s;position:relative;flex-shrink:0}
 .lib-row:hover{background:rgba(255,255,255,.022)}
 .lib-row.playing{background:rgba(79,136,248,.055)}
+.lib-row.missing{opacity:.5}
+.lib-row.missing .rc-thumb{filter:grayscale(1)}
+.rc-missing{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:600;color:#ff8a8a;background:rgba(255,90,90,.12);vertical-align:middle}
 .lib-row:hover .rc-n{display:none}
 .lib-row:hover .rc-play-ico{display:flex}
 .lib-row.playing .rc-n{display:none}
