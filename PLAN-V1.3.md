@@ -1,6 +1,8 @@
 # PLAN v1.3 — « Consolidation propre » (upgrade, pas de nouvelles options)
 
-> Base : v1.2.0 stable. **Règle d'or : aucune nouvelle fonction/option.** On fiabilise, on corrige, on optimise et on **complète** l'existant. Tout reste 100 % compatible `store.json` (ajouts additifs uniquement).
+> ✅ **ÉTAT 2026-06-17 : Lots A–E implémentés + vérifiés E2E.** Le périmètre a ensuite été **élargi à la demande du boss** (socle online : favoris/playlists/albums en ligne + lecture streaming ; page « Pour toi »). **L'état réel et exhaustif du v1.3 est dans `HANDOFF.md §15` et `CHANGELOG.md`** — ce plan ci-dessous est le périmètre initial (référence). Tout est dans `src/`, à commiter/pousser selon le boss.
+
+> Base : v1.2.0 stable. Règle initiale : pas de nouvelle option (assouplie ensuite). Tout reste 100 % compatible `store.json` (ajouts additifs uniquement).
 
 ## Principe
 - On ne change pas la surface de l'app (mêmes écrans, mêmes boutons).

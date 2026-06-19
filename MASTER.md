@@ -20,12 +20,14 @@ Electron 42 (vanilla JS, pas de framework). Recherche via API interne InnerTube 
 - Paroles synchronisées (LRCLIB), compteur d'écoutes, playlists (manuelles + intelligentes virtuelles favoris/récents/top).
 - Auto-update (electron-updater) + landing GitHub Pages.
 
-## Fonctionnalités en cours — v1.3.0 « Consolidation propre » (implémenté, non poussé)
-Upgrade/fiabilisation de l'existant, **sans nouvelle option** (cf `PLAN-V1.3.md`). Vérifié E2E (parcours complet + file d'attente) :
-- Fiabilité : `saveStore` atomique + backup store corrompu (anti-perte de bibliothèque).
-- Bugs : clic favori barre lecteur (stopPropagation) ; favori conservé au re-téléchargement.
-- Perf : file d'attente réordonnée par déplacement DOM en place (fluide à 30+).
-- Finition : titres au fichier manquant grisés/« introuvable » ; reprise de la dernière lecture au démarrage ; raccourcis ←/→.
+## Fonctionnalités en cours — v1.3.0 (implémenté + vérifié E2E, à commiter/pousser ; détail : `HANDOFF.md §15`)
+Démarré « consolidation sans nouvelle option », élargi à la demande du boss au socle online + page Découvertes :
+- **Fiabilité** : `saveStore` atomique + backup store corrompu.
+- **Bugs** : clic favori barre lecteur (stopPropagation) ; favori conservé au re-DL ; seek de reprise annulé par une vraie lecture.
+- **Lecteur/file** : file réordonnée en place (fluide 30+) ; reprise dernière lecture ; raccourcis ←/→ ; fichiers manquants grisés.
+- **Bibliothèque** : onglets Titres/Albums ; analyseur albums/singles ; sélection + suppression groupée ; boutons toujours visibles.
+- **Socle online** : `onlineMeta` (favoris/playlists/albums en ligne sans téléchargement) ; lecture **streaming** ; boutons ♥/➕/⬇ sur les cartes ; téléchargement par titre + global.
+- **Page « Pour toi »** : reco basée sur les artistes consultés (`interests` + algo `discover` + artistes liés).
 
 ## Historique v1.3 (2026-06-17)
 Un premier v1.3 « online » (socle `onlineMeta` / réconciliation / multi-suppression / favoris online + refonte landing SaaS) a été **abandonné** (décision boss, retour v1.2.0), puis remplacé par le v1.3 « consolidation » ci-dessus. Mode Radio (É6) : abandonné.

@@ -22,6 +22,8 @@ contextBridge.exposeInMainWorld('mdl', {
   getCollection: (ref) => ipcRenderer.invoke('collection:get', ref),
   getArtist: (browseId) => ipcRenderer.invoke('artist:get', browseId),
   getArtistByName: (name) => ipcRenderer.invoke('artist:byName', name),
+  addInterest: (a) => ipcRenderer.invoke('interest:add', a),
+  discover: () => ipcRenderer.invoke('discover'),
   previewUrl: (id) => ipcRenderer.invoke('preview:get', id),
   getLyrics: (id) => ipcRenderer.invoke('lyrics:get', id),
   refetchLyrics: (id) => ipcRenderer.invoke('lyrics:refetch', id),
@@ -29,16 +31,20 @@ contextBridge.exposeInMainWorld('mdl', {
 
   // Bibliothèque
   deleteTrack: (id) => ipcRenderer.invoke('library:delete', id),
+  deleteMany: (ids) => ipcRenderer.invoke('library:deleteMany', ids),
   revealTrack: (id) => ipcRenderer.invoke('library:reveal', id),
   openFolder: () => ipcRenderer.invoke('folder:open'),
   setFavorite: (id, on) => ipcRenderer.invoke('fav:set', { id, on }),
+  setOnlineFavorite: (track, on) => ipcRenderer.invoke('online:setFav', { track, on }),
+  saveOnline: (tracks) => ipcRenderer.invoke('online:save', tracks),
+  removeOnline: (id) => ipcRenderer.invoke('online:remove', id),
   bumpPlay: (id) => ipcRenderer.invoke('plays:bump', id),
 
   // Playlists
   createPlaylist: (name) => ipcRenderer.invoke('playlist:create', name),
   deletePlaylist: (id) => ipcRenderer.invoke('playlist:delete', id),
   renamePlaylist: (id, name) => ipcRenderer.invoke('playlist:rename', { id, name }),
-  addToPlaylist: (playlistId, trackId) => ipcRenderer.invoke('playlist:addTrack', { playlistId, trackId }),
+  addToPlaylist: (playlistId, trackId, meta) => ipcRenderer.invoke('playlist:addTrack', { playlistId, trackId, meta }),
   removeFromPlaylist: (playlistId, trackId) => ipcRenderer.invoke('playlist:removeTrack', { playlistId, trackId }),
 
   // Paramètres

@@ -7,7 +7,7 @@ const $ = (s) => document.querySelector(s);
 const $$ = (s) => Array.from(document.querySelectorAll(s));
 
 /* ── État global ── */
-let appState = { version: '', settings: {}, library: [], playlists: [], recents: [], plays: {} };
+let appState = { version: '', settings: {}, library: [], playlists: [], recents: [], plays: {}, onlineMeta: {}, interests: [] };
 let searchResults = [];
 let lastSearchError = null;
 let lastDlError = null;
@@ -48,6 +48,34 @@ const SVG_NOTE = (sz, op) => `<svg width="${sz}" height="${sz}" viewBox="0 0 24 
 const T_CLASSES = ['t1', 't2', 't3', 't4', 't5', 't6', 't7', 't8'];
 const tClass = (i) => T_CLASSES[i % T_CLASSES.length];
 const trackById = (id) => appState.library.find((t) => t.id === id);
+// Resout un id vers un titre telecharge (library) OU une reference EN LIGNE (onlineMeta, annotee online:true).
+function resolveTrack(id) {
+  const lib = appState.library.find((t) => t.id === id);
+  if (lib) return lib;
+  const o = appState.onlineMeta && appState.onlineMeta[id];
+  if (o) return Object.assign({}, o, { online: true, file: null });
+  return null;
+}
+// Meta minimale d'un titre (pour le stocker comme reference en ligne).
+function metaOf(t) {
+  return { id: t.id, title: t.title || '', artist: t.artist || '', album: t.album || '', duration: t.duration || null, thumb: t.thumb || null };
+}
+// Favori (titre telecharge OU reference en ligne).
+function isFavAny(id) {
+  const lib = appState.library.find((t) => t.id === id);
+  if (lib) return !!lib.favorite;
+  const o = appState.onlineMeta && appState.onlineMeta[id];
+  return !!(o && o.fav);
+}
+// Met a jour l'etat visuel de tous les boutons favori des cartes de recherche.
+function refreshFavBtns() {
+  document.querySelectorAll('[data-fav]').forEach((btn) => {
+    const on = isFavAny(btn.dataset.fav);
+    btn.classList.toggle('on', on);
+    const svg = btn.querySelector('svg');
+    if (svg) svg.setAttribute('fill', on ? 'currentColor' : 'none');
+  });
+}
 
 /* ── Toasts ── */
 function showToast(msg, type) {
@@ -81,7 +109,7 @@ window.mdl.on('win:maximized', (isMax) => {
 /* ── Navigation ── */
 function goPage(n) {
   currentPage = n;
-  [0, 1, 2].forEach((i) => {
+  [0, 1, 2, 3].forEach((i) => {
     $('#ni' + i).classList.toggle('on', i === n);
     $('#pg' + i).classList.toggle('on', i === n);
   });
@@ -89,6 +117,7 @@ function goPage(n) {
   // intelligentes doivent refleter les favoris / ecoutes les plus recents).
   if (n === 1) renderLibrary();
   else if (n === 2) { if (currentPlId) renderPlaylistDetail(); else renderPlaylists(); }
+  else if (n === 3) renderDiscover();
 }
 $$('.ni').forEach((el) => el.addEventListener('click', () => goPage(+el.dataset.page)));
 $('#goto-search-btn').addEventListener('click', () => goPage(0));
@@ -132,7 +161,7 @@ $('#confirm-ok').addEventListener('click', () => {
 
 /* ── Menu contextuel (ajouter à une playlist) ── */
 const ctxMenu = $('#ctx-menu');
-function openPlaylistMenu(anchor, trackId) {
+function openPlaylistMenu(anchor, trackId, meta, onAdd) {
   const items = appState.playlists.map((p) =>
     `<div class="ctx-item" data-pl="${esc(p.id)}">
       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
@@ -152,24 +181,26 @@ function openPlaylistMenu(anchor, trackId) {
       if (it.dataset.new) {
         askInput({ title: 'Nouvelle playlist', label: 'Nom de la playlist', okLabel: 'Créer' }, async (name) => {
           const r = await window.mdl.createPlaylist(name);
-          if (r.ok) {
-            appState.playlists.push(r.playlist);
-            await window.mdl.addToPlaylist(r.playlist.id, trackId);
-            r.playlist.tracks.push(trackId);
-            renderPlaylists();
-            showToast(`Ajoutée à "${name}"`, 'success');
-          }
+          if (!r.ok) return;
+          appState.playlists.push(r.playlist);
+          if (onAdd) { await onAdd(r.playlist); renderPlaylists(); if (currentPlId === r.playlist.id) renderPlaylistDetail(); return; }
+          if (meta && meta.id && !trackById(meta.id)) { if (!appState.onlineMeta) appState.onlineMeta = {}; appState.onlineMeta[meta.id] = Object.assign({}, appState.onlineMeta[meta.id] || {}, meta); }
+          await window.mdl.addToPlaylist(r.playlist.id, trackId, meta);
+          r.playlist.tracks.push(trackId);
+          renderPlaylists();
+          showToast(`Ajoutée à "${name}"`, 'success');
         });
       } else {
         const pl = appState.playlists.find((p) => p.id === it.dataset.pl);
-        if (pl) {
-          if (pl.tracks.includes(trackId)) { showToast('Déjà dans cette playlist', 'info'); return; }
-          await window.mdl.addToPlaylist(pl.id, trackId);
-          pl.tracks.push(trackId);
-          renderPlaylists();
-          if (currentPlId === pl.id) renderPlaylistDetail();
-          showToast(`Ajoutée à "${pl.name}"`, 'success');
-        }
+        if (!pl) return;
+        if (onAdd) { await onAdd(pl); renderPlaylists(); if (currentPlId === pl.id) renderPlaylistDetail(); return; }
+        if (pl.tracks.includes(trackId)) { showToast('Déjà dans cette playlist', 'info'); return; }
+        if (meta && meta.id && !trackById(meta.id)) { if (!appState.onlineMeta) appState.onlineMeta = {}; appState.onlineMeta[meta.id] = Object.assign({}, appState.onlineMeta[meta.id] || {}, meta); }
+        await window.mdl.addToPlaylist(pl.id, trackId, meta);
+        pl.tracks.push(trackId);
+        renderPlaylists();
+        if (currentPlId === pl.id) renderPlaylistDetail();
+        showToast(`Ajoutée à "${pl.name}"`, 'success');
       }
     });
   });
@@ -191,6 +222,10 @@ let searchTab = 'songs';                 // 'songs' | 'albums' | 'playlists'
 let collectionResults = [];              // cartes albums/playlists du dernier onglet
 let currentCollection = null;            // collection ouverte (vue détail)
 let currentArtist = null;                // bandeau artiste (mode albums intelligent)
+let searchArtist = null;                 // artiste detecte pour la banniere des Titres
+let discoverResults = [];                // titres recommandes (page Pour toi) — pool pour startDownload/preview
+let discoverCache = null;                // derniere reco chargee
+let discoverLoading = false;
 let artistView = null;                   // vue Page Artiste ouverte { browseId, name, subs, photo, topSongs, albums }
 let lastQuery = '';
 let searchContinuation = null;           // jeton de page suivante
@@ -210,6 +245,7 @@ async function runSearch(q) {
   lastSearchError = null;
   searchResults = [];
   collectionResults = [];
+  searchArtist = null;
   lastQuery = query;
   setSearchState('loading');
   $('#dl-all-btn').style.display = 'none';
@@ -230,6 +266,7 @@ async function runSearch(q) {
   searchContinuation = r.continuation || null;
   if (r.kind === 'songs') {
     searchResults = r.results;
+    searchArtist = r.artist || null;
     renderResults(query);
     setSearchState('results');
   } else {
@@ -312,17 +349,96 @@ function buildColCard(c) {
   card.className = 'col-card';
   const type = c.info === 'Single' || c.info === 'EP' ? c.info : (c.kind === 'album' ? 'Album' : 'Playlist');
   const extra = c.kind === 'playlist' && c.info ? ` · ${esc(c.info)}` : '';
+  const noun = c.kind === 'album' ? 'l\'album' : 'la playlist';
+  const addTitle = c.kind === 'album' ? 'Ajouter à mes albums (en ligne)' : 'Enregistrer la playlist (en ligne)';
   card.innerHTML = `
     <div class="col-card-cover">
       <div class="cph">${SVG_NOTE(26, '.18')}</div>
       ${c.thumb ? `<img src="${esc(c.thumb)}" loading="lazy" onerror="this.remove()">` : ''}
+      <div class="col-ov">
+        <button class="col-ov-btn" data-cact="dl" title="Télécharger ${noun}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
+        <button class="col-ov-btn" data-cact="fav" title="Ajouter aux favoris (en ligne)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></button>
+        <button class="col-ov-btn" data-cact="addpl" title="${addTitle}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+      </div>
     </div>
     <div class="col-card-foot">
       <div class="col-card-name">${esc(c.title)}</div>
       <div class="col-card-meta">${type}${c.artist ? ` · <span>${esc(c.artist)}</span>` : ''}${c.year ? ` · ${c.year}` : ''}${extra}</div>
     </div>`;
-  card.addEventListener('click', () => openCollectionRef({ browseId: c.browseId, kind: c.kind, fallback: c }));
+  card.addEventListener('click', (e) => {
+    const b = e.target.closest('.col-ov-btn');
+    if (!b) { openCollectionRef({ browseId: c.browseId, kind: c.kind, fallback: c }); return; }
+    e.stopPropagation();
+    if (b.dataset.cact === 'dl') downloadCollectionCard(c);
+    else if (b.dataset.cact === 'fav') favCollectionCard(c);
+    else if (b.dataset.cact === 'addpl') saveCollectionToLibrary(c);
+  });
   return card;
+}
+
+/* Charge les titres d'un album/playlist en ligne (getCollection). */
+async function fetchCollection(c) {
+  if (!online) { showToast('Hors ligne — connexion requise', 'error'); return null; }
+  showToast('Chargement de la liste…', 'info');
+  const r = await window.mdl.getCollection({ browseId: c.browseId, kind: c.kind });
+  if (!r || !r.ok || !r.collection) { showToast('Chargement impossible', 'error'); return null; }
+  return r.collection;
+}
+function colPayload(col, t) {
+  return { id: t.id, title: t.title, artist: t.artist, thumb: t.thumb || col.cover || null, duration: t.duration, album: col.kind === 'album' ? col.title : (t.album || ''), year: col.kind === 'album' ? col.year : null };
+}
+/* ⬇ Télécharger tout l'album/la playlist (titres non déjà téléchargés). */
+async function downloadCollectionCard(c) {
+  const col = await fetchCollection(c); if (!col) return;
+  const todo = (col.tracks || []).filter((t) => !trackById(t.id));
+  if (!todo.length) { showToast('Déjà tout téléchargé', 'info'); return; }
+  todo.forEach((t) => window.mdl.download(colPayload(col, t)));
+  showToast(`${todo.length} téléchargement${todo.length > 1 ? 's' : ''} lancé${todo.length > 1 ? 's' : ''}`, 'success');
+}
+/* ♥ Favori en ligne pour tous les titres (références online, sans télécharger). */
+async function favCollectionCard(c) {
+  const col = await fetchCollection(c); if (!col) return;
+  if (!appState.onlineMeta) appState.onlineMeta = {};
+  let n = 0;
+  for (const t of col.tracks || []) {
+    const meta = metaOf(colPayload(col, t));
+    const lib = trackById(t.id);
+    if (lib) { if (!lib.favorite) { lib.favorite = true; await window.mdl.setFavorite(t.id, true); n++; } }
+    else { appState.onlineMeta[t.id] = Object.assign({}, appState.onlineMeta[t.id] || {}, meta, { fav: true }); await window.mdl.setOnlineFavorite(meta, true); n++; }
+  }
+  renderLibrary(); renderPlaylists(); refreshFavBtns();
+  showToast(`${n} titre${n > 1 ? 's' : ''} ajouté${n > 1 ? 's' : ''} aux favoris`, 'success');
+}
+/* ➕ Album -> ajoute à l'onglet Albums (références online). Playlist -> enregistre la playlist. */
+async function saveCollectionToLibrary(c) {
+  const col = await fetchCollection(c); if (!col) return;
+  const tracks = col.tracks || [];
+  if (!appState.onlineMeta) appState.onlineMeta = {};
+  if (c.kind === 'playlist') {
+    const r = await window.mdl.createPlaylist(col.title || 'Playlist');
+    if (!r.ok) return;
+    appState.playlists.push(r.playlist);
+    for (const t of tracks) {
+      const meta = metaOf(colPayload(col, t));
+      if (!trackById(t.id)) appState.onlineMeta[t.id] = Object.assign({}, appState.onlineMeta[t.id] || {}, meta);
+      await window.mdl.addToPlaylist(r.playlist.id, t.id, trackById(t.id) ? null : meta);
+      r.playlist.tracks.push(t.id);
+    }
+    renderPlaylists();
+    showToast(`Playlist "${col.title}" enregistrée`, 'success');
+    return;
+  }
+  // Album : enregistrer ses titres comme references online -> apparait dans Bibliotheque > Albums
+  const metas = [];
+  tracks.forEach((t) => {
+    if (trackById(t.id)) return;            // deja telecharge
+    const m = metaOf(colPayload(col, t));
+    appState.onlineMeta[t.id] = Object.assign({}, appState.onlineMeta[t.id] || {}, m, { saved: true });
+    metas.push(m);
+  });
+  await window.mdl.saveOnline(metas);
+  renderLibrary();
+  showToast(`Album "${col.title}" ajouté à vos albums`, 'success');
 }
 
 function renderCollections(query, kind, artist) {
@@ -332,19 +448,24 @@ function renderCollections(query, kind, artist) {
   $('#col-res-bar').innerHTML = `<strong>${n} ${label}${n > 1 ? 's' : ''}</strong>&nbsp;pour "${esc(query)}" &nbsp;·&nbsp; YouTube Music`;
   const grid = $('#col-grid');
   grid.innerHTML = '';
-  if (artist) {
-    const band = document.createElement('div');
-    band.className = 'artist-band';
-    band.innerHTML = `
-      ${artist.thumb ? `<img src="${esc(artist.thumb)}">` : `<div class="artist-band-ph">${SVG_NOTE(20, '.4')}</div>`}
-      <div>
-        <div class="ab-label">Artiste trouvé — sa discographie d'abord</div>
-        <div class="ab-name">${esc(artist.name)}</div>
-        ${artist.info ? `<div class="ab-info">${esc(artist.info)}</div>` : ''}
-      </div>`;
-    grid.appendChild(band);
-  }
   collectionResults.forEach((c) => grid.appendChild(buildColCard(c)));
+}
+
+/* Banniere artiste cliquable -> ouvre la page artiste (discographie). Affichee dans les Titres. */
+function buildArtistBand(artist) {
+  const band = document.createElement('div');
+  band.className = 'artist-band clickable';
+  band.title = 'Voir la page de l\'artiste';
+  band.innerHTML = `
+    ${artist.thumb ? `<img src="${esc(artist.thumb)}">` : `<div class="artist-band-ph">${SVG_NOTE(20, '.4')}</div>`}
+    <div>
+      <div class="ab-label">Artiste trouvé — voir sa page</div>
+      <div class="ab-name">${esc(artist.name)}</div>
+      ${artist.info ? `<div class="ab-info">${esc(artist.info)}</div>` : ''}
+    </div>
+    <div class="ab-go"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></div>`;
+  band.addEventListener('click', () => { if (artist.browseId) openArtist(artist.browseId); else openArtistByName(artist.name); });
+  return band;
 }
 
 function appendCollections(items) {
@@ -525,8 +646,18 @@ function buildResultCard(t, i) {
         <div class="rcard-prog-lbl">Téléchargement… 0%</div>
       </div>
     </div>
+    <div class="rcard-side">
+      <button class="rcs-btn rcs-fav${isFavAny(t.id) ? ' on' : ''}" data-fav="${esc(t.id)}" title="Favori (même sans télécharger)">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="${isFavAny(t.id) ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+      </button>
+      <button class="rcs-btn rcs-pl" title="Ajouter à une playlist (même sans télécharger)">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+    </div>
     <div class="rcard-acts"></div>`;
   card.querySelector('.pv-btn').addEventListener('click', (e) => { e.stopPropagation(); previewToggle(t); });
+  card.querySelector('.rcs-fav').addEventListener('click', (e) => { e.stopPropagation(); toggleFavorite(t); });
+  card.querySelector('.rcs-pl').addEventListener('click', (e) => { e.stopPropagation(); openPlaylistMenu(e.currentTarget, t.id, trackById(t.id) ? null : metaOf(t)); });
   return card;
 }
 
@@ -534,6 +665,7 @@ function renderResults(query) {
   resBarText();
   const list = $('#rc-list');
   list.innerHTML = '';
+  if (searchArtist) list.appendChild(buildArtistBand(searchArtist));
   searchResults.forEach((t, i) => {
     list.appendChild(buildResultCard(t, i));
     refreshCard(t.id);
@@ -601,6 +733,14 @@ async function openArtistView(promise, label) {
   artistView = r.artist;
   renderArtist();
   setSearchState('artist');
+  // Mémoriser l'artiste comme centre d'intérêt -> alimente la page "Pour toi"
+  if (artistView.browseId) {
+    const a = { browseId: artistView.browseId, name: artistView.name, photo: artistView.photo };
+    const known = (appState.interests || []).some((x) => x.browseId === a.browseId);
+    appState.interests = [a, ...(appState.interests || []).filter((x) => x.browseId !== a.browseId)].slice(0, 20);
+    window.mdl.addInterest(a);
+    if (!known) discoverCache = null;   // nouvel artiste -> recalculer les recommandations
+  }
 }
 function openArtist(browseId) {
   if (!browseId) return;
@@ -651,6 +791,62 @@ document.addEventListener('click', (e) => {
   openArtistByName(link.dataset.artist);
 });
 
+/* ════════ POUR TOI (découvertes / recommandations) ════════ */
+async function renderDiscover(force) {
+  const pb = $('#disco-pb');
+  const interests = appState.interests || [];
+  if (!interests.length) {
+    $('#disco-sub').textContent = 'Découvertes basées sur tes artistes';
+    pb.innerHTML = `<div class="disco-empty">
+      <div class="empty-ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.8a2 2 0 0 0 1.3 1.3L21 12l-5.8 1.9a2 2 0 0 0-1.3 1.3L12 21l-1.9-5.8a2 2 0 0 0-1.3-1.3L3 12l5.8-1.9a2 2 0 0 0 1.3-1.3z"/></svg></div>
+      <div class="empty-title">Rien pour l'instant</div>
+      <div class="empty-sub">Cherche et ouvre un artiste : on te proposera ici ses meilleurs titres, ses albums et des artistes similaires — affinés à chaque artiste exploré.</div>
+      <button class="hbtn" id="disco-go" style="margin-top:6px;font-size:11px;gap:6px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>Chercher un artiste</button>
+    </div>`;
+    const go = $('#disco-go'); if (go) go.addEventListener('click', () => { goPage(0); $('#search-input').focus(); });
+    return;
+  }
+  if (!force && discoverCache) { renderDiscoverContent(discoverCache); return; }
+  if (discoverLoading) return;
+  if (!online) { pb.innerHTML = '<div class="disco-empty"><div class="empty-title">Hors ligne</div><div class="empty-sub">Connecte-toi pour découvrir de nouveaux titres.</div></div>'; return; }
+  discoverLoading = true;
+  pb.innerHTML = '<div class="disco-loading"><span class="spinner"></span> Analyse de tes artistes…</div>';
+  const r = await window.mdl.discover();
+  discoverLoading = false;
+  if (!r || !r.ok) { pb.innerHTML = '<div class="disco-empty"><div class="empty-title">Erreur de chargement</div></div>'; return; }
+  discoverCache = r;
+  renderDiscoverContent(r);
+}
+function renderDiscoverContent(r) {
+  const pb = $('#disco-pb');
+  pb.innerHTML = '';
+  $('#disco-sub').textContent = (r.from && r.from.length) ? ("D'après " + r.from.slice(0, 3).join(', ')) : 'Découvertes';
+  const tracks = (r.tracks || []).filter((t) => !trackById(t.id));   // pas ce qu'on possède déjà
+  const albums = r.albums || [];
+  discoverResults = tracks.slice();
+  if (!tracks.length && !albums.length) {
+    pb.innerHTML = '<div class="disco-empty"><div class="empty-title">Rien de neuf</div><div class="empty-sub">Explore d\'autres artistes pour enrichir tes recommandations.</div></div>';
+    return;
+  }
+  if (tracks.length) {
+    const h = document.createElement('div'); h.className = 'lib-sec-h'; h.textContent = 'Titres pour toi · ' + tracks.length;
+    pb.appendChild(h);
+    const list = document.createElement('div'); list.className = 'rc-list';
+    tracks.forEach((t, i) => list.appendChild(buildResultCard(t, i)));
+    pb.appendChild(list);
+    tracks.forEach((t) => { refreshCard(t.id); refreshPvBtn(t.id); });
+  }
+  if (albums.length) {
+    const h = document.createElement('div'); h.className = 'lib-sec-h'; h.textContent = 'Albums pour toi · ' + albums.length;
+    pb.appendChild(h);
+    const grid = document.createElement('div'); grid.className = 'col-grid disco-grid';
+    albums.forEach((c) => grid.appendChild(buildColCard(c)));
+    pb.appendChild(grid);
+  }
+  refreshFavBtns();
+}
+$('#disco-refresh').addEventListener('click', () => renderDiscover(true));
+
 /* ════════ PRÉÉCOUTE (écouter avant de télécharger) ════════ */
 let previewLoading = null;
 const previewUrls = new Map();
@@ -658,7 +854,7 @@ const previewUrls = new Map();
 function coverSrc(t) {
   if (!t) return null;
   if (t.cover) return local(t.cover);
-  if (t.preview && t.thumb) return t.thumb;
+  if (t.thumb) return t.thumb;   // preview / titre en ligne
   return null;
 }
 
@@ -729,6 +925,7 @@ async function previewToggle(t) {
 async function startDownload(id) {
   const t = searchResults.find((x) => x.id === id)
     || (artistView && artistView.topSongs.find((x) => x.id === id))
+    || discoverResults.find((x) => x.id === id)
     || trackById(id);
   if (!t) return;
   if (!online) { showToast('Hors ligne — connexion requise', 'error'); return; }
@@ -769,12 +966,18 @@ window.mdl.on('dl:queue', (snap) => {
 });
 window.mdl.on('dl:done', ({ track }) => {
   lastDlError = null;
+  // Etait une reference en ligne -> conserve le favori puis devient un vrai titre local
+  const om = appState.onlineMeta && appState.onlineMeta[track.id];
+  if (om && om.fav && !track.favorite) track.favorite = true;
+  if (appState.onlineMeta) delete appState.onlineMeta[track.id];
   appState.library = appState.library.filter((t) => t.id !== track.id);
   appState.library.push(track);
   showToast(`"${track.title}" téléchargée`, 'success');
   renderLibrary();
   renderPlaylists();
   refreshCard(track.id);
+  refreshFavBtns();
+  if (currentPlId) renderPlaylistDetail();
   if (currentCollection) { refreshColRow(track.id); syncColDlAll(); }
 });
 window.mdl.on('dl:error', ({ id, title, error }) => {
@@ -811,7 +1014,163 @@ function renderQueue() {
 
 /* ════════ BIBLIOTHÈQUE ════════ */
 let sortKey = 'title', sortDir = 1, libFilter = '';
+let libTab = 'titres';        // 'titres' | 'albums'
+let libAlbumOpen = null;      // nom d'album ouvert dans l'onglet Albums
+let selMode = false;          // mode selection (suppression groupee)
+const selected = new Set();   // ids selectionnes
 const sortArrow = document.querySelector('.lib-col-h .sort-arrow');
+
+/* Onglets Titres / Albums */
+$$('#lib-tabs .stab').forEach((b) => {
+  b.addEventListener('click', () => {
+    if (libTab === b.dataset.libtab) return;
+    libTab = b.dataset.libtab;
+    $$('#lib-tabs .stab').forEach((x) => x.classList.toggle('on', x.dataset.libtab === libTab));
+    libAlbumOpen = null;
+    if (selMode) setSelMode(false);
+    renderLibrary();
+  });
+});
+
+/* Mode selection + suppression groupee */
+function setSelMode(on) {
+  selMode = on;
+  if (!on) selected.clear();
+  $('#lib-selbar').style.display = on ? 'flex' : 'none';
+  $('#lib-select-btn').classList.toggle('on', on);
+  updateSelBar();
+  renderLibrary();
+}
+function toggleSelect(id) {
+  if (selected.has(id)) selected.delete(id); else selected.add(id);
+  updateSelBar();
+  const row = document.querySelector(`#lib-pb .lib-row[data-id="${CSS.escape(id)}"]`);
+  if (row) { row.classList.toggle('selected', selected.has(id)); const c = row.querySelector('.rc-check'); if (c) c.classList.toggle('on', selected.has(id)); }
+}
+function updateSelBar() {
+  $('#lib-selcount').textContent = `${selected.size} sélectionné${selected.size > 1 ? 's' : ''}`;
+  $('#lib-seldelete').disabled = selected.size === 0;
+}
+$('#lib-select-btn').addEventListener('click', () => setSelMode(!selMode));
+$('#lib-selcancel').addEventListener('click', () => setSelMode(false));
+$('#lib-selall').addEventListener('click', () => {
+  const ids = (libAlbumOpen ? libAlbums().find((a) => a.album === libAlbumOpen)?.tracks || [] : visibleLibrary()).map((t) => t.id);
+  const allSel = ids.length && ids.every((id) => selected.has(id));
+  if (allSel) selected.clear(); else ids.forEach((id) => selected.add(id));
+  updateSelBar();
+  renderLibrary();
+});
+$('#lib-seldelete').addEventListener('click', () => {
+  if (!selected.size) return;
+  const ids = [...selected];
+  askConfirm({
+    title: 'Supprimer la sélection',
+    html: `Supprimer <strong>${ids.length}</strong> titre${ids.length > 1 ? 's' : ''} de la bibliothèque ?<br>Les fichiers audio seront aussi supprimés.`,
+    okLabel: 'Supprimer'
+  }, async () => {
+    if (currentTrack && ids.includes(currentTrack.id)) stopPlayback();
+    playQueue = playQueue.filter((id) => !selected.has(id));
+    if (playPos >= playQueue.length) playPos = playQueue.length - 1;
+    await window.mdl.deleteMany(ids);
+    appState.library = appState.library.filter((t) => !selected.has(t.id));
+    appState.playlists.forEach((p) => { p.tracks = p.tracks.filter((id) => !selected.has(id)); });
+    setSelMode(false);
+    renderPlaylists();
+    if (currentPlId) renderPlaylistDetail();
+    searchResults.forEach((t) => refreshCard(t.id));
+    showToast(`${ids.length} titre${ids.length > 1 ? 's' : ''} supprimé${ids.length > 1 ? 's' : ''}`, 'info');
+  });
+});
+
+/* Regroupement par album (onglet Albums) */
+function libAlbums() {
+  const map = new Map();
+  const ensure = (album, artist) => {
+    const key = (album || '').trim().toLowerCase() || '__noalbum';
+    if (!map.has(key)) map.set(key, { album: (album || '').trim() || 'Sans album', artist: artist || '', tracks: [], cover: null, online: true });
+    return map.get(key);
+  };
+  appState.library.forEach((t) => {
+    const a = ensure(t.album, t.artist);
+    a.tracks.push(t);
+    a.online = false;                       // contient au moins un titre telecharge
+    if (!a.cover && t.cover) a.cover = local(t.cover);
+  });
+  const libIds = new Set(appState.library.map((t) => t.id));
+  // N'inclure que les albums EXPLICITEMENT enregistres (saved). Les titres de playlists/favoris
+  // online restent dans Playlists/Favoris et ne polluent pas l'onglet Albums.
+  Object.values(appState.onlineMeta || {}).forEach((o) => {
+    if (!o.saved || libIds.has(o.id)) return;
+    const a = ensure(o.album, o.artist);
+    a.tracks.push(Object.assign({}, o, { online: true, file: null }));
+    if (!a.cover && o.thumb) a.cover = o.thumb;
+  });
+  return [...map.values()].sort((a, b) => a.album.localeCompare(b.album, 'fr', { sensitivity: 'base' }));
+}
+function buildAlbumCard(a) {
+  const card = document.createElement('div');
+  card.className = 'lib-alb';
+  card.innerHTML = `
+    <div class="lib-alb-cover ${tClass(a.album.length)}">${a.cover ? `<img src="${esc(a.cover)}" loading="lazy" onerror="this.remove()">` : `<div class="rc-thumb-ph">${SVG_NOTE(22, '.3')}</div>`}${a.online ? '<span class="lib-alb-badge">en ligne</span>' : ''}</div>
+    <div class="lib-alb-name">${esc(a.album)}</div>
+    <div class="lib-alb-sub">${esc(a.artist || 'Artiste inconnu')} · ${a.tracks.length} titre${a.tracks.length > 1 ? 's' : ''}</div>`;
+  card.addEventListener('click', () => { libAlbumOpen = a.album; renderLibrary(); });
+  return card;
+}
+
+/* Analyseur albums vs singles : normalise les titres (retire (...)/[...], "remaster", "feat"…). */
+function normName(s) {
+  return String(s || '').toLowerCase()
+    .replace(/\(.*?\)|\[.*?\]/g, ' ')
+    .replace(/\b(feat|ft|with|prod)\b.*$/i, ' ')
+    .replace(/\b(remaster(ed)?|deluxe|edition|version|single|ep|live|remix|instrumental|drumless)\b/gi, ' ')
+    .replace(/[^a-z0-9À-ſ]+/gi, ' ')
+    .replace(/\s+/g, ' ').trim();
+}
+/* Sépare la bibliothèque en vrais albums (≥2 titres DISTINCTS sous un nom d'album réel)
+   et singles (titre isolé, sans album, ou album = nom du morceau). */
+function classifyAlbums() {
+  const albums = [], singles = [];
+  libAlbums().forEach((g) => {
+    const noAlbum = !g.album || g.album === 'Sans album';
+    const distinct = new Set(g.tracks.map((t) => normName(t.title))).size;
+    const albumIsTitle = normName(g.album) === normName(g.tracks[0].title);
+    if (!noAlbum && g.tracks.length >= 2 && distinct >= 2 && !albumIsTitle) albums.push(g);
+    else singles.push(...g.tracks);
+  });
+  singles.sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0));
+  return { albums, singles };
+}
+function buildSingleCard(t) {
+  const card = document.createElement('div');
+  card.className = 'lib-alb lib-single';
+  card.dataset.id = t.id;
+  const cv = t.cover ? local(t.cover) : (t.thumb || null);
+  card.innerHTML = `
+    <div class="lib-alb-cover ${tClass((t.title || '').length)}">${cv ? `<img src="${esc(cv)}" loading="lazy" onerror="this.remove()">` : `<div class="rc-thumb-ph">${SVG_NOTE(22, '.3')}</div>`}<div class="lib-single-play"><svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><polygon points="6 4 20 12 6 20 6 4"/></svg></div>${t.online ? '<span class="lib-alb-badge">en ligne</span>' : ''}</div>
+    <div class="lib-alb-name">${esc(t.title)}</div>
+    <div class="lib-alb-sub">${esc(t.artist || 'Artiste inconnu')}</div>`;
+  card.addEventListener('click', () => startQueue([t.id], 0));
+  return card;
+}
+
+/* Télécharge un seul titre en ligne (il deviendra local via dl:done). */
+function downloadOneOnline(t) {
+  if (!online) { showToast('Hors ligne — connexion requise', 'error'); return; }
+  if (trackById(t.id)) { showToast('Déjà téléchargé', 'info'); return; }
+  window.mdl.download({ id: t.id, title: t.title, artist: t.artist, album: t.album, duration: t.duration, thumb: t.thumb });
+  showToast('Téléchargement lancé', 'info');
+}
+
+/* Oublie un titre en ligne (le retire des albums sauvegardes / favoris / playlists). */
+async function forgetOnline(t) {
+  if (!appState.onlineMeta) appState.onlineMeta = {};
+  delete appState.onlineMeta[t.id];
+  appState.playlists.forEach((p) => { p.tracks = p.tracks.filter((id) => id !== t.id); });
+  await window.mdl.removeOnline(t.id);
+  renderLibrary(); renderPlaylists(); if (currentPlId) renderPlaylistDetail(); refreshFavBtns();
+  showToast('Retiré', 'info');
+}
 
 $$('#lib-cols .lib-col-h').forEach((h) => {
   h.addEventListener('click', () => {
@@ -846,15 +1205,11 @@ function visibleLibrary() {
 }
 
 function renderLibrary() {
-  const list = visibleLibrary();
   const all = appState.library;
-  const empty = all.length === 0;
+  const savedOnline = Object.values(appState.onlineMeta || {}).filter((o) => o.saved).length;
+  const empty = all.length === 0 && savedOnline === 0;
 
-  $('#lib-stats').style.display = empty ? 'none' : '';
-  $('#lib-cols').style.display = empty ? 'none' : '';
-  $('#lib-pb').style.display = empty ? 'none' : '';
-  $('#lib-empty-state').style.display = empty ? 'flex' : 'none';
-
+  // Statistiques (toujours a jour)
   const totalDur = all.reduce((s, t) => s + (t.duration || 0), 0);
   const artists = new Set(all.map((t) => (t.artist || '').toLowerCase()).filter(Boolean)).size;
   $('#lib-sub').textContent = `${all.length} titre${all.length > 1 ? 's' : ''} · ${fmtDurLong(totalDur)}`;
@@ -865,51 +1220,114 @@ function renderLibrary() {
   $('#st-artists').nextSibling.textContent = ` artiste${artists > 1 ? 's' : ''}`;
   $('#pl-sub').textContent = `${appState.playlists.length} playlist${appState.playlists.length > 1 ? 's' : ''} · ${appState.playlists.reduce((s, p) => s + p.tracks.length, 0)} titres`;
 
+  $('#lib-empty-state').style.display = empty ? 'flex' : 'none';
+  $('#lib-tabs').style.display = empty ? 'none' : '';
+  $('#lib-stats').style.display = empty ? 'none' : '';
+  if (empty) { $('#lib-cols').style.display = 'none'; $('#lib-pb').style.display = 'none'; $('#lib-selbar').style.display = 'none'; selMode = false; return; }
+
   const pb = $('#lib-pb');
+  pb.style.display = '';
   pb.innerHTML = '';
-  list.forEach((t, i) => pb.appendChild(buildRow(t, i, { context: 'lib', list })));
+
+  // ── Onglet ALBUMS ──
+  if (libTab === 'albums') {
+    $('#lib-cols').style.display = 'none';
+    if (libAlbumOpen) {
+      const a = libAlbums().find((x) => x.album === libAlbumOpen);
+      if (!a) { libAlbumOpen = null; renderLibrary(); return; }
+      const onlineTracks = a.tracks.filter((t) => t.online);
+      const head = document.createElement('div');
+      head.className = 'lib-alb-head';
+      head.innerHTML = `<button class="lib-alb-back hbtn ghost" style="font-size:11px;gap:6px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>Albums</button><span class="lib-alb-htitle">${esc(a.album)}</span>${onlineTracks.length ? `<div class="ph-spacer"></div><button class="lib-alb-dl hbtn" style="font-size:11px;gap:6px;height:30px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Télécharger (${onlineTracks.length})</button>` : ''}`;
+      head.querySelector('.lib-alb-back').addEventListener('click', () => { libAlbumOpen = null; renderLibrary(); });
+      const dlBtn = head.querySelector('.lib-alb-dl');
+      if (dlBtn) dlBtn.addEventListener('click', () => {
+        if (!online) { showToast('Hors ligne — connexion requise', 'error'); return; }
+        onlineTracks.forEach((t) => window.mdl.download({ id: t.id, title: t.title, artist: t.artist, album: t.album, duration: t.duration, thumb: t.thumb }));
+        showToast(`${onlineTracks.length} téléchargement${onlineTracks.length > 1 ? 's' : ''} lancé${onlineTracks.length > 1 ? 's' : ''}`, 'success');
+      });
+      pb.appendChild(head);
+      const tracks = a.tracks.slice().sort((x, y) => (x.title || '').localeCompare(y.title || '', 'fr', { sensitivity: 'base' }));
+      tracks.forEach((t, i) => pb.appendChild(buildRow(t, i, { context: 'lib', list: tracks, selectable: true })));
+    } else {
+      const { albums, singles } = classifyAlbums();
+      if (!albums.length && !singles.length) {
+        pb.innerHTML = '<div class="qpanel-empty">Aucun titre.</div>';
+        return;
+      }
+      if (albums.length) {
+        const h = document.createElement('div'); h.className = 'lib-sec-h';
+        h.textContent = `Albums · ${albums.length}`;
+        pb.appendChild(h);
+        const grid = document.createElement('div'); grid.className = 'lib-alb-grid';
+        albums.forEach((a) => grid.appendChild(buildAlbumCard(a)));
+        pb.appendChild(grid);
+      }
+      if (singles.length) {
+        const h = document.createElement('div'); h.className = 'lib-sec-h';
+        h.textContent = `Singles · ${singles.length}`;
+        pb.appendChild(h);
+        const grid = document.createElement('div'); grid.className = 'lib-alb-grid';
+        singles.forEach((t) => grid.appendChild(buildSingleCard(t)));
+        pb.appendChild(grid);
+      }
+    }
+    return;
+  }
+
+  // ── Onglet TITRES ──
+  $('#lib-cols').style.display = '';
+  const list = visibleLibrary();
+  list.forEach((t, i) => pb.appendChild(buildRow(t, i, { context: 'lib', list, selectable: true })));
 }
 
-function buildRow(t, i, { context, list, plId }) {
+function buildRow(t, i, { context, list, plId, selectable }) {
   const row = document.createElement('div');
   const isMissing = missingFiles.has(t.id);
-  row.className = 'lib-row' + (currentTrack && currentTrack.id === t.id ? ' playing' : '') + (isMissing ? ' missing' : '');
+  const isOnline = !!t.online;
+  const sel = selMode && selectable && !isOnline;
+  row.className = 'lib-row' + (currentTrack && currentTrack.id === t.id ? ' playing' : '') + (isMissing ? ' missing' : '') + (sel ? ' selectable' : '') + (sel && selected.has(t.id) ? ' selected' : '');
   row.dataset.id = t.id;
   const isPlaying = currentTrack && currentTrack.id === t.id;
   const eqPaused = audio.paused ? ' paused' : '';
   row.innerHTML = `
     <div class="rc-n-wrap">
-      ${isPlaying
-        ? `<div class="rc-eq${eqPaused}" style="display:flex"><div class="rc-eq-b"></div><div class="rc-eq-b"></div><div class="rc-eq-b"></div></div>`
-        : `<div class="rc-n">${i + 1}</div>`}
+      ${sel
+        ? `<div class="rc-check${selected.has(t.id) ? ' on' : ''}"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>`
+        : (isPlaying
+          ? `<div class="rc-eq${eqPaused}" style="display:flex"><div class="rc-eq-b"></div><div class="rc-eq-b"></div><div class="rc-eq-b"></div></div>`
+          : `<div class="rc-n">${i + 1}</div>`)}
       <div class="rc-play-ico"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>
     </div>
-    <div class="rc-thumb ${tClass(i)}">${t.cover ? `<img src="${local(t.cover)}" loading="lazy" onerror="this.remove()">` : `<div class="rc-thumb-ph">${SVG_NOTE(14, '.3')}</div>`}</div>
+    <div class="rc-thumb ${tClass(i)}">${(t.cover || t.thumb) ? `<img src="${t.cover ? local(t.cover) : esc(t.thumb)}" loading="lazy" onerror="this.remove()">` : `<div class="rc-thumb-ph">${SVG_NOTE(14, '.3')}</div>`}</div>
     <div class="rc-info">
-      <div class="rc-title">${esc(t.title)}${isMissing ? ' <span class="rc-missing">fichier introuvable</span>' : ''}</div>
+      <div class="rc-title">${esc(t.title)}${isMissing ? ' <span class="rc-missing">fichier introuvable</span>' : ''}${isOnline ? ' <span class="rc-online">en ligne</span>' : ''}</div>
       <div class="rc-artist">${artistSpan(t.artist, 'rc-artist-name')}</div>
     </div>
     <div class="rc-album">${esc(t.album || '—')}</div>
     <div class="rc-year">${t.year || '—'}</div>
     <div class="rc-dur">${fmtDur(t.duration)}</div>
     <div class="rc-acts">
+      ${isOnline ? `<button class="act-btn dl" data-act="dlone" title="Télécharger ce titre"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>` : ''}
       ${context === 'pl'
         ? `<button class="act-btn del" data-act="plremove" title="Retirer de la playlist"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg></button>`
         : `<button class="act-btn" data-act="addpl" data-addpl="1" title="Ajouter à une playlist"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>`}
-      <button class="act-btn${t.favorite ? ' faved' : ''}" data-act="fav" title="Favori"><svg width="12" height="12" viewBox="0 0 24 24" fill="${t.favorite ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></button>
+      <button class="act-btn${isFavAny(t.id) ? ' faved' : ''}" data-act="fav" title="Favori"><svg width="12" height="12" viewBox="0 0 24 24" fill="${isFavAny(t.id) ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></button>
       <button class="act-btn del" data-act="del" title="Supprimer"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></button>
     </div>`;
 
   row.addEventListener('click', (e) => {
+    if (sel) { toggleSelect(t.id); return; }
     const btn = e.target.closest('.act-btn');
     if (!btn) {
       if (isMissing) { showToast('Fichier introuvable — re-telecharge le titre', 'error'); return; }
       startQueue(list.map((x) => x.id), i); return;
     }
     const act = btn.dataset.act;
-    if (act === 'addpl') openPlaylistMenu(btn, t.id);
-    else if (act === 'fav') toggleFavorite(t.id);
-    else if (act === 'del') confirmDeleteTrack(t);
+    if (act === 'dlone') downloadOneOnline(t);
+    else if (act === 'addpl') openPlaylistMenu(btn, t.id, t.online ? metaOf(t) : null);
+    else if (act === 'fav') toggleFavorite(t);
+    else if (act === 'del') { if (t.online) forgetOnline(t); else confirmDeleteTrack(t); }
     else if (act === 'plremove') {
       window.mdl.removeFromPlaylist(plId, t.id);
       const pl = appState.playlists.find((p) => p.id === plId);
@@ -944,27 +1362,42 @@ function confirmDeleteTrack(t) {
   });
 }
 
-async function toggleFavorite(id) {
-  const t = trackById(id);
-  if (!t) {
-    if (currentTrack && currentTrack.preview) showToast('Télécharge le titre pour le mettre en favori', 'info');
+async function toggleFavorite(idOrTrack) {
+  const id = typeof idOrTrack === 'string' ? idOrTrack : (idOrTrack && idOrTrack.id);
+  if (!id) return;
+  const lib = trackById(id);
+  if (lib) {
+    lib.favorite = !lib.favorite;
+    await window.mdl.setFavorite(id, lib.favorite);
+    renderLibrary(); renderPlaylists(); if (currentPlId) renderPlaylistDetail(); syncPlayerUI(); refreshFavBtns();
+    showToast(lib.favorite ? '❤ Ajouté aux favoris' : 'Retiré des favoris', lib.favorite ? 'success' : 'info');
     return;
   }
-  t.favorite = !t.favorite;
-  await window.mdl.setFavorite(id, t.favorite);
-  renderLibrary();
-  if (currentPlId) renderPlaylistDetail();
-  syncPlayerUI();
-  showToast(t.favorite ? '❤ Ajouté aux favoris' : 'Retiré des favoris', t.favorite ? 'success' : 'info');
+  // Titre EN LIGNE (non telecharge) -> favori stocke dans onlineMeta
+  const meta = (typeof idOrTrack === 'object' && idOrTrack) ? metaOf(idOrTrack)
+    : (appState.onlineMeta && appState.onlineMeta[id] ? metaOf(appState.onlineMeta[id]) : null);
+  if (!meta) { showToast('Titre indisponible', 'info'); return; }
+  if (!appState.onlineMeta) appState.onlineMeta = {};
+  const cur = appState.onlineMeta[id];
+  const newOn = !(cur && cur.fav);
+  if (newOn) appState.onlineMeta[id] = Object.assign({}, cur || {}, meta, { fav: true });
+  else if (cur) {
+    if (appState.playlists.some((p) => p.tracks.includes(id))) cur.fav = false;
+    else delete appState.onlineMeta[id];
+  }
+  await window.mdl.setOnlineFavorite(meta, newOn);
+  renderLibrary(); renderPlaylists(); if (currentPlId) renderPlaylistDetail(); syncPlayerUI(); refreshFavBtns();
+  showToast(newOn ? '❤ Ajouté aux favoris (en ligne)' : 'Retiré des favoris', newOn ? 'success' : 'info');
 }
 
 /* ════════ PLAYLISTS ════════ */
 function mosaicHtml(pl, cellSvgSize) {
-  const tracks = pl.tracks.map(trackById).filter(Boolean).slice(0, 4);
+  const tracks = pl.tracks.map(resolveTrack).filter(Boolean).slice(0, 4);
   let cells = '';
   for (let i = 0; i < 4; i++) {
     const t = tracks[i];
-    if (t && t.cover) cells += `<div class="pl-cover-cell"><img src="${local(t.cover)}" loading="lazy"></div>`;
+    const img = t && (t.cover ? local(t.cover) : t.thumb);
+    if (img) cells += `<div class="pl-cover-cell"><img src="${esc(img)}" loading="lazy" onerror="this.remove()"></div>`;
     else cells += `<div class="pl-cover-cell ${tClass(i + pl.name.length)}"><svg width="${cellSvgSize}" height="${cellSvgSize}" viewBox="0 0 24 24" fill="white" opacity=".8"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>`;
   }
   return cells;
@@ -975,7 +1408,7 @@ function smartPlaylists() {
   const lib = appState.library;
   const plays = appState.plays || {};
   return [
-    { id: '__fav', name: 'Favoris', virtual: true, smartIcon: 'fav', tracks: lib.filter((t) => t.favorite).map((t) => t.id) },
+    { id: '__fav', name: 'Favoris', virtual: true, smartIcon: 'fav', tracks: [...lib.filter((t) => t.favorite).map((t) => t.id), ...Object.values(appState.onlineMeta || {}).filter((o) => o.fav).map((o) => o.id)] },
     { id: '__recent', name: 'Récents', virtual: true, smartIcon: 'recent', tracks: lib.slice().sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0)).slice(0, 25).map((t) => t.id) },
     { id: '__top', name: 'Plus écoutés', virtual: true, smartIcon: 'top', tracks: lib.filter((t) => (plays[t.id] || 0) > 0).sort((a, b) => (plays[b.id] || 0) - (plays[a.id] || 0)).slice(0, 25).map((t) => t.id) }
   ];
@@ -990,7 +1423,7 @@ function smartIconSvg(which) {
   return '<svg viewBox="0 0 24 24" fill="currentColor" width="30" height="30"><path d="M12 2c1.2 3-1 5-2 6-1.2 1.2-3 2.8-3 6a5 5 0 0 0 10 0c0-1.6-.6-3-1.6-4 .3 1 .2 2-.6 2.7.1-2-1.6-3.2-1.6-5.2-2 1.2-3 3.3-3 5.3a5 5 0 1 1-3-9.8C9 6 11 4.5 12 2z"/></svg>';
 }
 function buildSmartCard(sp) {
-  const tracks = sp.tracks.map(trackById).filter(Boolean);
+  const tracks = sp.tracks.map(resolveTrack).filter(Boolean);
   const dur = tracks.reduce((s, t) => s + (t.duration || 0), 0);
   const card = document.createElement('div');
   card.className = 'pl-card smart-card';
@@ -1008,7 +1441,7 @@ function buildSmartCard(sp) {
   card.addEventListener('click', (e) => {
     const btn = e.target.closest('.pl-act');
     if (!btn) { openPlaylist(sp.id); return; }
-    const ids = sp.tracks.filter(trackById);
+    const ids = sp.tracks.filter(resolveTrack);
     if (!ids.length) { showToast('Aucun titre pour le moment', 'info'); return; }
     shuffleOn = true;
     startQueue(shuffleArray(ids.slice()), 0);
@@ -1022,7 +1455,7 @@ function renderPlaylists() {
   grid.innerHTML = '';
   smartPlaylists().forEach((sp) => grid.appendChild(buildSmartCard(sp)));
   appState.playlists.forEach((pl) => {
-    const tracks = pl.tracks.map(trackById).filter(Boolean);
+    const tracks = pl.tracks.map(resolveTrack).filter(Boolean);
     const dur = tracks.reduce((s, t) => s + (t.duration || 0), 0);
     const card = document.createElement('div');
     card.className = 'pl-card';
@@ -1042,7 +1475,7 @@ function renderPlaylists() {
       const btn = e.target.closest('.pl-act');
       if (!btn) { openPlaylist(pl.id); return; }
       if (btn.dataset.act === 'shuffle') {
-        const ids = pl.tracks.filter(trackById);
+        const ids = pl.tracks.filter(resolveTrack);
         if (!ids.length) { showToast('Playlist vide', 'info'); return; }
         shuffleOn = true;
         startQueue(shuffleArray(ids.slice()), 0);
@@ -1102,7 +1535,7 @@ $('#pld-back').addEventListener('click', closePlaylist);
 function renderPlaylistDetail() {
   const pl = findPlaylist(currentPlId);
   if (!pl) { closePlaylist(); return; }
-  const tracks = pl.tracks.map(trackById).filter(Boolean);
+  const tracks = pl.tracks.map(resolveTrack).filter(Boolean);
   $('#pld-mosaic').innerHTML = mosaicHtml(pl, 13).replace(/pl-cover-cell/g, 'pld-mosaic-cell');
   $('#pld-name').textContent = pl.name;
   $('#pld-label').innerHTML = `<svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg> ${pl.virtual ? 'Playlist auto' : 'Playlist'}`;
@@ -1115,6 +1548,11 @@ function renderPlaylistDetail() {
     ${artists ? `<span class="pld-dot">·</span><span style="color:rgba(79,136,248,.7)">${esc(artists)}${tracks.length > 3 ? '…' : ''}</span>` : ''}`;
   $('#pld-play').disabled = !tracks.length;
   $('#pld-shuffle').disabled = !tracks.length;
+  // Bouton "Télécharger tout" si la playlist contient des titres en ligne
+  const onlineN = tracks.filter((t) => t.online).length;
+  const dlBtn = $('#pld-dl');
+  dlBtn.style.display = onlineN ? '' : 'none';
+  $('#pld-dl-lbl').textContent = `Télécharger (${onlineN})`;
   const box = $('#pld-tracks');
   box.innerHTML = '';
   if (!tracks.length) {
@@ -1126,17 +1564,26 @@ function renderPlaylistDetail() {
 $('#pld-play').addEventListener('click', () => {
   const pl = findPlaylist(currentPlId);
   if (!pl) return;
-  const ids = pl.tracks.filter(trackById);
+  const ids = pl.tracks.filter(resolveTrack);
   if (ids.length) startQueue(ids, 0);
 });
 $('#pld-shuffle').addEventListener('click', () => {
   const pl = findPlaylist(currentPlId);
   if (!pl) return;
-  const ids = pl.tracks.filter(trackById);
+  const ids = pl.tracks.filter(resolveTrack);
   if (!ids.length) return;
   shuffleOn = true;
   startQueue(shuffleArray(ids.slice()), 0);
   syncPlayerUI();
+});
+$('#pld-dl').addEventListener('click', () => {
+  const pl = findPlaylist(currentPlId);
+  if (!pl) return;
+  if (!online) { showToast('Hors ligne — connexion requise', 'error'); return; }
+  const todo = pl.tracks.map(resolveTrack).filter((t) => t && t.online);
+  if (!todo.length) { showToast('Aucun titre à télécharger', 'info'); return; }
+  todo.forEach((t) => window.mdl.download({ id: t.id, title: t.title, artist: t.artist, album: t.album, duration: t.duration, thumb: t.thumb }));
+  showToast(`${todo.length} téléchargement${todo.length > 1 ? 's' : ''} lancé${todo.length > 1 ? 's' : ''}`, 'success');
 });
 $('#pld-rename').addEventListener('click', () => {
   const pl = findPlaylist(currentPlId);
@@ -1179,11 +1626,17 @@ const missingFiles = new Set(); // ids de titres telecharges dont le fichier loc
 let restoring = false;       // reprise de la derniere lecture au demarrage (echec = silencieux)
 let lastPersistAt = 0;       // throttle de la sauvegarde "derniere lecture"
 
+let onlineLoadToken = 0;     // jeton anti-course pour la resolution des stream online
+
 function loadTrack(id) {
-  const t = trackById(id);
+  const t = resolveTrack(id);
   if (!t) { onLoadFail('Titre introuvable'); return; }
+  if (t.online) { loadOnlineTrack(t); return; }
+  onlineLoadToken++;          // annule toute resolution online en cours
+  restoring = false;          // une vraie lecture annule la reprise au demarrage
   currentTrack = t;
   currentTrack.preview = false;
+  currentTrack.online = false;
   playCountedId = null;   // nouvelle lecture -> compteur d'ecoute rearme
   // Si le minuteur n'est pas en fondu, on garde le volume normal sur le nouveau titre
   if (preFadeVolume != null && sleepDeadline === 0) { audio.volume = preFadeVolume; preFadeVolume = null; }
@@ -1198,6 +1651,33 @@ function loadTrack(id) {
   refreshQueueIfOpen();
   updateMediaSession();
   loadLyrics(t);
+}
+
+// Lecture d'un titre EN LIGNE (non telecharge) : stream via yt-dlp -g (preview:get), jeton anti-course.
+async function loadOnlineTrack(t) {
+  const token = ++onlineLoadToken;
+  restoring = false;                 // une vraie lecture annule la reprise au demarrage
+  currentTrack = Object.assign({}, t, { preview: false, online: true });
+  playCountedId = currentTrack.id;   // un stream online ne compte pas comme une ecoute
+  if (preFadeVolume != null && sleepDeadline === 0) { audio.volume = preFadeVolume; preFadeVolume = null; }
+  syncPlayerUI();
+  renderLibrary();
+  if (currentPlId) renderPlaylistDetail();
+  refreshQueueIfOpen();
+  updateMediaSession();
+  loadLyrics(t);
+  if (!online) { onLoadFail('Hors ligne — connexion requise'); return; }
+  let url = previewUrls.get(t.id);
+  if (!url) {
+    const r = await window.mdl.previewUrl(t.id);
+    if (token !== onlineLoadToken) return;   // un autre titre a ete charge entre-temps
+    if (!r || !r.ok || !r.url) { onLoadFail('Lecture en ligne impossible'); return; }
+    url = r.url;
+    previewUrls.set(t.id, url);
+  }
+  if (token !== onlineLoadToken) return;
+  audio.src = url;
+  audio.play().catch((err) => { if (!(err && err.name === 'AbortError')) onLoadFail('Lecture en ligne impossible'); });
 }
 
 /* Échec de chargement d'un fichier : message clair + passage au suivant,
@@ -1255,9 +1735,13 @@ function restoreLastTrack() {
   playPos = 0;
   playCountedId = t.id;                     // reprise = pas une nouvelle ecoute comptee
   const seekTo = Math.max(0, Number(saved.pos) || 0);
+  const restoredId = t.id;
   const onMeta = () => {
     audio.removeEventListener('loadedmetadata', onMeta);
-    try { if (seekTo > 0 && seekTo < (audio.duration || 1e9)) audio.currentTime = seekTo; } catch (_) {}
+    // Ne seeker que si on est toujours en reprise sur CE titre (une vraie lecture a pu prendre la main)
+    if (restoring && currentTrack && currentTrack.id === restoredId) {
+      try { if (seekTo > 0 && seekTo < (audio.duration || 1e9)) audio.currentTime = seekTo; } catch (_) {}
+    }
     restoring = false;
   };
   audio.addEventListener('loadedmetadata', onMeta);
@@ -1329,8 +1813,8 @@ $('#gl-repeat').addEventListener('click', toggleRepeat);
 
 /* Favori (player + GL) — stopPropagation : #ply-fav est imbrique dans #ply-left
    (clic = ouvre le grand lecteur), sinon cliquer "favori" ouvrait le grand lecteur. */
-$('#ply-fav').addEventListener('click', (e) => { e.stopPropagation(); if (currentTrack) toggleFavorite(currentTrack.id); });
-$('#gl-fav').addEventListener('click', (e) => { e.stopPropagation(); if (currentTrack) toggleFavorite(currentTrack.id); });
+$('#ply-fav').addEventListener('click', (e) => { e.stopPropagation(); if (currentTrack) toggleFavorite(currentTrack); });
+$('#gl-fav').addEventListener('click', (e) => { e.stopPropagation(); if (currentTrack) toggleFavorite(currentTrack); });
 $('#ply-artist').addEventListener('click', () => { if (currentTrack && currentTrack.artist) openArtistByName(currentTrack.artist); });
 $('#gl-artist').addEventListener('click', () => { if (currentTrack && currentTrack.artist) openArtistByName(currentTrack.artist); });
 
@@ -1585,7 +2069,7 @@ function syncPlayerUI() {
     $('#ply-artist').textContent = currentTrack.artist || 'Inconnu';
     $('#gl-title').textContent = currentTrack.title;
     $('#gl-artist').textContent = currentTrack.artist || 'Inconnu';
-    const fav = !!currentTrack.favorite;
+    const fav = isFavAny(currentTrack.id);
     $('#ply-fav').classList.toggle('on', fav);
     $('#gl-fav').classList.toggle('on', fav);
     const art = $('#ply-art'), glArt = $('#gl-art');
@@ -2064,6 +2548,33 @@ window.MDL_TEST = {
   playId: (id) => startQueue([id], 0),
   playByTitle: (sub) => { const t = appState.library.find((x) => (x.title || '').toLowerCase().includes(sub.toLowerCase())); if (t) startQueue([t.id], 0); return !!t; },
   showLyrics: () => { if (!lyricsVisible) toggleLyrics(); },
+  // ── Hooks features online / bibliotheque (session v1.3) ──
+  favResult: (i) => { const t = searchResults[i || 0]; if (t) toggleFavorite(t); return !!t; },
+  isResultFav: (i) => { const t = searchResults[i || 0]; return t ? isFavAny(t.id) : false; },
+  resultId: (i) => { const t = searchResults[i || 0]; return t ? t.id : null; },
+  addResultToNewPl: async (i, name) => {
+    const t = searchResults[i || 0]; if (!t) return false;
+    const r = await window.mdl.createPlaylist(name); if (!r.ok) return false;
+    appState.playlists.push(r.playlist);
+    const meta = trackById(t.id) ? null : metaOf(t);
+    if (meta) { if (!appState.onlineMeta) appState.onlineMeta = {}; appState.onlineMeta[t.id] = Object.assign({}, appState.onlineMeta[t.id] || {}, meta); }
+    await window.mdl.addToPlaylist(r.playlist.id, t.id, meta);
+    r.playlist.tracks.push(t.id); renderPlaylists(); return true;
+  },
+  saveAlbum: (i) => { const c = collectionResults[i || 0]; return c ? saveCollectionToLibrary(c) : false; },
+  setLibTab: (t) => { libTab = t; libAlbumOpen = null; $$('#lib-tabs .stab').forEach((x) => x.classList.toggle('on', x.dataset.libtab === t)); renderLibrary(); },
+  firstLibAlbumName: () => { const a = classifyAlbums().albums[0]; return a ? a.album : null; },
+  openLibAlbum: (name) => { libTab = 'albums'; libAlbumOpen = name; renderLibrary(); },
+  dlOnlineInAlbum: () => { const b = document.querySelector('#lib-pb .lib-alb-dl'); if (b) { b.click(); return true; } return false; },
+  dlFirstOnlineRow: () => { const b = document.querySelector('#lib-pb .lib-row .act-btn.dl'); if (b) { b.click(); return true; } return false; },
+  openFav: () => { goPage(2); openPlaylist('__fav'); },
+  playFav: () => { const ids = (smartPlaylists().find((p) => p.id === '__fav') || { tracks: [] }).tracks; if (ids.length) startQueue(ids, 0); return ids.length; },
+  selectAllLib: () => { setSelMode(true); $('#lib-selall').click(); },
+  countSelected: () => selected.size,
+  deleteSelection: () => { $('#lib-seldelete').click(); setTimeout(() => $('#confirm-ok').click(), 50); },
+  forgetFirstOnline: () => { const o = Object.values(appState.onlineMeta || {})[0]; return o ? forgetOnline(o) : false; },
+  clickArtistBand: () => { const b = document.querySelector('#rc-list .artist-band.clickable'); if (b) { b.click(); return true; } return false; },
+  goDiscover: (force) => { goPage(3); if (force) renderDiscover(true); },
   jsErrors: () => jsErrors.slice(),
   state: () => JSON.stringify({
     updateState,
@@ -2105,6 +2616,18 @@ window.MDL_TEST = {
     library: appState.library.length,
     playing: !!currentTrack && !audio.paused,
     online,
-    lastError: lastDlError
+    lastError: lastDlError,
+    // ── Etat features online / bibliotheque ──
+    onlineMeta: Object.keys(appState.onlineMeta || {}).length,
+    onlineSaved: Object.values(appState.onlineMeta || {}).filter((o) => o.saved).length,
+    onlineFav: Object.values(appState.onlineMeta || {}).filter((o) => o.fav).length,
+    libTab,
+    libAlbumsN: classifyAlbums().albums.length,
+    libSinglesN: classifyAlbums().singles.length,
+    favTotal: (smartPlaylists().find((p) => p.id === '__fav') || { tracks: [] }).tracks.length,
+    pldTracksAll: (() => { const p = findPlaylist(currentPlId); return p ? p.tracks.length : 0; })(),
+    curOnline: !!(currentTrack && currentTrack.online),
+    interests: (appState.interests || []).length,
+    discoTracks: discoverResults.length
   })
 };

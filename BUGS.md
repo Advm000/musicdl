@@ -8,6 +8,13 @@
 | L1 | `saveStore` non atomique | ✅ RÉSOLU (v1.3 conso) | Écriture atomique tmp+rename (`main.js:46`) + `loadStore` backup `store.json.corrupt-<ts>` (`main.js:32`). Vérifié E2E. |
 | B1 | Clic « favori » barre lecteur ouvrait le grand lecteur | ✅ RÉSOLU (v1.3 conso) | `stopPropagation` sur `#ply-fav`/`#gl-fav` (`app.js`). |
 | B2 | Re-téléchargement réinitialisait le favori | ✅ RÉSOLU (v1.3 conso) | Conserve favori/ancienneté/paroles depuis l'entrée existante (`main.js`). E2E favori final=true. |
+| B3 | Reprise de lecture : seek non annulé par une vraie lecture | ✅ RÉSOLU (v1.3) | `restoreLastTrack` : `loadedmetadata` gardé sur le titre restauré + `restoring=false` dans `loadTrack`/`loadOnlineTrack`. C'était la cause du faux échec « compteur 0→0 » de la suite smart. |
+| B4 | Playlist online polluait l'onglet Albums (en Singles) | ✅ RÉSOLU (v1.3) | Flag `onlineMeta.saved` : l'onglet Albums n'affiche que library + albums explicitement enregistrés (➕). Playlists/favoris restent à leur place. |
+
+## Statut tests (session v1.3, 2026-06-17)
+- 8 suites E2E sur `--user-data-dir` isolé. `online` (nouvelle) ✅ 15/15. `full/artist/queue/smart/torture/mini` ✅.
+- `lyrics` = **faux échec** : pistes de test = Drumless (instrumentales) → 0 paroles LRCLIB ; le rendu (panneau 220px) fonctionne.
+- `full` peut flaker sur le **dernier** pas (« album complet 11-13/13 ») = lenteur de téléchargement réseau, **pas un bug** (le code de DL est inchangé).
 
 ## Contraintes environnementales connues (non-bugs)
 - **Verrou single-instance** : une instance « Music DL » (ou zombie après test tué) fait quitter toute nouvelle instance (exit 0, rien écrit). Tuer les zombies avant E2E.

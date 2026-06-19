@@ -70,6 +70,10 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
           Playlists
         </div>
+        <div class="ni" data-page="3" id="ni3">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.8a2 2 0 0 0 1.3 1.3L21 12l-5.8 1.9a2 2 0 0 0-1.3 1.3L12 21l-1.9-5.8a2 2 0 0 0-1.3-1.3L3 12l5.8-1.9a2 2 0 0 0 1.3-1.3z"/></svg>
+          Pour toi
+        </div>
 
         <div id="recents-wrap" style="display:none">
           <div class="nav-div"></div>
@@ -263,6 +267,27 @@
             </button>
           </div>
 
+          <div class="lib-tabs" id="lib-tabs">
+            <button class="stab on" data-libtab="titres">Titres</button>
+            <button class="stab" data-libtab="albums">Albums</button>
+            <div class="ph-spacer"></div>
+            <button class="hbtn ghost" id="lib-select-btn" style="font-size:11px;gap:6px">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+              Sélectionner
+            </button>
+          </div>
+
+          <div class="lib-selbar" id="lib-selbar" style="display:none">
+            <span class="lib-selcount" id="lib-selcount">0 sélectionné</span>
+            <div class="ph-spacer"></div>
+            <button class="hbtn ghost" id="lib-selall" style="font-size:11px">Tout sélectionner</button>
+            <button class="hbtn ghost" id="lib-selcancel" style="font-size:11px">Annuler</button>
+            <button class="hbtn danger" id="lib-seldelete" style="font-size:11px;gap:6px">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
+              Supprimer la sélection
+            </button>
+          </div>
+
           <div class="lib-stats" id="lib-stats">
             <div class="lib-stat"><strong id="st-count">0</strong> titres</div>
             <div class="lib-stat-sep">·</div>
@@ -345,6 +370,10 @@
                     <button class="pld-ghost" id="pld-rename" title="Renommer">
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
                     </button>
+                    <button class="pld-ghost" id="pld-dl" title="Télécharger les titres en ligne" style="display:none;width:auto;padding:0 12px;gap:6px">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                      <span id="pld-dl-lbl">Télécharger</span>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -361,6 +390,22 @@
 
           </div>
         </div><!-- /pg2 -->
+
+        <!-- ━━━ PAGE 3 · POUR TOI (découvertes) ━━━ -->
+        <div class="pg" id="pg3">
+          <div class="ph">
+            <div class="ph-title-wrap">
+              <div class="ph-title">Pour toi</div>
+              <div class="ph-sub" id="disco-sub">Découvertes basées sur tes artistes</div>
+            </div>
+            <div class="ph-spacer"></div>
+            <button class="hbtn ghost" id="disco-refresh" style="font-size:11px;gap:6px">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+              Actualiser
+            </button>
+          </div>
+          <div class="pb" id="disco-pb"></div>
+        </div><!-- /pg3 -->
 
       </div><!-- /pw -->
 

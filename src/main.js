@@ -25,7 +25,9 @@ const DEFAULT_STORE = {
   library: [],
   playlists: [],
   recents: [],
-  plays: {}
+  plays: {},
+  onlineMeta: {},  // { [id]: { id,title,artist,album,duration,thumb, fav:bool } } — titres NON telecharges references par un favori / une playlist
+  interests: []    // [{ browseId, name, photo, ts }] — artistes ouverts (gout de l'utilisateur) -> reco "Pour toi"
 };
 let store = loadStore();
 
@@ -37,7 +39,9 @@ function loadStore() {
       library: Array.isArray(raw.library) ? raw.library : [],
       playlists: Array.isArray(raw.playlists) ? raw.playlists : [],
       recents: Array.isArray(raw.recents) ? raw.recents : [],
-      plays: (raw.plays && typeof raw.plays === 'object' && !Array.isArray(raw.plays)) ? raw.plays : {}
+      plays: (raw.plays && typeof raw.plays === 'object' && !Array.isArray(raw.plays)) ? raw.plays : {},
+      onlineMeta: (raw.onlineMeta && typeof raw.onlineMeta === 'object' && !Array.isArray(raw.onlineMeta)) ? raw.onlineMeta : {},
+      interests: Array.isArray(raw.interests) ? raw.interests : []
     };
   } catch (_) {
     // Fichier present mais illisible (corrompu/tronque) : le sauvegarder AVANT de
@@ -295,8 +299,9 @@ async function getArtist(browseId) {
       topSongs.push({ id, title, artist, duration: parseFixedDuration(r), thumb: itemThumb(r, id) });
     });
     const albums = collectArtistAlbums(data, name);
+    const related = collectRelatedArtists(data, browseId);
     if (!name && !topSongs.length && !albums.length) return { ok: false, error: 'Artiste introuvable' };
-    return { ok: true, artist: { browseId, name, subs, photo, topSongs, albums } };
+    return { ok: true, artist: { browseId, name, subs, photo, topSongs, albums, related } };
   } catch (e) {
     return { ok: false, error: 'Impossible de charger cet artiste' };
   }
@@ -311,6 +316,26 @@ async function getArtistByName(nameQuery) {
   } catch (_) {
     return { ok: false, error: 'Artiste introuvable' };
   }
+}
+
+/* Artistes liés ("les fans aiment aussi") d'une page artiste -> reco de nouveaux artistes. */
+function collectRelatedArtists(data, selfBrowseId) {
+  const out = [];
+  const seen = new Set();
+  walkJson(data, (n) => {
+    const r = n.musicTwoRowItemRenderer;
+    if (!r) return;
+    const be = r.navigationEndpoint && r.navigationEndpoint.browseEndpoint;
+    const bid = be && be.browseId;
+    if (!bid || !/^UC/.test(bid) || bid === selfBrowseId || seen.has(bid)) return;
+    const name = r.title && r.title.runs && r.title.runs[0] && r.title.runs[0].text;
+    if (!name) return;
+    const thumbs = ((((r.thumbnailRenderer || {}).musicThumbnailRenderer || {}).thumbnail || {}).thumbnails) || [];
+    const thumb = thumbs.length ? thumbs[thumbs.length - 1].url.replace(/=w\d+-h\d+/, '=w160-h160') : null;
+    seen.add(bid);
+    out.push({ browseId: bid, name, thumb });
+  });
+  return out.slice(0, 8);
 }
 
 function collectArtistAlbums(data, artistName) {
@@ -598,7 +623,7 @@ async function searchMusic(query, kind) {
       if (qn.includes(an) || an.includes(qn)) {
         try {
           artistAlbums = await getArtistAlbums(top.browseId, top.title);
-          if (artistAlbums.length) artist = { name: top.title, info: top.info, thumb: top.thumb };
+          if (artistAlbums.length) artist = { browseId: top.browseId, name: top.title, info: top.info, thumb: top.thumb };
         } catch (_) {}
       }
     }
@@ -611,13 +636,25 @@ async function searchMusic(query, kind) {
     return { ok: true, results, kind, artist, continuation: albumRes.token };
   }
 
-  // 1) API YouTube Music
+  // 1) API YouTube Music (+ detection de l'artiste en parallele pour la banniere des Titres)
   let results = [];
   let token = null;
+  let artist = null;
   try {
-    const r = await ytMusicSearch(query, kind);
+    const [r, artistRes] = await Promise.all([
+      ytMusicSearch(query, kind),
+      kind === 'songs' ? ytMusicSearch(query, 'artists').catch(() => ({ results: [] })) : Promise.resolve({ results: [] })
+    ]);
     results = r.results;
     token = r.token;
+    const top = artistRes.results && artistRes.results[0];
+    if (top && top.browseId) {
+      const qn = query.toLowerCase(), an = (top.title || '').toLowerCase();
+      // On n'affiche la banniere que si la recherche ressemble au nom de l'artiste
+      if (qn.includes(an) || an.includes(qn)) {
+        artist = { browseId: top.browseId, name: top.title, info: top.info, thumb: top.thumb };
+      }
+    }
   } catch (_) { /* repli ci-dessous */ }
 
   // Playlists : pas de repli équivalent côté yt-dlp
@@ -650,7 +687,7 @@ async function searchMusic(query, kind) {
   if (!results.length) return { ok: false, error: 'Aucun résultat' };
   store.recents = [query, ...store.recents.filter((r) => r.toLowerCase() !== query.toLowerCase())].slice(0, 6);
   saveStore();
-  return { ok: true, results, kind, continuation: token };
+  return { ok: true, results, kind, artist, continuation: token };
 }
 function cleanErr(err) {
   const line = String(err).split(/\r?\n/).find((l) => l.includes('ERROR')) || 'Erreur réseau ou service indisponible';
@@ -772,6 +809,10 @@ async function processDownload(item) {
     if (prev.addedAt) entry.addedAt = prev.addedAt;
     if (prev.hasLyrics) entry.hasLyrics = true;
   }
+  // Etait reference en ligne (favori / playlist) -> conserve le favori puis devient un vrai titre local
+  const om = store.onlineMeta[entry.id];
+  if (om && om.fav) entry.favorite = true;
+  delete store.onlineMeta[entry.id];
   store.library = store.library.filter((t) => t.id !== entry.id);
   store.library.push(entry);
   saveStore();
@@ -926,7 +967,9 @@ ipcMain.handle('state:get', () => ({
   library: store.library,
   playlists: store.playlists,
   recents: store.recents,
-  plays: store.plays
+  plays: store.plays,
+  onlineMeta: store.onlineMeta,
+  interests: store.interests
 }));
 
 ipcMain.handle('plays:bump', (_e, id) => {
@@ -951,6 +994,68 @@ ipcMain.handle('search:suggest', async (_e, input) => {
 ipcMain.handle('collection:get', (_e, ref) => getCollection(ref));
 ipcMain.handle('artist:get', (_e, browseId) => getArtist(browseId));
 ipcMain.handle('artist:byName', (_e, name) => getArtistByName(name));
+
+/* Enregistre un artiste consulté comme "centre d'intérêt" (alimente la page Pour toi). */
+ipcMain.handle('interest:add', (_e, a) => {
+  if (!a || !a.browseId || !/^UC/.test(a.browseId)) return { ok: false };
+  store.interests = (store.interests || []).filter((x) => x.browseId !== a.browseId);
+  store.interests.unshift({ browseId: a.browseId, name: a.name || '', photo: a.photo || null, ts: Date.now() });
+  store.interests = store.interests.slice(0, 20);
+  saveStore();
+  return { ok: true, count: store.interests.length };
+});
+
+/* ══ Reco "Pour toi" : pondère les artistes consultés (récence + collaborations),
+   puis découvre de nouveaux artistes via les "artistes liés". ══ */
+ipcMain.handle('discover', async () => {
+  const interests = (store.interests || []).slice(0, 4);
+  if (!interests.length) return { ok: true, tracks: [], albums: [], from: [] };
+  const trackScore = new Map();   // id -> { track, score }
+  const albumScore = new Map();   // browseId -> { album, score }
+  const relatedPool = new Map();  // browseId -> { name, weight }
+  for (let i = 0; i < interests.length; i++) {
+    const w = 1 - i * 0.15;       // artiste consulté le plus récemment = poids max
+    const r = await getArtist(interests[i].browseId).catch(() => null);
+    if (!r || !r.ok) continue;
+    const a = r.artist;
+    (a.topSongs || []).forEach((t, idx) => {
+      if (!t.id) return;
+      const sc = (10 - idx) * w;  // top titres ordonnés par popularité
+      const e = trackScore.get(t.id);
+      if (e) e.score += sc; else trackScore.set(t.id, { track: Object.assign({}, t, { _from: a.name }), score: sc });
+    });
+    (a.albums || []).forEach((al) => {
+      if (!al.browseId) return;
+      const sc = w * (al.info === 'Single' ? 0.6 : 1);
+      const e = albumScore.get(al.browseId);
+      if (e) e.score += sc; else albumScore.set(al.browseId, { album: al, score: sc });
+    });
+    (a.related || []).forEach((rel, ri) => {
+      if (!rel.browseId || interests.some((x) => x.browseId === rel.browseId)) return;
+      const rw = w * (1 - ri * 0.1) * 0.5;
+      const e = relatedPool.get(rel.browseId);
+      if (e) e.weight += rw; else relatedPool.set(rel.browseId, { name: rel.name, weight: rw });
+    });
+  }
+  // Découverte : on étend sur les 3 artistes liés les mieux notés (poids réduit)
+  const topRelated = [...relatedPool.entries()].sort((x, y) => y[1].weight - x[1].weight).slice(0, 3);
+  for (const [bid, info] of topRelated) {
+    const r = await getArtist(bid).catch(() => null);
+    if (!r || !r.ok) continue;
+    const a = r.artist;
+    (a.topSongs || []).slice(0, 5).forEach((t, idx) => {
+      if (!t.id || trackScore.has(t.id)) return;
+      trackScore.set(t.id, { track: Object.assign({}, t, { _from: a.name, _related: true }), score: (5 - idx) * info.weight });
+    });
+    (a.albums || []).slice(0, 4).forEach((al) => {
+      if (!al.browseId || albumScore.has(al.browseId)) return;
+      albumScore.set(al.browseId, { album: al, score: info.weight * 0.5 });
+    });
+  }
+  const tracks = [...trackScore.values()].sort((x, y) => y.score - x.score).map((e) => e.track).slice(0, 40);
+  const albums = [...albumScore.values()].sort((x, y) => y.score - x.score).map((e) => e.album).slice(0, 24);
+  return { ok: true, tracks, albums, from: interests.map((i) => i.name) };
+});
 ipcMain.handle('dl:start', (_e, track) => enqueueDownload(track));
 
 /* ── Préécoute (streaming avant téléchargement) ── */
@@ -974,8 +1079,22 @@ ipcMain.handle('library:delete', (_e, id) => {
   store.library = store.library.filter((x) => x.id !== id);
   store.playlists.forEach((p) => { p.tracks = p.tracks.filter((tid) => tid !== id); });
   delete store.plays[id];
+  delete store.onlineMeta[id];
   saveStore();
   return { ok: true };
+});
+ipcMain.handle('library:deleteMany', (_e, ids) => {
+  const set = new Set(ids || []);
+  store.library.forEach((t) => {
+    if (!set.has(t.id)) return;
+    try { if (t.file && fs.existsSync(t.file)) fs.unlinkSync(t.file); } catch (_) {}
+    try { if (t.cover && fs.existsSync(t.cover)) fs.unlinkSync(t.cover); } catch (_) {}
+  });
+  store.library = store.library.filter((t) => !set.has(t.id));
+  store.playlists.forEach((p) => { p.tracks = p.tracks.filter((id) => !set.has(id)); });
+  (ids || []).forEach((id) => { delete store.plays[id]; delete store.onlineMeta[id]; });
+  saveStore();
+  return { ok: true, deleted: set.size };
 });
 ipcMain.handle('library:reveal', (_e, id) => {
   const t = store.library.find((x) => x.id === id);
@@ -987,6 +1106,52 @@ ipcMain.handle('folder:open', () => { ensureDirs(); shell.openPath(store.setting
 ipcMain.handle('fav:set', (_e, { id, on }) => {
   const t = store.library.find((x) => x.id === id);
   if (t) { t.favorite = !!on; saveStore(); }
+  return { ok: true };
+});
+
+/* Favori d'un titre EN LIGNE (non telecharge) : stocke dans onlineMeta.
+   Si le titre est dans la bibliotheque, on bascule simplement son favori. */
+ipcMain.handle('online:setFav', (_e, { track, on }) => {
+  const id = track && track.id;
+  if (!id) return { ok: false };
+  const lib = store.library.find((x) => x.id === id);
+  if (lib) { lib.favorite = !!on; saveStore(); return { ok: true, where: 'library' }; }
+  if (on) {
+    const ex = store.onlineMeta[id] || {};
+    store.onlineMeta[id] = {
+      id, title: track.title || ex.title || '', artist: track.artist || ex.artist || '',
+      album: track.album || ex.album || '', duration: track.duration || ex.duration || null,
+      thumb: track.thumb || ex.thumb || null, fav: true
+    };
+  } else if (store.onlineMeta[id]) {
+    // Plus favori : on garde la meta si encore dans une playlist, sinon on la retire
+    if (store.playlists.some((p) => p.tracks.includes(id))) store.onlineMeta[id].fav = false;
+    else delete store.onlineMeta[id];
+  }
+  saveStore();
+  return { ok: true, where: 'online' };
+});
+
+/* Enregistre des titres EN LIGNE (album sauvegarde dans l'onglet Albums) sans favori ni playlist. */
+ipcMain.handle('online:save', (_e, tracks) => {
+  (tracks || []).forEach((m) => {
+    if (!m || !m.id || store.library.some((t) => t.id === m.id)) return;
+    const ex = store.onlineMeta[m.id] || {};
+    store.onlineMeta[m.id] = {
+      id: m.id, title: m.title || ex.title || '', artist: m.artist || ex.artist || '',
+      album: m.album || ex.album || '', duration: m.duration || ex.duration || null,
+      thumb: m.thumb || ex.thumb || null, fav: !!ex.fav, saved: true
+    };
+  });
+  saveStore();
+  return { ok: true };
+});
+
+/* Oublie completement un titre en ligne (le retire des albums/favoris/playlists). */
+ipcMain.handle('online:remove', (_e, id) => {
+  delete store.onlineMeta[id];
+  store.playlists.forEach((p) => { p.tracks = p.tracks.filter((tid) => tid !== id); });
+  saveStore();
   return { ok: true };
 });
 
@@ -1006,14 +1171,28 @@ ipcMain.handle('playlist:rename', (_e, { id, name }) => {
   if (p) { p.name = String(name).slice(0, 60) || p.name; saveStore(); }
   return { ok: true };
 });
-ipcMain.handle('playlist:addTrack', (_e, { playlistId, trackId }) => {
+ipcMain.handle('playlist:addTrack', (_e, { playlistId, trackId, meta }) => {
   const p = store.playlists.find((x) => x.id === playlistId);
-  if (p && !p.tracks.includes(trackId)) { p.tracks.push(trackId); saveStore(); }
+  if (!p) return { ok: false };
+  // Titre EN LIGNE (non telecharge) : memoriser sa meta pour pouvoir l'afficher/le jouer
+  if (meta && meta.id && !store.library.some((t) => t.id === meta.id)) {
+    const ex = store.onlineMeta[meta.id] || {};
+    store.onlineMeta[meta.id] = {
+      id: meta.id, title: meta.title || ex.title || '', artist: meta.artist || ex.artist || '',
+      album: meta.album || ex.album || '', duration: meta.duration || ex.duration || null,
+      thumb: meta.thumb || ex.thumb || null, fav: !!ex.fav
+    };
+  }
+  if (!p.tracks.includes(trackId)) { p.tracks.push(trackId); saveStore(); }
   return { ok: true };
 });
 ipcMain.handle('playlist:removeTrack', (_e, { playlistId, trackId }) => {
   const p = store.playlists.find((x) => x.id === playlistId);
-  if (p) { p.tracks = p.tracks.filter((t) => t !== trackId); saveStore(); }
+  if (p) { p.tracks = p.tracks.filter((t) => t !== trackId); }
+  // Plus reference par aucune playlist et pas favori -> retirer la meta online
+  const om = store.onlineMeta[trackId];
+  if (om && !om.fav && !store.playlists.some((pl) => pl.tracks.includes(trackId))) delete store.onlineMeta[trackId];
+  saveStore();
   return { ok: true };
 });
 
@@ -1407,6 +1586,134 @@ async function runSmartE2E() {
   app.exit(report.ok ? 0 : 1);
 }
 
+/* ══ E2E ONLINE/BIBLIO (features session v1.3) : favoris online, playlists online,
+   albums sauvegardes, classifieur albums/singles, telechargement par titre + global,
+   lecture en streaming, banniere artiste, selection + suppression groupee ══ */
+async function runOnlineE2E() {
+  const js = (code) => win.webContents.executeJavaScript(code, true);
+  const shotDir = process.env.MUSICDL_SHOT_DIR || path.join(__dirname, '..', 'shots');
+  const report = { ok: false, steps: [] };
+  const st = async () => JSON.parse(await js('MDL_TEST.state()'));
+  const q = process.env.MUSICDL_E2E_QUERY || 'shaw';
+  const waitFor = async (pred, tries, ms) => { let s = null; for (let i = 0; i < tries; i++) { await sleep(ms); s = await st(); if (pred(s)) return s; } return s; };
+  try {
+    await sleep(2500);
+    await shot('on-01-accueil');
+    report.steps.push('shot accueil');
+
+    // 1) Recherche titres
+    await js(`MDL_TEST.setTab('songs'); MDL_TEST.search(${JSON.stringify(q)})`);
+    let s = await waitFor((x) => x.results > 0 || x.searchError, 60, 1000);
+    if (!s.results) throw new Error('Recherche titres KO: ' + JSON.stringify(s.searchError));
+    report.steps.push('recherche titres ok: ' + s.results);
+    await sleep(1500); await shot('on-02-resultats');
+
+    // 2) Favori EN LIGNE d'un titre non telecharge
+    const onlineId = await js('MDL_TEST.resultId(0)');
+    await js('MDL_TEST.favResult(0)');
+    s = await waitFor((x) => x.onlineFav >= 1 || x.onlineMeta >= 1, 10, 500);
+    const isFav = await js('MDL_TEST.isResultFav(0)');
+    if (!isFav || s.onlineFav < 1) throw new Error('Favori online KO: onlineFav=' + s.onlineFav + ' isFav=' + isFav);
+    report.steps.push('favori online ok (onlineMeta=' + s.onlineMeta + ', fav=' + s.onlineFav + ')');
+
+    // 3) Banniere artiste cliquable -> page artiste
+    const hadBand = await js('MDL_TEST.clickArtistBand()');
+    if (hadBand) {
+      s = await waitFor((x) => x.artistOpen, 20, 700);
+      report.steps.push('banniere artiste -> page artiste: ' + (s.artistOpen ? 'ok (' + s.artistName + ')' : 'NON ouverte'));
+      if (!s.artistOpen) throw new Error('Page artiste non ouverte via banniere');
+      await sleep(1200); await shot('on-03-artiste');
+      // revenir aux titres
+      await js(`MDL_TEST.setTab('songs'); MDL_TEST.search(${JSON.stringify(q)})`);
+      await waitFor((x) => x.results > 0, 30, 1000);
+    } else { report.steps.push('banniere artiste: absente pour cette requete (skip)'); }
+
+    // 4) Ajout d'un titre online a une NOUVELLE playlist
+    const before4 = (await st()).onlineMeta;
+    await js("MDL_TEST.addResultToNewPl(1, 'E2E Playlist')");
+    s = await waitFor((x) => x.onlineMeta >= before4, 10, 500);
+    report.steps.push('ajout titre online a une playlist ok (onlineMeta=' + s.onlineMeta + ')');
+
+    // 5) Favoris : le titre online apparait
+    await js("MDL_TEST.openFav()");
+    s = await waitFor((x) => x.favTotal >= 1, 10, 500);
+    if (s.favTotal < 1) throw new Error('Favoris vide alors qu un titre online est favori');
+    report.steps.push('favoris affiche le titre online ok (favTotal=' + s.favTotal + ')');
+    await sleep(800); await shot('on-04-favoris');
+
+    // 6) Lecture EN STREAMING du titre online (par son id, pas le 1er favori qui peut etre local)
+    await js(`MDL_TEST.playId(${JSON.stringify(onlineId)})`);
+    s = await waitFor((x) => x.curOnline, 12, 500);
+    if (!s.curOnline) throw new Error('Lecture online non demarree (curOnline=false)');
+    s = await waitFor((x) => x.playing, 40, 1000);     // stream reseau : marge large
+    report.steps.push('lecture streaming online: ' + (s.playing ? 'ok (en lecture)' : 'curOnline ok, audio en chargement'));
+    await sleep(800); await shot('on-05-stream');
+
+    // 7) Recherche ALBUMS + enregistrement d'un album dans l'onglet Albums
+    await js(`MDL_TEST.setTab('albums'); MDL_TEST.search(${JSON.stringify(q)})`);
+    s = await waitFor((x) => x.collections > 0 || x.searchError, 40, 1000);
+    if (!s.collections) throw new Error('Recherche albums KO');
+    report.steps.push('recherche albums ok: ' + s.collections);
+    const savedBefore = s.onlineSaved;
+    await js('MDL_TEST.saveAlbum(0)');
+    s = await waitFor((x) => x.onlineSaved > savedBefore, 30, 1000);
+    if (s.onlineSaved <= savedBefore) throw new Error('Album non enregistre (onlineSaved ' + savedBefore + ' -> ' + s.onlineSaved + ')');
+    report.steps.push('album enregistre dans Albums ok (onlineSaved=' + s.onlineSaved + ')');
+
+    // 8) Onglet Albums : l'album sauvegarde est classe comme ALBUM (pas single)
+    await js("MDL_TEST.setLibTab('albums')");
+    s = await waitFor((x) => x.libAlbumsN >= 1, 10, 500);
+    if (s.libAlbumsN < 1) throw new Error('Aucun album classe (libAlbumsN=0)');
+    report.steps.push('classifieur: ' + s.libAlbumsN + ' album(s), ' + s.libSinglesN + ' single(s)');
+    const albName = await js('MDL_TEST.firstLibAlbumName()');
+    await js(`MDL_TEST.openLibAlbum(${JSON.stringify(albName)})`);
+    await sleep(1200); await shot('on-06-album-online');
+
+    // 8b) Page "Pour toi" : reco basee sur l'artiste consulte (banniere -> interet enregistre)
+    await js('MDL_TEST.goDiscover(true)');
+    s = await waitFor((x) => x.discoTracks > 0, 45, 1000);
+    report.steps.push('page Pour toi: ' + s.discoTracks + ' titre(s) recommande(s) (' + s.interests + ' interet[s])');
+    if (s.interests > 0 && s.discoTracks < 1) throw new Error('Reco vide alors qu un artiste a ete consulte');
+    await sleep(800); await shot('on-06b-pourtoi');
+
+    // 9) Telechargement de TOUT l'album online -> les titres deviennent locaux
+    const libBefore = (await st()).library;
+    const clicked = await js('MDL_TEST.dlOnlineInAlbum()');
+    if (clicked) {
+      s = await waitFor((x) => x.library > libBefore, 90, 1000);   // telechargement reseau : marge tres large
+      report.steps.push('telechargement album online: bibliotheque ' + libBefore + ' -> ' + s.library + (s.library > libBefore ? ' ok' : ' (lent/en cours)'));
+    } else { report.steps.push('bouton telecharger album: absent (skip)'); }
+    await sleep(800); await shot('on-07-album-dl');
+
+    // 10) Selection + suppression groupee dans Titres
+    await js("MDL_TEST.setLibTab('titres')");
+    await sleep(600);
+    await js('MDL_TEST.selectAllLib()');
+    await sleep(500);
+    const sel = await js('MDL_TEST.countSelected()');
+    report.steps.push('mode selection: ' + sel + ' titre(s) selectionne(s)');
+    if (sel > 0) {
+      const libB = (await st()).library;
+      await js('MDL_TEST.deleteSelection()');
+      s = await waitFor((x) => x.library < libB, 15, 700);
+      report.steps.push('suppression groupee: ' + libB + ' -> ' + s.library + (s.library < libB ? ' ok' : ' (inchange)'));
+      if (s.library >= libB) throw new Error('Suppression groupee sans effet');
+    } else { report.steps.push('selection vide (aucun titre telecharge a supprimer) — skip'); }
+    await sleep(600); await shot('on-08-fin');
+
+    // 11) Aucune erreur JS
+    const errs = JSON.parse(await js('JSON.stringify(MDL_TEST.jsErrors())'));
+    report.jsErrors = errs;
+    if (errs.length) throw new Error('Erreurs JS detectees: ' + errs.slice(0, 3).join(' | '));
+    report.steps.push('aucune erreur JS');
+
+    report.ok = true;
+  } catch (e) { report.error = String(e && e.message || e); try { await shot('on-99-erreur'); } catch (_) {} }
+  fs.mkdirSync(shotDir, { recursive: true });
+  fs.writeFileSync(path.join(shotDir, 'online-report.json'), JSON.stringify(report, null, 2));
+  app.exit(report.ok ? 0 : 1);
+}
+
 /* ══ E2E TORTURE : clique tout dans tous les états, traque les erreurs JS ══ */
 async function runTortureE2E() {
   const js = (code) => win.webContents.executeJavaScript(code, true);
@@ -1578,6 +1885,8 @@ if (!gotLock) {
       win.webContents.once('did-finish-load', () => runQueueE2E());
     } else if (process.env.MUSICDL_E2E_SMART) {
       win.webContents.once('did-finish-load', () => runSmartE2E());
+    } else if (process.env.MUSICDL_E2E_ONLINE) {
+      win.webContents.once('did-finish-load', () => runOnlineE2E());
     }
   });
 

@@ -154,7 +154,7 @@ Handlers IPC main correspondants : `artist:get`, `artist:byName`, `plays:bump` (
 ```
 PROJET: Music DL — app Windows Electron de telechargement/lecture YouTube Music (FR, sans abonnement).
 REPO: github.com/Advm000/musicdl (public, branche main). Landing: advm000.github.io/musicdl (GitHub Pages /docs).
-VERSION PUBLIEE: v1.2.0 (publiee 2026-06-14, release Actions + installeur + latest.yml, auto-update OK). v1.3 ABANDONNE (2026-06-17, decision boss : retour base stable v1.2.0, socle v1.3 + refonte landing annules). EN COURS: rien.
+VERSION PUBLIEE: v1.2.0 (publiee 2026-06-14, release Actions + auto-update OK). EN COURS: v1.3 (session 2026-06-17, cf §15) = consolidation (fiabilite/bugs/perf) + SOCLE ONLINE (favoris/playlists/albums en ligne, lecture streaming) + page POUR TOI (reco). src/ a ~+1025 lignes vs v1.2.0, verifie par 8 suites E2E, NON commite au depart / NON pousse.
 STACK: Electron 42 (main+preload+renderer vanilla JS, pas de framework). Persistance = %APPDATA%/Music DL/store.json
   (settings/library/playlists/recents/plays) + covers/ + lyrics/. Binaires bin/ (yt-dlp,ffmpeg) gitignored -> tools/fetch-bins.ps1.
 FICHIERS CLES: src/main.js (backend+E2E), src/preload.js (window.mdl.*), src/renderer/{app.js,index.html,styles.css,mini.html,mini.js},
@@ -174,8 +174,52 @@ RELEASE (E9): npm version 1.2.0 -> commit/push -> creer GitHub Release tag vX.Y.
 COMMITS: messages FR sans apostrophe typo/emoji. Outil Bash = heredoc git commit -F - <<'EOF' (PAS @'...'@ PowerShell).
   Signer Co-Authored-By: Claude Opus 4.8.
 INTERDITS: schema store.json existant, nom artefact exe, protocole mdl://+Range, appId, pont preload.
-PROCHAINE ACTION: aucune en cours. Projet parque sur la base stable v1.2.0 (v1.3 abandonne). Attendre instructions boss.
+PROCHAINE ACTION: travail v1.3 implemente + verifie E2E (cf §15). Selon le boss : commiter sur main (trunk-based), puis poursuivre les ajustements OU publier (npm version 1.3.0 -> release.yml). Tests : toujours --user-data-dir isole.
   NB E2E: lancer via le binaire direct ./node_modules/electron/dist/electron.exe . (npx electron . se detache sous Windows -> aucun rapport ecrit).
 PROTOCOLE: rester actif, annoncer chaque etape, captures de preuve, app laissee ouverte apres E3/E7 pour test boss,
   signe de vie <=15 min. Detail: PLAN-V1.2.md.
 ```
+
+---
+
+## 15. v1.3 (session 2026-06-17) — état détaillé & reprise
+
+**Contexte** : démarré comme « consolidation sans nouvelle option », puis le boss a demandé en live le socle online + une page Découvertes. Tout est dans `src/` (~+1025 lignes vs v1.2.0), **vérifié par E2E**, à committer/pousser selon le boss. Détail des changements aussi dans `CHANGELOG.md` et `PLAN-V1.3.md`.
+
+### Schéma `store.json` — ajouts (100 % additifs, compat ascendante)
+- `onlineMeta: { [id]: { id,title,artist,album,duration,thumb, fav?:bool, saved?:bool } }` — titres EN LIGNE (non téléchargés) référencés. `fav` = favori online ; `saved` = membre d'un album enregistré (onglet Albums). Un titre peut être dans une playlist ET/OU fav ET/OU saved.
+- `interests: [{ browseId, name, photo, ts }]` — artistes consultés (page artiste ouverte), alimente « Pour toi ». Max 20, récents d'abord.
+- `loadStore` réinjecte les deux par défaut (`{}` / `[]`).
+
+### IPC ajoutés (preload `window.mdl.*`)
+- `online:setFav {track,on}` → `setOnlineFavorite` ; `online:save tracks` → `saveOnline` ; `online:remove id` → `removeOnline`.
+- `library:deleteMany ids` → `deleteMany` (suppression groupée).
+- `interest:add a` → `addInterest` ; `discover()` → reco « Pour toi ».
+- Étendus : `playlist:addTrack {playlistId,trackId,meta}` (meta = stocke onlineMeta si non téléchargé) ; `state:get` renvoie `onlineMeta` + `interests`.
+
+### main.js — fonctions clés ajoutées
+- `saveStore` atomique (tmp+rename) ; `loadStore` backup `.corrupt-<ts>`.
+- `collectRelatedArtists(data, selfId)` ; `getArtist` renvoie désormais `related` (artistes « fans aiment aussi », browseId UC).
+- `discover` (handler) : pour les 4 artistes d'intérêt récents → `getArtist` (top titres + albums + related), score = position × poids-récence, boost si collaboration (même id chez 2 artistes) ; puis expansion sur les 3 artistes liés les mieux notés (poids réduit). Renvoie `{tracks[≤40], albums[≤24], from[]}`.
+
+### renderer app.js — fonctions clés ajoutées
+- `resolveTrack(id)` (library puis onlineMeta annoté `online:true`), `isFavAny(id)`, `metaOf(t)`, `refreshFavBtns()`.
+- `loadTrack` → si `t.online` délègue à `loadOnlineTrack(t)` (stream via `previewUrl`, jeton `onlineLoadToken` anti-course). `restoring=false` annule la reprise au démarrage.
+- `toggleFavorite(idOrTrack)` (library OU online), `forgetOnline(t)`, `downloadOneOnline(t)`.
+- Bibliothèque : `libTab` (titres/albums), `selMode`/`selected` (sélection), `libAlbums()` (groupe library + onlineMeta `saved`), `classifyAlbums()` (albums vs singles), `buildAlbumCard`/`buildSingleCard`.
+- Cartes recherche : `buildColCard` a un overlay (dl/fav/addpl) → `downloadCollectionCard` / `favCollectionCard` / `saveCollectionToLibrary` (album→`saved`, playlist→nouvelle playlist). `buildResultCard` a `.rcard-side` (♥/➕) hors `.rcard-acts` (que `refreshCard` réécrit).
+- Page 3 « Pour toi » : `renderDiscover`/`renderDiscoverContent` (cache `discoverCache`, invalidé à chaque nouvel artiste). `goPage` gère [0,1,2,3].
+- Bannière artiste cliquable : `buildArtistBand` (rendu dans les Titres via `renderResults`).
+
+### UI (index.html / styles.css)
+- Nav `#ni3` (Pour toi) + page `#pg3` (`#disco-pb`, `#disco-refresh`). Biblio : `#lib-tabs`, `#lib-selbar` (+ boutons), `#pld-dl` (télécharger playlist). Classes : `.col-ov`/`.col-ov-btn`, `.rcard-side`/`.rcs-btn`, `.rc-online`, `.lib-alb*`, `.lib-sec-h`, `.disco-*`.
+
+### Tests E2E — état
+- Suites lancées sur `--user-data-dir` isolé. Nouvelle suite **`MUSICDL_E2E_ONLINE`** (`runOnlineE2E`) ✅ **15/15** (favori online, bannière→artiste, playlist online, Favoris, streaming, album enregistré, classifieur, **Pour toi: 19 recos**, téléchargement titre+album, sélection/suppression, 0 erreur JS).
+- Base : `full`/`artist`/`queue`/`smart`/`torture`/`mini` ✅. `lyrics` = faux échec (pistes test = Drumless instrumentales, 0 paroles LRCLIB ; rendu OK). `full` peut flaker sur le **dernier** pas (téléchargement album complet 11-13/13 = lenteur réseau, pas un bug).
+- ⚠️ La suite QUEUE exige une bibliothèque déjà peuplée (réutiliser le user-data d'un run `full`).
+
+### Reste à faire (au choix du boss)
+1. **Commiter** sur `main` (trunk-based, jamais de feature branch ici).
+2. Éventuels ajustements UI demandés en live.
+3. Publication : `npm version 1.3.0` → commit/push → Release GitHub → `release.yml` (jamais d'upload local de l'exe). La landing reste celle de v1.2.0 (la refonte avait été abandonnée).
