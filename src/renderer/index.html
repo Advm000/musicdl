@@ -70,10 +70,6 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
           Playlists
         </div>
-        <div class="ni" data-page="3" id="ni3">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.8a2 2 0 0 0 1.3 1.3L21 12l-5.8 1.9a2 2 0 0 0-1.3 1.3L12 21l-1.9-5.8a2 2 0 0 0-1.3-1.3L3 12l5.8-1.9a2 2 0 0 0 1.3-1.3z"/></svg>
-          Pour toi
-        </div>
 
         <div id="recents-wrap" style="display:none">
           <div class="nav-div"></div>
@@ -391,22 +387,6 @@
           </div>
         </div><!-- /pg2 -->
 
-        <!-- ━━━ PAGE 3 · POUR TOI (découvertes) ━━━ -->
-        <div class="pg" id="pg3">
-          <div class="ph">
-            <div class="ph-title-wrap">
-              <div class="ph-title">Pour toi</div>
-              <div class="ph-sub" id="disco-sub">Découvertes basées sur tes artistes</div>
-            </div>
-            <div class="ph-spacer"></div>
-            <button class="hbtn ghost" id="disco-refresh" style="font-size:11px;gap:6px">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-              Actualiser
-            </button>
-          </div>
-          <div class="pb" id="disco-pb"></div>
-        </div><!-- /pg3 -->
-
       </div><!-- /pw -->
 
       <!-- ═══ PLAYER BAR ═══ -->
@@ -539,14 +519,6 @@
           </div>
           <div class="modal-body">
             <div class="modal-row">
-              <div class="modal-label">Dossier de téléchargement</div>
-              <div class="modal-folder" id="folder-pick">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-                <span id="folder-display">…</span>
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
-              </div>
-            </div>
-            <div class="modal-row">
               <div class="modal-label">Qualité audio</div>
               <div class="opt-group" id="opt-quality">
                 <button class="opt-btn" data-v="128">128 kbps</button>
@@ -557,8 +529,16 @@
             <div class="modal-row">
               <div class="modal-label">Format</div>
               <div class="opt-group" id="opt-format">
-                <button class="opt-btn" data-v="mp3">MP3</button>
-                <button class="opt-btn" data-v="m4a">M4A</button>
+                <button class="opt-btn" data-v="m4a">M4A · qualité max</button>
+                <button class="opt-btn" data-v="mp3">MP3 · compatible</button>
+              </div>
+            </div>
+            <div class="modal-hint" id="fmt-hint" style="font-size:11px;color:rgba(255,255,255,.4);margin:-6px 0 8px;padding-left:2px"></div>
+            <div class="modal-row">
+              <div class="modal-label">Volume normalisé</div>
+              <div class="opt-group" id="opt-norm">
+                <button class="opt-btn" data-v="on">Activé</button>
+                <button class="opt-btn" data-v="off">Désactivé</button>
               </div>
             </div>
             <div class="modal-row" style="margin-bottom:4px">

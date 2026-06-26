@@ -7,6 +7,7 @@ const { app, BrowserWindow, ipcMain, dialog, shell, protocol, Tray, Menu } = req
 const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
+const https = require('https');
 const { Readable } = require('stream');
 const { autoUpdater } = require('electron-updater');
 
@@ -17,17 +18,23 @@ const BIN = app.isPackaged
 const YTDLP = path.join(BIN, 'yt-dlp.exe');
 const COVERS = path.join(app.getPath('userData'), 'covers');
 const LYRICS = path.join(app.getPath('userData'), 'lyrics');
+// Style Spotify : les titres téléchargés vivent DANS les données de l'app (caché),
+// pas dans un dossier visible. Nommés par id, lisibles uniquement via l'app.
+const MEDIA = path.join(app.getPath('userData'), 'media');
 const STORE_FILE = path.join(app.getPath('userData'), 'store.json');
 
 /* ── Store (bibliothèque, playlists, paramètres, récents) ── */
 const DEFAULT_STORE = {
-  settings: { folder: path.join(app.getPath('music'), 'Music DL'), quality: '192', format: 'mp3', closeToTray: true },
+  settings: { folder: path.join(app.getPath('music'), 'Music DL'), quality: '192', format: 'mp3', closeToTray: true, normalize: true },
   library: [],
   playlists: [],
   recents: [],
   plays: {},
   onlineMeta: {},  // { [id]: { id,title,artist,album,duration,thumb, fav:bool } } — titres NON telecharges references par un favori / une playlist
-  interests: []    // [{ browseId, name, photo, ts }] — artistes ouverts (gout de l'utilisateur) -> reco "Pour toi"
+  interests: [],   // [{ browseId, name, photo, ts }] — artistes ouverts (gout de l'utilisateur) -> reco "Pour toi"
+  mbGenres: {},    // { [nomNormalise]: genre } — cache des genres MusicBrainz (page "Pour toi")
+  artistIds: {},   // { [nomNormalise]: browseId } — cache nom d'artiste -> chaine YT (moteur de gout)
+  innertubeVersion: ''  // derniere version InnerTube connue (rafraichie au lancement) -> evite la peremption
 };
 let store = loadStore();
 
@@ -41,7 +48,10 @@ function loadStore() {
       recents: Array.isArray(raw.recents) ? raw.recents : [],
       plays: (raw.plays && typeof raw.plays === 'object' && !Array.isArray(raw.plays)) ? raw.plays : {},
       onlineMeta: (raw.onlineMeta && typeof raw.onlineMeta === 'object' && !Array.isArray(raw.onlineMeta)) ? raw.onlineMeta : {},
-      interests: Array.isArray(raw.interests) ? raw.interests : []
+      interests: Array.isArray(raw.interests) ? raw.interests : [],
+      mbGenres: (raw.mbGenres && typeof raw.mbGenres === 'object' && !Array.isArray(raw.mbGenres)) ? raw.mbGenres : {},
+      artistIds: (raw.artistIds && typeof raw.artistIds === 'object' && !Array.isArray(raw.artistIds)) ? raw.artistIds : {},
+      innertubeVersion: typeof raw.innertubeVersion === 'string' ? raw.innertubeVersion : ''
     };
   } catch (_) {
     // Fichier present mais illisible (corrompu/tronque) : le sauvegarder AVANT de
@@ -64,7 +74,8 @@ function saveStore() {
   } catch (_) {}
 }
 function ensureDirs() {
-  try { fs.mkdirSync(store.settings.folder, { recursive: true }); } catch (_) {}
+  try { fs.mkdirSync(MEDIA, { recursive: true }); } catch (_) {}
+  try { fs.mkdirSync(store.settings.folder, { recursive: true }); } catch (_) {}   // anciens titres (compat)
   try { fs.mkdirSync(COVERS, { recursive: true }); } catch (_) {}
   try { fs.mkdirSync(LYRICS, { recursive: true }); } catch (_) {}
 }
@@ -165,6 +176,21 @@ function runYtdlp(args, { onLine } = {}) {
   });
 }
 
+/* Mesure la loudness intégrée (LUFS) d'un fichier via ffmpeg (premières 2 min
+   pour la vitesse) -> sert à normaliser le volume entre les titres. */
+function measureLoudness(file) {
+  return new Promise((resolve) => {
+    const child = spawn(path.join(BIN, 'ffmpeg.exe'), ['-hide_banner', '-t', '120', '-i', file, '-af', 'loudnorm=I=-14:print_format=json', '-f', 'null', '-'], { windowsHide: true });
+    let err = '';
+    child.stderr.on('data', (d) => { err += d; });
+    child.on('error', () => resolve(null));
+    child.on('close', () => {
+      const m = err.match(/"input_i"\s*:\s*"(-?[\d.]+)"/);
+      resolve(m ? parseFloat(m[1]) : null);
+    });
+  });
+}
+
 /* ══ RECHERCHE ══ */
 /* API officielle interne de YouTube Music (InnerTube) : chansons, albums et
    playlists avec métadonnées et pochettes carrées. Repli yt-dlp si l'API change. */
@@ -174,6 +200,34 @@ const INNERTUBE_PARAMS = {
   artists: 'EgWKAQIgAWoQEAMQBBAJEAoQBRAREBAQFQ%3D%3D',
   playlists: 'Eg-KAQwIABAAGAAgACgBMABqChAEEAMQCRAFEAo%3D'
 };
+
+// Version InnerTube : repli codé en dur, écrasé par la dernière connue (store) puis
+// rafraîchie en live au lancement. Évite que YT périme la version => app morte.
+let innertubeVersion = store.innertubeVersion || '1.20250602.01.00';
+function httpGetText(url) {
+  return new Promise((resolve, reject) => {
+    const req = https.get(url, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36' } }, (r) => {
+      if (r.statusCode !== 200) { r.resume(); reject(new Error('HTTP ' + r.statusCode)); return; }
+      let d = ''; r.on('data', (c) => d += c); r.on('end', () => resolve(d));
+    });
+    req.on('error', reject);
+    req.setTimeout(8000, () => req.destroy(new Error('timeout')));
+  });
+}
+async function refreshInnertubeVersion() {
+  try {
+    const html = await httpGetText('https://music.youtube.com/');
+    const m = html.match(/"INNERTUBE_CLIENT_VERSION":"(1\.\d{8}[\d.]+)"/) || html.match(/"clientVersion":"(1\.\d{8}[\d.]+)"/);
+    if (m && m[1]) {
+      innertubeVersion = m[1];
+      if (store.innertubeVersion !== m[1]) { store.innertubeVersion = m[1]; saveStore(); }
+      console.log('[innertube] version live = ' + m[1]);
+      return m[1];
+    }
+    console.error('[innertube] version introuvable dans la page (layout changé ?)');
+  } catch (e) { console.error('[innertube] refresh version échec: ' + e.message); }
+  return null;
+}
 
 async function innertube(endpoint, body) {
   const ctl = new AbortController();
@@ -188,12 +242,15 @@ async function innertube(endpoint, body) {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
       },
       body: JSON.stringify({
-        context: { client: { clientName: 'WEB_REMIX', clientVersion: '1.20250602.01.00', hl: 'fr', gl: 'FR' } },
+        context: { client: { clientName: 'WEB_REMIX', clientVersion: innertubeVersion, hl: 'fr', gl: 'FR' } },
         ...body
       })
     });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     return await res.json();
+  } catch (e) {
+    console.error('[innertube] ' + endpoint + ' échec: ' + e.message);   // plus de panne silencieuse
+    throw e;
   } finally {
     clearTimeout(to);
   }
@@ -574,6 +631,51 @@ function parseMusicItem(r) {
   }
 }
 
+/* ══ FEED « réel » YouTube Music : parse une étagère (carousel) en items normalisés.
+   Gère titres (songs), albums, playlists, clips (watch) et artistes. ══ */
+function parseFeedItem(it) {
+  if (it.musicResponsiveListItemRenderer) {
+    const s = parseMusicItem(it.musicResponsiveListItemRenderer);
+    return s ? Object.assign({ type: 'song' }, s) : null;
+  }
+  const r = it.musicTwoRowItemRenderer;
+  if (!r) return null;
+  const title = (r.title && r.title.runs && r.title.runs[0] && r.title.runs[0].text) || '';
+  if (!title) return null;
+  const sub = ((r.subtitle && r.subtitle.runs) || []).map((x) => (x.text || '').trim()).filter((x) => x && x !== '•').join(' · ');
+  const thumbs = ((((r.thumbnailRenderer || {}).musicThumbnailRenderer || {}).thumbnail || {}).thumbnails) || [];
+  const thumb = thumbs.length ? thumbs[thumbs.length - 1].url.replace(/=w\d+-h\d+[^=]*$/, '=w400-h400') : null;
+  const nav = r.navigationEndpoint || {};
+  if (nav.watchEndpoint && nav.watchEndpoint.videoId) {
+    return { type: 'song', id: nav.watchEndpoint.videoId, title, artist: sub, album: '', duration: null, thumb, video: true };
+  }
+  const be = nav.browseEndpoint;
+  const bid = be && be.browseId;
+  if (!bid) return null;
+  if (/^MPREb/.test(bid)) return { type: 'album', kind: 'album', browseId: bid, title, artist: sub, thumb };
+  if (/^UC/.test(bid)) return { type: 'artist', browseId: bid, name: title, thumb };
+  if (/^(VL|PL|RDCLAK|OLAK)/.test(bid)) return { type: 'playlist', kind: 'playlist', browseId: /^VL/.test(bid) ? bid : 'VL' + bid, title, info: sub, thumb };
+  return null;
+}
+function parseFeedShelves(data, max) {
+  const out = [];
+  walkJson(data, (n) => {
+    const sh = n.musicCarouselShelfRenderer;
+    if (!sh) return;
+    const hdr = (sh.header && sh.header.musicCarouselShelfBasicHeaderRenderer) || {};
+    const title = (hdr.title && hdr.title.runs && hdr.title.runs.map((x) => x.text).join('')) || '';
+    const seen = new Set();
+    const items = (sh.contents || []).map(parseFeedItem).filter(Boolean)
+      .filter((x) => { const k = x.id || x.browseId; if (!k || seen.has(k)) return false; seen.add(k); return true; })
+      .slice(0, max || 22);
+    if (title && items.length >= 4) out.push({ title, items });
+  });
+  return out;
+}
+/* Renomme quelques titres anglais que YT renvoie parfois pour un client FR. */
+const FEED_TITLE_FIX = { "today's hits": 'Tubes du moment', 'all hits': 'Tous les tubes', 'new releases': 'Nouveautés', 'top music videos': 'Top des clips musicaux', 'quick picks': 'Sélection rapide' };
+function fixFeedTitle(t) { return FEED_TITLE_FIX[(t || '').toLowerCase()] || t; }
+
 async function searchMusic(query, kind) {
   query = query.trim();
   kind = ['songs', 'albums', 'playlists'].includes(kind) ? kind : 'songs';
@@ -586,7 +688,7 @@ async function searchMusic(query, kind) {
     if (mAlbum) return { ok: true, collectionRef: { browseId: mAlbum[1], kind: 'album' } };
     if (mList && !/watch\?v=/.test(query)) return { ok: true, collectionRef: { browseId: 'VL' + mList[1], kind: 'playlist' } };
 
-    const { code, out, err } = await runYtdlp([query, '-j', '--no-playlist', '--no-warnings', '--skip-download']);
+    const { code, out, err } = await runYtdlp(['-j', '--no-playlist', '--no-warnings', '--skip-download', '--', query]);
     if (code !== 0 && !out.trim()) return { ok: false, error: cleanErr(err) };
     const results = [];
     for (const line of out.split(/\r?\n/)) {
@@ -740,10 +842,16 @@ function pump() {
 
 async function processDownload(item) {
   ensureDirs();
-  const fmt = store.settings.format === 'm4a' ? 'm4a' : 'mp3';
+  const fmt = ['m4a', 'opus'].includes(store.settings.format) ? store.settings.format : 'mp3';
   const quality = ['128', '192', '320'].includes(store.settings.quality) ? store.settings.quality : '192';
-  const base = sanitizeName(item.artist ? item.artist + ' - ' + item.title : item.title);
-  const outFile = path.join(store.settings.folder, base + '.' + fmt);
+  // m4a/opus : on sélectionne le flux natif YT (AAC/Opus) -> yt-dlp COPIE sans ré-encoder
+  // (qualité = source). mp3 : ré-encodage obligatoire (perte). Voilà la "fin de la double perte".
+  const fSel = fmt === 'opus' ? 'bestaudio[acodec=opus]/bestaudio'
+    : (fmt === 'm4a' ? 'bestaudio[ext=m4a]/bestaudio/best' : 'bestaudio/best');
+  // Style Spotify : fichier caché dans les données de l'app, nommé par id unique
+  // (pas de dossier visible, pas de collision possible).
+  const base = item.id;
+  const outFile = path.join(MEDIA, base + '.' + fmt);
   const coverFile = path.join(COVERS, item.id + '.jpg');
 
   // Métadonnées complètes en parallèle (album, année, durée précise)
@@ -753,13 +861,14 @@ async function processDownload(item) {
   item.phase = 'Téléchargement…';
   const args = [
     trackUrl(item.id),
-    '-f', 'bestaudio/best',
+    '-f', fSel,
     '-x', '--audio-format', fmt,
-    '--audio-quality', quality + 'K',
+    '--audio-quality', fmt === 'mp3' ? quality + 'K' : '0',   // mp3 = bitrate cible ; m4a/opus = copie (0 ignoré)
     '--embed-thumbnail', '--embed-metadata',
     '--write-thumbnail', '--convert-thumbnails', 'jpg',
-    '--ppa', 'EmbedThumbnail+ffmpeg_o:-c:v mjpeg -vf crop="\'if(gt(ih,iw),iw,ih)\':\'if(gt(iw,ih),ih,iw)\'"',
-    '-o', path.join(store.settings.folder, base + '.%(ext)s'),
+    // Recadrage carré de la pochette : seulement pour mp3/m4a (le PP opus peut échouer).
+    ...(fmt === 'opus' ? [] : ['--ppa', 'EmbedThumbnail+ffmpeg_o:-c:v mjpeg -vf crop="\'if(gt(ih,iw),iw,ih)\':\'if(gt(iw,ih),ih,iw)\'"']),
+    '-o', path.join(MEDIA, base + '.%(ext)s'),
     '-o', 'thumbnail:' + path.join(COVERS, item.id + '.%(ext)s'),
     '--ffmpeg-location', BIN,
     '--no-playlist', '--no-mtime', '--newline', '--no-warnings'
@@ -783,9 +892,11 @@ async function processDownload(item) {
   });
 
   if (code !== 0 || !fs.existsSync(outFile)) {
+    try { if (fs.existsSync(coverFile)) fs.unlinkSync(coverFile); } catch (_) {}   // pas de pochette orpheline
     send('dl:error', { id: item.id, title: item.title, error: cleanErr(err) });
     return;
   }
+  item.pct = 100; item.phase = 'Terminé'; notifyQueue();
 
   const meta = await metaPromise;
   const entry = {
@@ -796,6 +907,9 @@ async function processDownload(item) {
     year: (meta && (meta.release_year || (meta.upload_date ? Number(meta.upload_date.slice(0, 4)) : null))) || item.year || null,
     duration: (meta && meta.duration ? Math.round(meta.duration) : null) || item.duration || null,
     file: outFile,
+    fmt,                                                          // format réel du fichier (mp3/m4a/opus)
+    srcCodec: (meta && meta.acodec) || null,                     // codec source YT (transparence qualité)
+    srcAbr: (meta && meta.abr) ? Math.round(meta.abr) : null,    // bitrate source (kbps)
     cover: fs.existsSync(coverFile) ? coverFile : null,
     favorite: false,
     addedAt: Date.now()
@@ -968,8 +1082,7 @@ ipcMain.handle('state:get', () => ({
   playlists: store.playlists,
   recents: store.recents,
   plays: store.plays,
-  onlineMeta: store.onlineMeta,
-  interests: store.interests
+  onlineMeta: store.onlineMeta
 }));
 
 ipcMain.handle('plays:bump', (_e, id) => {
@@ -995,80 +1108,48 @@ ipcMain.handle('collection:get', (_e, ref) => getCollection(ref));
 ipcMain.handle('artist:get', (_e, browseId) => getArtist(browseId));
 ipcMain.handle('artist:byName', (_e, name) => getArtistByName(name));
 
-/* Enregistre un artiste consulté comme "centre d'intérêt" (alimente la page Pour toi). */
-ipcMain.handle('interest:add', (_e, a) => {
-  if (!a || !a.browseId || !/^UC/.test(a.browseId)) return { ok: false };
-  store.interests = (store.interests || []).filter((x) => x.browseId !== a.browseId);
-  store.interests.unshift({ browseId: a.browseId, name: a.name || '', photo: a.photo || null, ts: Date.now() });
-  store.interests = store.interests.slice(0, 20);
-  saveStore();
-  return { ok: true, count: store.interests.length };
+/* ══ Loudness d'un titre local (LUFS, cache `loudness`) -> normalisation volume ══ */
+ipcMain.handle('audio:loudness', async (_e, id) => {
+  const t = store.library.find((x) => x.id === id);
+  if (!t || !t.file || !fs.existsSync(t.file)) return { ok: false };
+  if (typeof t.loudness === 'number') return { ok: true, loudness: t.loudness };
+  const lufs = await measureLoudness(t.file);
+  if (lufs == null || !isFinite(lufs)) return { ok: false };
+  t.loudness = lufs; saveStore();
+  return { ok: true, loudness: lufs };
 });
 
-/* ══ Reco "Pour toi" : pondère les artistes consultés (récence + collaborations),
-   puis découvre de nouveaux artistes via les "artistes liés". ══ */
-ipcMain.handle('discover', async () => {
-  const interests = (store.interests || []).slice(0, 4);
-  if (!interests.length) return { ok: true, tracks: [], albums: [], from: [] };
-  const trackScore = new Map();   // id -> { track, score }
-  const albumScore = new Map();   // browseId -> { album, score }
-  const relatedPool = new Map();  // browseId -> { name, weight }
-  for (let i = 0; i < interests.length; i++) {
-    const w = 1 - i * 0.15;       // artiste consulté le plus récemment = poids max
-    const r = await getArtist(interests[i].browseId).catch(() => null);
-    if (!r || !r.ok) continue;
-    const a = r.artist;
-    (a.topSongs || []).forEach((t, idx) => {
-      if (!t.id) return;
-      const sc = (10 - idx) * w;  // top titres ordonnés par popularité
-      const e = trackScore.get(t.id);
-      if (e) e.score += sc; else trackScore.set(t.id, { track: Object.assign({}, t, { _from: a.name }), score: sc });
-    });
-    (a.albums || []).forEach((al) => {
-      if (!al.browseId) return;
-      const sc = w * (al.info === 'Single' ? 0.6 : 1);
-      const e = albumScore.get(al.browseId);
-      if (e) e.score += sc; else albumScore.set(al.browseId, { album: al, score: sc });
-    });
-    (a.related || []).forEach((rel, ri) => {
-      if (!rel.browseId || interests.some((x) => x.browseId === rel.browseId)) return;
-      const rw = w * (1 - ri * 0.1) * 0.5;
-      const e = relatedPool.get(rel.browseId);
-      if (e) e.weight += rw; else relatedPool.set(rel.browseId, { name: rel.name, weight: rw });
-    });
-  }
-  // Découverte : on étend sur les 3 artistes liés les mieux notés (poids réduit)
-  const topRelated = [...relatedPool.entries()].sort((x, y) => y[1].weight - x[1].weight).slice(0, 3);
-  for (const [bid, info] of topRelated) {
-    const r = await getArtist(bid).catch(() => null);
-    if (!r || !r.ok) continue;
-    const a = r.artist;
-    (a.topSongs || []).slice(0, 5).forEach((t, idx) => {
-      if (!t.id || trackScore.has(t.id)) return;
-      trackScore.set(t.id, { track: Object.assign({}, t, { _from: a.name, _related: true }), score: (5 - idx) * info.weight });
-    });
-    (a.albums || []).slice(0, 4).forEach((al) => {
-      if (!al.browseId || albumScore.has(al.browseId)) return;
-      albumScore.set(al.browseId, { album: al, score: info.weight * 0.5 });
-    });
-  }
-  const tracks = [...trackScore.values()].sort((x, y) => y.score - x.score).map((e) => e.track).slice(0, 40);
-  const albums = [...albumScore.values()].sort((x, y) => y.score - x.score).map((e) => e.album).slice(0, 24);
-  return { ok: true, tracks, albums, from: interests.map((i) => i.name) };
-});
 ipcMain.handle('dl:start', (_e, track) => enqueueDownload(track));
 
-/* ── Préécoute (streaming avant téléchargement) ── */
+/* ── Préécoute / streaming en ligne (yt-dlp -g) ──
+   La résolution d'une URL prend ~4 s (démarrage yt-dlp + réseau) et n'est pas
+   compressible. La vraie réponse, c'est le PRÉCHARGEMENT : on résout l'URL AVANT
+   le clic (survol d'une carte, ouverture d'un album, titre suivant de la file)
+   et on la garde en cache -> au clic, `preview:get` répond instantanément.
+   `previewInflight` fusionne les appels concurrents (clic + préchargement du même titre). */
 const previewCache = new Map();
+const previewInflight = new Map();
+async function resolvePreviewUrl(id) {
+  if (previewCache.has(id)) return previewCache.get(id);
+  if (previewInflight.has(id)) return previewInflight.get(id);
+  const p = (async () => {
+    const { code, out } = await runYtdlp([trackUrl(id), '-f', 'bestaudio[ext=m4a]/bestaudio/best', '-g', '--no-playlist', '--no-warnings']);
+    const line = code === 0 && out.split(/\r?\n/).find((l) => /^https?:\/\//.test(l.trim()));
+    const url = line ? line.trim() : null;
+    if (url) { previewCache.set(id, url); if (previewCache.size > 80) previewCache.delete(previewCache.keys().next().value); }
+    return url;
+  })();
+  previewInflight.set(id, p);
+  try { return await p; } finally { previewInflight.delete(id); }
+}
 ipcMain.handle('preview:get', async (_e, id) => {
-  if (previewCache.has(id)) return { ok: true, url: previewCache.get(id) };
-  const { code, out, err } = await runYtdlp([trackUrl(id), '-f', 'bestaudio[ext=m4a]/bestaudio/best', '-g', '--no-playlist', '--no-warnings']);
-  const url = out.split(/\r?\n/).find((l) => /^https?:\/\//.test(l.trim()));
-  if (code !== 0 || !url) return { ok: false, error: cleanErr(err) };
-  previewCache.set(id, url.trim());
-  if (previewCache.size > 60) previewCache.delete(previewCache.keys().next().value);
-  return { ok: true, url: url.trim() };
+  const url = await resolvePreviewUrl(id);
+  return url ? { ok: true, url } : { ok: false, error: 'lecture impossible' };
 });
+/* Préchargement (survol / titre suivant / album ouvert) : réchauffe le cache sans bloquer l'UI. */
+ipcMain.handle('preview:prefetch', (_e, id) => { resolvePreviewUrl(id).catch(() => {}); return { ok: true }; });
+/* Réchauffe le binaire yt-dlp au démarrage (1er spawn = ~1-2 s de moins ensuite). */
+function warmYtdlp() { try { spawn(YTDLP, ['--version'], { windowsHide: true }).on('error', () => {}); } catch (_) {} }
 
 ipcMain.handle('library:delete', (_e, id) => {
   const t = store.library.find((x) => x.id === id);
@@ -1101,7 +1182,7 @@ ipcMain.handle('library:reveal', (_e, id) => {
   if (t && fs.existsSync(t.file)) shell.showItemInFolder(t.file);
   return { ok: true };
 });
-ipcMain.handle('folder:open', () => { ensureDirs(); shell.openPath(store.settings.folder); return { ok: true }; });
+ipcMain.handle('folder:open', () => { ensureDirs(); shell.openPath(MEDIA); return { ok: true }; });
 
 ipcMain.handle('fav:set', (_e, { id, on }) => {
   const t = store.library.find((x) => x.id === id);
@@ -1208,8 +1289,9 @@ ipcMain.handle('settings:chooseFolder', async () => {
 ipcMain.handle('settings:save', (_e, s) => {
   if (s && typeof s.folder === 'string' && s.folder.trim()) store.settings.folder = s.folder.trim();
   if (s && ['128', '192', '320'].includes(s.quality)) store.settings.quality = s.quality;
-  if (s && ['mp3', 'm4a'].includes(s.format)) store.settings.format = s.format;
+  if (s && ['mp3', 'm4a', 'opus'].includes(s.format)) store.settings.format = s.format;
   if (s && typeof s.closeToTray === 'boolean') store.settings.closeToTray = s.closeToTray;
+  if (s && typeof s.normalize === 'boolean') store.settings.normalize = s.normalize;
   ensureDirs();
   saveStore();
   return { ok: true, settings: store.settings };
@@ -1226,6 +1308,7 @@ async function shot(name) {
   fs.writeFileSync(path.join(dir, name + '.png'), img.toPNG());
 }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
 async function runE2E() {
   const js = (code) => win.webContents.executeJavaScript(code, true);
   const report = { ok: false, steps: [] };
@@ -1669,13 +1752,6 @@ async function runOnlineE2E() {
     await js(`MDL_TEST.openLibAlbum(${JSON.stringify(albName)})`);
     await sleep(1200); await shot('on-06-album-online');
 
-    // 8b) Page "Pour toi" : reco basee sur l'artiste consulte (banniere -> interet enregistre)
-    await js('MDL_TEST.goDiscover(true)');
-    s = await waitFor((x) => x.discoTracks > 0, 45, 1000);
-    report.steps.push('page Pour toi: ' + s.discoTracks + ' titre(s) recommande(s) (' + s.interests + ' interet[s])');
-    if (s.interests > 0 && s.discoTracks < 1) throw new Error('Reco vide alors qu un artiste a ete consulte');
-    await sleep(800); await shot('on-06b-pourtoi');
-
     // 9) Telechargement de TOUT l'album online -> les titres deviennent locaux
     const libBefore = (await st()).library;
     const clicked = await js('MDL_TEST.dlOnlineInAlbum()');
@@ -1833,10 +1909,17 @@ if (!gotLock) {
       try {
         const u = new URL(request.url);
         const p = decodeURIComponent(u.searchParams.get('p') || '');
-        if (!p || !fs.existsSync(p)) return new Response('', { status: 404 });
-        const size = fs.statSync(p).size;
-        const ext = path.extname(p).toLowerCase();
-        const mime = { '.mp3': 'audio/mpeg', '.m4a': 'audio/mp4', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp' }[ext] || 'application/octet-stream';
+        // Sécurité : n'autoriser QUE les dossiers de l'app (musique / pochettes / paroles).
+        // Sinon mdl://local?p=<n'importe quel fichier> = lecteur de fichiers arbitraire.
+        const roots = [MEDIA, store.settings.folder, COVERS, LYRICS].map((d) => path.resolve(d) + path.sep);
+        const rp = path.resolve(p);
+        if (!p || !roots.some((r) => (rp + path.sep).toLowerCase().startsWith(r.toLowerCase()))) {
+          return new Response('', { status: 403 });
+        }
+        if (!fs.existsSync(rp)) return new Response('', { status: 404 });
+        const size = fs.statSync(rp).size;
+        const ext = path.extname(rp).toLowerCase();
+        const mime = { '.mp3': 'audio/mpeg', '.m4a': 'audio/mp4', '.opus': 'audio/ogg', '.ogg': 'audio/ogg', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp' }[ext] || 'application/octet-stream';
         const range = request.headers.get('Range') || request.headers.get('range');
         if (range) {
           const m = range.match(/bytes=(\d*)-(\d*)/);
@@ -1846,7 +1929,7 @@ if (!gotLock) {
             return new Response('', { status: 416, headers: { 'Content-Range': `bytes */${size}` } });
           }
           end = Math.min(isNaN(end) ? size - 1 : end, size - 1);
-          return new Response(Readable.toWeb(fs.createReadStream(p, { start, end })), {
+          return new Response(Readable.toWeb(fs.createReadStream(rp, { start, end })), {
             status: 206,
             headers: {
               'Content-Type': mime,
@@ -1856,7 +1939,7 @@ if (!gotLock) {
             }
           });
         }
-        return new Response(Readable.toWeb(fs.createReadStream(p)), {
+        return new Response(Readable.toWeb(fs.createReadStream(rp)), {
           status: 200,
           headers: { 'Content-Type': mime, 'Content-Length': String(size), 'Accept-Ranges': 'bytes' }
         });
@@ -1865,6 +1948,8 @@ if (!gotLock) {
       }
     });
     ensureDirs();
+    refreshInnertubeVersion();   // rafraîchit la version InnerTube en arrière-plan (anti-péremption)
+    warmYtdlp();                  // réchauffe yt-dlp -> 1re lecture en ligne plus rapide
     createWindow();
     createTray();
     setupUpdater();
